@@ -1,0 +1,398 @@
+/* ==========================================================================
+   Input Component Styles
+   ========================================================================== */
+
+.input-container {
+  /* Base container styles */
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+  width: 100%;
+}
+
+/* ==========================================================================
+   Input Label
+   ========================================================================== */
+
+.input-label {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--color-text-primary);
+  line-height: var(--leading-tight);
+  
+  /* Cursor pointer for better UX */
+  cursor: pointer;
+  
+  /* Disable text selection */
+  user-select: none;
+}
+
+.input-label__required {
+  color: var(--color-error-500);
+  margin-left: var(--space-1);
+  font-weight: var(--font-semibold);
+}
+
+/* Disabled label */
+.input-container--disabled .input-label {
+  color: var(--color-text-tertiary);
+  cursor: not-allowed;
+}
+
+/* ==========================================================================
+   Input Wrapper
+   ========================================================================== */
+
+.input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+/* ==========================================================================
+   Input Field
+   ========================================================================== */
+
+.input {
+  /* Base input styles */
+  width: 100%;
+  font-family: var(--font-sans);
+  font-weight: var(--font-normal);
+  line-height: var(--leading-normal);
+  
+  /* Appearance */
+  background-color: var(--color-background);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-lg);
+  color: var(--color-text-primary);
+  
+  /* Transitions */
+  transition: var(--transition-all);
+  
+  /* Remove default appearance */
+  appearance: none;
+  outline: none;
+}
+
+/* Input placeholder */
+.input::placeholder {
+  color: var(--color-text-tertiary);
+  opacity: 1;
+}
+
+/* ==========================================================================
+   Input Sizes
+   ========================================================================== */
+
+/* Small Input */
+.input--sm {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  min-height: 2rem; /* 32px */
+}
+
+.input-container--sm .input-label {
+  font-size: var(--text-xs);
+}
+
+/* Medium Input (Default) */
+.input--md {
+  padding: var(--space-2-5) var(--space-4);
+  font-size: var(--text-base);
+  min-height: 2.5rem; /* 40px */
+}
+
+/* Large Input */
+.input--lg {
+  padding: var(--space-3) var(--space-5);
+  font-size: var(--text-lg);
+  min-height: 3rem; /* 48px */
+}
+
+.input-container--lg .input-label {
+  font-size: var(--text-base);
+}
+
+/* ==========================================================================
+   Input States
+   ========================================================================== */
+
+/* Focus State */
+.input:focus,
+.input-container--focused .input {
+  border-color: var(--color-primary-500);
+  box-shadow: 0 0 0 3px var(--color-primary-100);
+}
+
+/* Hover State */
+.input:hover:not(:disabled):not(.input--error) {
+  border-color: var(--color-border-secondary);
+}
+
+/* Error State */
+.input--error,
+.input-container--error .input {
+  border-color: var(--color-error-500);
+  background-color: var(--color-error-50);
+}
+
+.input--error:focus,
+.input-container--error .input:focus {
+  border-color: var(--color-error-500);
+  box-shadow: 0 0 0 3px var(--color-error-100);
+}
+
+/* Disabled State */
+.input:disabled,
+.input--disabled {
+  background-color: var(--color-gray-100);
+  border-color: var(--color-gray-200);
+  color: var(--color-text-tertiary);
+  cursor: not-allowed;
+}
+
+.input:disabled::placeholder,
+.input--disabled::placeholder {
+  color: var(--color-gray-400);
+}
+
+/* ==========================================================================
+   Password Input
+   ========================================================================== */
+
+.input--password {
+  padding-right: var(--space-12); /* Make room for toggle button */
+}
+
+.input-password-toggle {
+  position: absolute;
+  right: var(--space-3);
+  top: 50%;
+  transform: translateY(-50%);
+  
+  /* Button reset */
+  background: none;
+  border: none;
+  padding: var(--space-1);
+  cursor: pointer;
+  
+  /* Appearance */
+  color: var(--color-text-tertiary);
+  border-radius: var(--radius-base);
+  
+  /* Transitions */
+  transition: var(--transition-colors);
+  
+  /* Focus styles */
+  outline: none;
+}
+
+.input-password-toggle:hover {
+  color: var(--color-text-secondary);
+  background-color: var(--color-gray-100);
+}
+
+.input-password-toggle:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 1px;
+}
+
+.input-password-toggle__icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  display: block;
+}
+
+/* Disabled password toggle */
+.input-container--disabled .input-password-toggle {
+  color: var(--color-gray-400);
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   Input Hint
+   ========================================================================== */
+
+.input-hint {
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+  line-height: var(--leading-normal);
+  margin-top: var(--space-1);
+}
+
+.input-container--sm .input-hint {
+  font-size: 0.6875rem; /* 11px */
+}
+
+.input-container--lg .input-hint {
+  font-size: var(--text-sm);
+}
+
+/* ==========================================================================
+   Input Error
+   ========================================================================== */
+
+.input-error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1-5);
+  font-size: var(--text-xs);
+  color: var(--color-error-600);
+  line-height: var(--leading-normal);
+  margin-top: var(--space-1);
+}
+
+.input-error__icon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  margin-top: 0.125rem; /* Align with text baseline */
+}
+
+.input-container--sm .input-error {
+  font-size: 0.6875rem; /* 11px */
+}
+
+.input-container--sm .input-error__icon {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.input-container--lg .input-error {
+  font-size: var(--text-sm);
+}
+
+.input-container--lg .input-error__icon {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+/* ==========================================================================
+   Responsive Design
+   ========================================================================== */
+
+/* Touch devices - larger touch targets */
+@media (hover: none) and (pointer: coarse) {
+  .input--sm {
+    min-height: 2.75rem; /* 44px - minimum touch target */
+    padding: var(--space-3) var(--space-4);
+  }
+  
+  .input--md {
+    min-height: 3rem; /* 48px */
+    padding: var(--space-3-5) var(--space-5);
+  }
+  
+  .input--lg {
+    min-height: 3.5rem; /* 56px */
+    padding: var(--space-4) var(--space-6);
+  }
+  
+  .input-password-toggle {
+    padding: var(--space-2);
+    right: var(--space-2);
+  }
+  
+  .input-password-toggle__icon {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+}
+
+/* Mobile adjustments */
+@media (max-width: 767px) {
+  .input-container {
+    gap: var(--space-1);
+  }
+  
+  .input {
+    font-size: 16px; /* Prevent zoom on iOS */
+  }
+  
+  .input--sm {
+    font-size: 16px;
+  }
+}
+
+/* ==========================================================================
+   Accessibility and Motion
+   ========================================================================== */
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .input {
+    border-width: 2px;
+  }
+  
+  .input:focus {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+  }
+  
+  .input--error {
+    border-width: 2px;
+  }
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  .input {
+    transition: none;
+  }
+  
+  .input-password-toggle {
+    transition: none;
+  }
+}
+
+/* ==========================================================================
+   Form Integration
+   ========================================================================== */
+
+/* Form group spacing */
+.input-container + .input-container {
+  margin-top: var(--space-4);
+}
+
+/* Form row layout */
+.form-row {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+
+.form-row .input-container {
+  flex: 1;
+}
+
+@media (max-width: 767px) {
+  .form-row {
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+}
+
+/* ==========================================================================
+   Print Styles
+   ========================================================================== */
+
+@media print {
+  .input {
+    background: transparent !important;
+    border: 1px solid #000 !important;
+    box-shadow: none !important;
+  }
+  
+  .input-password-toggle {
+    display: none !important;
+  }
+  
+  .input-error {
+    color: #000 !important;
+  }
+  
+  .input-error__icon {
+    display: none !important;
+  }
+}

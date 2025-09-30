@@ -1,0 +1,366 @@
+/* ==========================================================================
+   Login Form Component Styles - Modern Design System
+   ========================================================================== */
+
+/* Login Form Container - Full viewport centered layout */
+.login-form-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: var(--space-6);
+  background: linear-gradient(135deg, var(--color-primary-50) 0%, var(--color-background) 100%);
+}
+
+/* Login Form Card - Modern card design with elevation */
+.login-form {
+  width: 100%;
+  max-width: 28rem; /* 448px */
+  background-color: var(--color-background);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-8);
+  transition: var(--transition-shadow);
+}
+
+.login-form:hover {
+  box-shadow: var(--shadow-xl);
+}
+
+/* Form Title - Modern typography */
+.login-form h2 {
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  color: var(--color-text-primary);
+  text-align: center;
+  margin: 0 0 var(--space-8) 0;
+  line-height: var(--leading-tight);
+}
+
+/* Form Groups - Consistent spacing */
+.form-group {
+  margin-bottom: var(--space-6);
+}
+
+/* Form Labels - Modern typography with required indicator */
+.form-group label {
+  display: block;
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-2);
+  line-height: var(--leading-tight);
+}
+
+/* Input Fields - Modern design with focus states */
+.form-group input {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-base);
+  font-family: var(--font-sans);
+  line-height: var(--leading-normal);
+  color: var(--color-text-primary);
+  background-color: var(--color-background);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-lg);
+  transition: var(--transition-all);
+  outline: none;
+  box-sizing: border-box;
+}
+
+.form-group input::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.form-group input:focus {
+  border-color: var(--color-border-focus);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-group input:disabled {
+  background-color: var(--color-background-secondary);
+  color: var(--color-text-tertiary);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* Error States - Clear visual feedback */
+.form-group input.error {
+  border-color: var(--color-error-500);
+}
+
+.form-group input.error:focus {
+  border-color: var(--color-error-500);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+/* Field Error Messages - Consistent with design system */
+.field-error {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--color-error-600);
+  margin-top: var(--space-2);
+  line-height: var(--leading-tight);
+}
+
+.field-error::before {
+  content: '⚠';
+  font-size: var(--text-xs);
+  flex-shrink: 0;
+}
+
+/* Global Error Message - Toast-like design */
+.error-message {
+  background-color: var(--color-error-50);
+  color: var(--color-error-800);
+  border: 1px solid var(--color-error-200);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  margin-bottom: var(--space-6);
+  text-align: center;
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+}
+
+/* Form Actions - Modern button layout */
+.form-actions {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-8);
+}
+
+/* Button Styles - Using design system components */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-6);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  font-weight: var(--font-medium);
+  line-height: var(--leading-normal);
+  text-decoration: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: var(--transition-all);
+  white-space: nowrap;
+  user-select: none;
+  outline: none;
+  flex: 1;
+  min-height: 3rem;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Primary Button - Main action */
+.btn-primary {
+  background-color: var(--color-primary-600);
+  border-color: var(--color-primary-600);
+  color: var(--color-text-inverse);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--color-primary-700);
+  border-color: var(--color-primary-700);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-primary:active:not(:disabled) {
+  background-color: var(--color-primary-800);
+  border-color: var(--color-primary-800);
+  transform: translateY(0);
+}
+
+/* Secondary Button - Cancel action */
+.btn-secondary {
+  background-color: var(--color-background);
+  border-color: var(--color-border-secondary);
+  color: var(--color-text-primary);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--color-background-secondary);
+  border-color: var(--color-border-primary);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-secondary:active:not(:disabled) {
+  background-color: var(--color-background-tertiary);
+  transform: translateY(0);
+}
+
+/* Loading State - Modern spinner */
+.btn:disabled {
+  position: relative;
+}
+
+.btn:disabled::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 1rem;
+  height: 1rem;
+  margin: -0.5rem 0 0 -0.5rem;
+  border: 2px solid transparent;
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin var(--duration-1000) linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Form Note - Subtle helper text */
+.form-note {
+  text-align: center;
+  color: var(--color-text-tertiary);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  margin-top: var(--space-6);
+  margin-bottom: 0;
+}
+
+/* ==========================================================================
+   Responsive Design - Mobile First Approach
+   ========================================================================== */
+
+/* Mobile Optimization (up to 767px) */
+@media (max-width: 767px) {
+  .login-form-container {
+    padding: var(--space-4);
+    min-height: 100vh;
+    background: var(--color-background);
+  }
+  
+  .login-form {
+    padding: var(--space-6);
+    border: none;
+    box-shadow: none;
+    border-radius: 0;
+    max-width: none;
+  }
+  
+  .login-form h2 {
+    font-size: var(--text-xl);
+    margin-bottom: var(--space-6);
+  }
+  
+  .form-actions {
+    flex-direction: column-reverse;
+    gap: var(--space-3);
+  }
+  
+  .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  /* Larger touch targets for mobile */
+  .form-group input {
+    padding: var(--space-4);
+    font-size: var(--text-lg);
+    min-height: 3rem;
+  }
+}
+
+/* Tablet Optimization (768px to 1023px) */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .login-form-container {
+    padding: var(--space-8);
+  }
+  
+  .login-form {
+    max-width: 32rem; /* 512px */
+  }
+}
+
+/* Desktop Optimization (1024px and up) */
+@media (min-width: 1024px) {
+  .login-form-container {
+    padding: var(--space-12);
+  }
+  
+  .login-form {
+    max-width: 28rem; /* 448px */
+  }
+  
+  /* Subtle hover effects for desktop */
+  .form-group input:hover:not(:disabled):not(:focus) {
+    border-color: var(--color-border-secondary);
+  }
+}
+
+/* ==========================================================================
+   Accessibility Enhancements
+   ========================================================================== */
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .login-form {
+    border-width: 2px;
+  }
+  
+  .form-group input {
+    border-width: 2px;
+  }
+  
+  .btn {
+    border-width: 2px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .login-form,
+  .form-group input,
+  .btn {
+    transition: none;
+  }
+  
+  .btn:disabled::after {
+    animation: none;
+  }
+  
+  .btn:hover:not(:disabled) {
+    transform: none;
+  }
+}
+
+/* Focus visible for keyboard navigation */
+.form-group input:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+}
+
+/* Screen reader only content */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

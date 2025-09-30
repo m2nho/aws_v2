@@ -1,0 +1,296 @@
+/* ==========================================================================
+   Main Application Layout
+   ========================================================================== */
+
+.App {
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  grid-template-areas: 
+    "header"
+    "navigation"
+    "main";
+  background-color: var(--color-background-secondary);
+  min-width: 1600px; /* 전체 앱이 테이블을 수용할 수 있는 최소 너비 */
+}
+
+/* ==========================================================================
+   Application Header
+   ========================================================================== */
+
+.App-header {
+  grid-area: header;
+  background: linear-gradient(135deg, var(--color-primary-600) 0%, var(--color-primary-700) 100%);
+  color: var(--color-text-inverse);
+  padding: var(--space-6) 0;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+}
+
+.App-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, var(--color-primary-300) 50%, transparent 100%);
+}
+
+.App-header .container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.App-header h1 {
+  margin: 0;
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  text-align: center;
+  letter-spacing: -0.025em;
+}
+
+/* Responsive header */
+@media (min-width: 768px) {
+  .App-header {
+    padding: var(--space-8) 0;
+  }
+  
+  .App-header h1 {
+    font-size: var(--text-3xl);
+  }
+}
+
+@media (min-width: 1024px) {
+  .App-header h1 {
+    font-size: var(--text-4xl);
+  }
+}
+
+/* ==========================================================================
+   Navigation Area
+   ========================================================================== */
+
+.App nav {
+  grid-area: navigation;
+  background-color: var(--color-background);
+  border-bottom: 1px solid var(--color-border-primary);
+  box-shadow: var(--shadow-xs);
+  position: sticky;
+  top: 0;
+  z-index: var(--z-40);
+}
+
+/* ==========================================================================
+   Main Content Area
+   ========================================================================== */
+
+.App main {
+  grid-area: main;
+  flex: 1;
+  padding: var(--space-6);
+  width: 100%;
+  min-height: 0; /* Allow content to shrink */
+}
+
+/* Container for standard pages */
+.App main:not(:has(.admin-panel)) {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+/* Full-width container for admin panel */
+.App main:has(.admin-panel) {
+  max-width: none;
+  margin: 0;
+  padding: var(--space-4);
+  min-width: 1550px; /* admin-panel이 테이블을 수용할 수 있는 최소 너비 */
+  width: 100%;
+}
+
+/* Responsive main content */
+@media (min-width: 768px) {
+  .App main {
+    padding: var(--space-8);
+  }
+  
+  .App main:has(.admin-panel) {
+    padding: var(--space-6);
+  }
+}
+
+@media (min-width: 1024px) {
+  .App main {
+    padding: var(--space-10);
+  }
+  
+  .App main:has(.admin-panel) {
+    padding: var(--space-8);
+  }
+}
+
+@media (min-width: 1280px) {
+  .App main:has(.admin-panel) {
+    padding: var(--space-10); /* 큰 화면에서 더 넉넉한 패딩 */
+  }
+}
+
+/* ==========================================================================
+   Loading States
+   ========================================================================== */
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: var(--color-background);
+  gap: var(--space-4);
+}
+
+.loading-container > div {
+  font-size: var(--text-lg);
+  font-weight: var(--font-medium);
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+  gap: var(--space-3);
+}
+
+.loading > div {
+  font-size: var(--text-base);
+  font-weight: var(--font-medium);
+  color: var(--color-text-secondary);
+}
+
+/* Loading spinner animation */
+.loading::before,
+.loading-container::before {
+  content: '';
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--color-gray-200);
+  border-top: 3px solid var(--color-primary-500);
+  border-radius: var(--radius-full);
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ==========================================================================
+   Admin Panel Layout
+   ========================================================================== */
+
+.admin-panel {
+  width: 100%;
+  background-color: var(--color-background);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+/* ==========================================================================
+   Responsive Layout Adjustments
+   ========================================================================== */
+
+/* Mobile-first approach */
+@media (max-width: 767px) {
+  .App {
+    grid-template-rows: auto auto 1fr;
+  }
+  
+  .App-header {
+    padding: var(--space-4) 0;
+  }
+  
+  .App-header h1 {
+    font-size: var(--text-xl);
+  }
+  
+  .App main {
+    padding: var(--space-4);
+  }
+  
+  .App main:has(.admin-panel) {
+    padding: var(--space-2);
+  }
+}
+
+/* Tablet adjustments */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .App main {
+    max-width: 900px;
+  }
+}
+
+/* Large desktop adjustments */
+@media (min-width: 1280px) {
+  .App main:not(:has(.admin-panel)) {
+    max-width: 900px;
+    padding: var(--space-12);
+  }
+}
+
+/* ==========================================================================
+   Print Styles
+   ========================================================================== */
+
+@media print {
+  .App {
+    display: block;
+    background: white;
+  }
+  
+  .App-header,
+  .App nav {
+    display: none;
+  }
+  
+  .App main {
+    max-width: none;
+    padding: 0;
+    margin: 0;
+  }
+}
+
+/* ==========================================================================
+   High Contrast Mode Support
+   ========================================================================== */
+
+@media (prefers-contrast: high) {
+  .App-header {
+    background: var(--color-gray-900);
+    border-bottom: 2px solid var(--color-gray-100);
+  }
+  
+  .App nav {
+    border-bottom: 2px solid var(--color-gray-900);
+  }
+}
+
+/* ==========================================================================
+   Reduced Motion Support
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .loading::before,
+  .loading-container::before {
+    animation: none;
+  }
+  
+  .App-header::after {
+    display: none;
+  }
+}

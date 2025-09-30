@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>접근성 테스트 - AWS 사용자 관리 시스템</title>
+    <link rel="stylesheet" href="./styles/globals.css">
+    <link rel="stylesheet" href="./styles/accessibility.css">
+    <style>
+        body {
+            font-family: var(--font-sans);
+            line-height: 1.6;
+            margin: 2rem;
+            background: var(--color-background);
+            color: var(--color-text-primary-accessible);
+        }
+        
+        .test-section {
+            margin-bottom: 3rem;
+            padding: 2rem;
+            border: 2px solid var(--color-border-primary);
+            border-radius: var(--radius-lg);
+        }
+        
+        .test-title {
+            color: var(--color-primary-600);
+            margin-bottom: 1rem;
+        }
+        
+        .test-item {
+            margin-bottom: 1rem;
+            padding: 1rem;
+            background: var(--color-background-secondary);
+            border-radius: var(--radius-md);
+        }
+        
+        .focus-test {
+            display: inline-block;
+            margin: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: var(--color-primary-600);
+            color: white;
+            text-decoration: none;
+            border-radius: var(--radius-md);
+        }
+        
+        .contrast-test {
+            padding: 1rem;
+            margin: 0.5rem 0;
+            border-radius: var(--radius-md);
+        }
+        
+        .contrast-primary {
+            background: var(--color-primary-600);
+            color: white;
+        }
+        
+        .contrast-success {
+            background: var(--color-success-600);
+            color: white;
+        }
+        
+        .contrast-error {
+            background: var(--color-error-600);
+            color: white;
+        }
+        
+        .contrast-warning {
+            background: var(--color-warning-600);
+            color: white;
+        }
+        
+        .form-test {
+            max-width: 400px;
+        }
+        
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: var(--font-medium);
+            color: var(--color-text-primary-accessible);
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid var(--color-border-primary);
+            border-radius: var(--radius-md);
+            font-size: 1rem;
+        }
+        
+        .form-group input:focus {
+            outline: 3px solid var(--color-primary-500);
+            outline-offset: 2px;
+            border-color: var(--color-primary-500);
+        }
+        
+        .error-input {
+            border-color: var(--color-error-500);
+        }
+        
+        .error-input:focus {
+            outline-color: var(--color-error-500);
+            border-color: var(--color-error-500);
+        }
+        
+        .error-message {
+            color: var(--color-error-700);
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+        
+        .button-test {
+            display: inline-block;
+            margin: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border: 2px solid transparent;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: var(--font-medium);
+            text-decoration: none;
+            transition: var(--transition-all);
+        }
+        
+        .btn-primary {
+            background: var(--color-primary-600);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: var(--color-primary-700);
+        }
+        
+        .btn-primary:focus {
+            outline: 3px solid var(--color-primary-500);
+            outline-offset: 2px;
+        }
+        
+        .btn-secondary {
+            background: var(--color-gray-200);
+            color: var(--color-text-primary-accessible);
+            border-color: var(--color-border-secondary);
+        }
+        
+        .btn-secondary:hover {
+            background: var(--color-gray-300);
+        }
+        
+        .btn-secondary:focus {
+            outline: 3px solid var(--color-primary-500);
+            outline-offset: 2px;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            font-weight: var(--font-semibold);
+            margin: 0.25rem;
+        }
+        
+        .status-active {
+            background: var(--color-success-100);
+            color: var(--color-success-800);
+            border: 1px solid var(--color-success-300);
+        }
+        
+        .status-pending {
+            background: var(--color-warning-100);
+            color: var(--color-warning-800);
+            border: 1px solid var(--color-warning-300);
+        }
+        
+        .status-rejected {
+            background: var(--color-error-100);
+            color: var(--color-error-800);
+            border: 1px solid var(--color-error-300);
+        }
+        
+        .table-test {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        
+        .table-test th,
+        .table-test td {
+            padding: 0.75rem;
+            text-align: left;
+            border: 1px solid var(--color-border-primary);
+        }
+        
+        .table-test th {
+            background: var(--color-gray-50);
+            font-weight: var(--font-semibold);
+        }
+        
+        .table-test th:focus,
+        .table-test td:focus {
+            outline: 3px solid var(--color-primary-500);
+            outline-offset: -3px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>접근성 테스트 페이지</h1>
+        <p>AWS 사용자 관리 시스템의 접근성 개선사항을 테스트합니다.</p>
+    </header>
+
+    <main>
+        <!-- Skip Link Test -->
+        <section class="test-section">
+            <h2 class="test-title">1. Skip to Main Content 링크 테스트</h2>
+            <p>Tab 키를 눌러 "메인 콘텐츠로 건너뛰기" 링크가 나타나는지 확인하세요.</p>
+            <a href="#main-content" class="skip-link">메인 콘텐츠로 건너뛰기</a>
+        </section>
+
+        <!-- Focus Styles Test -->
+        <section class="test-section">
+            <h2 class="test-title">2. 포커스 스타일 테스트</h2>
+            <p>Tab 키로 각 요소에 포커스를 맞춰 명확한 포커스 표시가 나타나는지 확인하세요.</p>
+            <div class="test-item">
+                <a href="#" class="focus-test">링크 1</a>
+                <a href="#" class="focus-test">링크 2</a>
+                <button class="focus-test">버튼 1</button>
+                <button class="focus-test">버튼 2</button>
+            </div>
+        </section>
+
+        <!-- Color Contrast Test -->
+        <section class="test-section">
+            <h2 class="test-title">3. 색상 대비 테스트 (WCAG 2.1 AA 기준)</h2>
+            <p>모든 텍스트가 배경과 충분한 대비를 가지는지 확인하세요.</p>
+            <div class="contrast-test contrast-primary">
+                Primary 색상 - 대비율 4.5:1 이상
+            </div>
+            <div class="contrast-test contrast-success">
+                Success 색상 - 대비율 4.5:1 이상
+            </div>
+            <div class="contrast-test contrast-error">
+                Error 색상 - 대비율 4.5:1 이상
+            </div>
+            <div class="contrast-test contrast-warning">
+                Warning 색상 - 대비율 4.5:1 이상
+            </div>
+        </section>
+
+        <!-- Form Accessibility Test -->
+        <section class="test-section">
+            <h2 class="test-title">4. 폼 접근성 테스트</h2>
+            <p>스크린 리더가 라벨과 오류 메시지를 올바르게 읽는지 확인하세요.</p>
+            <form class="form-test">
+                <div class="form-group">
+                    <label for="test-email">
+                        이메일 주소 
+                        <span aria-label="필수 입력 항목">*</span>
+                    </label>
+                    <input 
+                        type="email" 
+                        id="test-email" 
+                        name="email"
+                        aria-required="true"
+                        aria-describedby="email-hint"
+                    >
+                    <div id="email-hint" class="sr-only">올바른 이메일 형식으로 입력해주세요</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="test-password">
+                        비밀번호 
+                        <span aria-label="필수 입력 항목">*</span>
+                    </label>
+                    <input 
+                        type="password" 
+                        id="test-password" 
+                        name="password"
+                        class="error-input"
+                        aria-required="true"
+                        aria-invalid="true"
+                        aria-describedby="password-error"
+                    >
+                    <div id="password-error" class="error-message" role="alert">
+                        비밀번호는 최소 8자 이상이어야 합니다
+                    </div>
+                </div>
+                
+                <button type="submit" class="button-test btn-primary">제출</button>
+                <button type="button" class="button-test btn-secondary">취소</button>
+            </form>
+        </section>
+
+        <!-- Button Accessibility Test -->
+        <section class="test-section">
+            <h2 class="test-title">5. 버튼 접근성 테스트</h2>
+            <p>모든 버튼이 적절한 라벨과 상태를 가지는지 확인하세요.</p>
+            <div class="test-item">
+                <button class="button-test btn-primary" aria-label="사용자 승인">승인</button>
+                <button class="button-test btn-secondary" aria-label="사용자 거부">거부</button>
+                <button class="button-test btn-primary" disabled aria-label="처리 중">처리중...</button>
+                <button class="button-test btn-secondary" aria-expanded="false" aria-controls="menu">메뉴 ▼</button>
+            </div>
+        </section>
+
+        <!-- Status and Badge Test -->
+        <section class="test-section">
+            <h2 class="test-title">6. 상태 표시 접근성 테스트</h2>
+            <p>상태 배지가 스크린 리더에게 적절히 전달되는지 확인하세요.</p>
+            <div class="test-item">
+                <span class="status-badge status-active" role="status" aria-label="계정 상태: 활성">
+                    <span aria-hidden="true">✅</span> 활성
+                </span>
+                <span class="status-badge status-pending" role="status" aria-label="계정 상태: 승인 대기">
+                    <span aria-hidden="true">⏳</span> 승인 대기
+                </span>
+                <span class="status-badge status-rejected" role="status" aria-label="계정 상태: 거부됨">
+                    <span aria-hidden="true">❌</span> 거부됨
+                </span>
+            </div>
+        </section>
+
+        <!-- Table Accessibility Test -->
+        <section class="test-section">
+            <h2 class="test-title">7. 테이블 접근성 테스트</h2>
+            <p>테이블 헤더와 데이터가 올바르게 연결되는지 확인하세요.</p>
+            <table class="table-test" role="table" aria-label="사용자 목록">
+                <caption>사용자 목록 - 총 3명의 사용자</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">사용자명</th>
+                        <th scope="col">상태</th>
+                        <th scope="col">가입일</th>
+                        <th scope="col">관리</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <th scope="row">user1@example.com</th>
+                        <td>
+                            <span class="status-badge status-active" role="status" aria-label="계정 상태: 활성">
+                                활성
+                            </span>
+                        </td>
+                        <td>2024-01-15</td>
+                        <td>
+                            <button class="button-test btn-secondary" aria-label="user1@example.com 사용자 관리">
+                                관리
+                            </button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">user2@example.com</th>
+                        <td>
+                            <span class="status-badge status-pending" role="status" aria-label="계정 상태: 승인 대기">
+                                승인 대기
+                            </span>
+                        </td>
+                        <td>2024-01-16</td>
+                        <td>
+                            <button class="button-test btn-primary" aria-label="user2@example.com 사용자 승인">
+                                승인
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Keyboard Navigation Test -->
+        <section class="test-section">
+            <h2 class="test-title">8. 키보드 네비게이션 테스트</h2>
+            <p>Tab, Shift+Tab, Enter, Space 키로 모든 기능에 접근할 수 있는지 확인하세요.</p>
+            <div class="test-item">
+                <p><strong>테스트 방법:</strong></p>
+                <ul>
+                    <li>Tab 키: 다음 요소로 이동</li>
+                    <li>Shift + Tab: 이전 요소로 이동</li>
+                    <li>Enter: 링크나 버튼 활성화</li>
+                    <li>Space: 버튼 활성화</li>
+                    <li>Escape: 모달이나 메뉴 닫기</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Screen Reader Test -->
+        <section class="test-section">
+            <h2 class="test-title">9. 스크린 리더 테스트</h2>
+            <p>스크린 리더가 콘텐츠를 올바르게 읽는지 확인하세요.</p>
+            <div class="test-item">
+                <p><strong>테스트할 요소:</strong></p>
+                <ul>
+                    <li>페이지 제목과 헤딩 구조</li>
+                    <li>폼 라벨과 입력 필드 연결</li>
+                    <li>오류 메시지와 힌트</li>
+                    <li>상태 정보와 알림</li>
+                    <li>테이블 헤더와 데이터 연결</li>
+                    <li>버튼과 링크의 목적</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- ARIA Live Region Test -->
+        <section class="test-section">
+            <h2 class="test-title">10. ARIA Live Region 테스트</h2>
+            <p>동적 콘텐츠 변경이 스크린 리더에게 알려지는지 확인하세요.</p>
+            <div class="test-item">
+                <button onclick="updateStatus()" class="button-test btn-primary">상태 업데이트</button>
+                <div id="live-status" aria-live="polite" role="status">
+                    현재 상태: 대기 중
+                </div>
+                <div id="live-alert" aria-live="assertive" role="alert" style="display: none;">
+                    중요한 알림이 여기에 표시됩니다
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        let statusCount = 0;
+        function updateStatus() {
+            statusCount++;
+            const statusElement = document.getElementById('live-status');
+            const alertElement = document.getElementById('live-alert');
+            
+            statusElement.textContent = `현재 상태: 업데이트됨 (${statusCount}회)`;
+            
+            if (statusCount % 3 === 0) {
+                alertElement.textContent = `중요: ${statusCount}번째 업데이트 완료!`;
+                alertElement.style.display = 'block';
+                setTimeout(() => {
+                    alertElement.style.display = 'none';
+                }, 3000);
+            }
+        }
+    </script>
+</body>
+</html>

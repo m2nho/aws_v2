@@ -1,0 +1,657 @@
+/* ==========================================================================
+   Accessibility Enhancements
+   ========================================================================== */
+
+/* ==========================================================================
+   Enhanced Focus Styles for All Interactive Elements
+   ========================================================================== */
+
+/* Base focus styles with high contrast and visibility */
+:focus-visible {
+  outline: 3px solid var(--color-primary-500);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Remove default focus for mouse users */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Enhanced focus for buttons */
+button:focus-visible,
+.btn:focus-visible {
+  outline: 3px solid var(--color-primary-500);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.15);
+}
+
+/* Enhanced focus for form inputs */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 3px solid var(--color-primary-500);
+  outline-offset: 1px;
+  border-color: var(--color-primary-500);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Enhanced focus for links */
+a:focus-visible {
+  outline: 3px solid var(--color-primary-500);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+  background-color: rgba(59, 130, 246, 0.05);
+}
+
+/* Enhanced focus for navigation elements */
+.navigation__link:focus-visible,
+.navigation__mobile-link:focus-visible {
+  outline: 3px solid var(--color-primary-500);
+  outline-offset: 2px;
+  background-color: var(--color-primary-50);
+}
+
+/* Enhanced focus for form controls */
+.input:focus-visible {
+  outline: 3px solid var(--color-primary-500);
+  outline-offset: 1px;
+  border-color: var(--color-primary-500);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Enhanced focus for error state inputs */
+.input--error:focus-visible {
+  outline: 3px solid var(--color-error-500);
+  outline-offset: 1px;
+  border-color: var(--color-error-500);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+/* Enhanced focus for cards and interactive containers */
+.card:focus-visible,
+.user-card:focus-visible,
+.dashboard-card:focus-visible {
+  outline: 3px solid var(--color-primary-500);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.1);
+}
+
+/* ==========================================================================
+   WCAG 2.1 AA Color Contrast Enhancements
+   ========================================================================== */
+
+/* Ensure all text meets WCAG AA contrast ratios (4.5:1 for normal text, 3:1 for large text) */
+
+/* Primary text - Enhanced contrast */
+:root {
+  --color-text-primary-accessible: #1a1a1a;
+  --color-text-secondary-accessible: #4a4a4a;
+  --color-text-tertiary-accessible: #666666;
+}
+
+/* Override text colors for better contrast */
+body {
+  color: var(--color-text-primary-accessible);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--color-text-primary-accessible);
+}
+
+p {
+  color: var(--color-text-secondary-accessible);
+}
+
+/* Enhanced contrast for secondary text */
+.navigation__link {
+  color: var(--color-text-secondary-accessible);
+}
+
+.navigation__link:hover {
+  color: var(--color-primary-700); /* Darker for better contrast */
+}
+
+/* Enhanced contrast for form labels */
+.input-label {
+  color: var(--color-text-primary-accessible);
+  font-weight: var(--font-medium);
+}
+
+/* Enhanced contrast for hints and help text */
+.input-hint,
+.field-hint {
+  color: var(--color-text-secondary-accessible);
+}
+
+/* Enhanced contrast for error messages */
+.input-error,
+.field-error,
+.error-message {
+  color: var(--color-error-700); /* Darker red for better contrast */
+  font-weight: var(--font-medium);
+}
+
+/* Enhanced contrast for success messages */
+.success-message {
+  color: var(--color-success-700); /* Darker green for better contrast */
+}
+
+/* Enhanced contrast for warning messages */
+.warning-message {
+  color: var(--color-warning-700); /* Darker orange for better contrast */
+}
+
+/* Enhanced contrast for status badges */
+.status-badge {
+  font-weight: var(--font-semibold);
+}
+
+.status-pending {
+  background-color: var(--color-warning-100);
+  color: var(--color-warning-800); /* Enhanced contrast */
+  border: 1px solid var(--color-warning-300);
+}
+
+.status-active {
+  background-color: var(--color-success-100);
+  color: var(--color-success-800); /* Enhanced contrast */
+  border: 1px solid var(--color-success-300);
+}
+
+.status-rejected {
+  background-color: var(--color-error-100);
+  color: var(--color-error-800); /* Enhanced contrast */
+  border: 1px solid var(--color-error-300);
+}
+
+/* Enhanced contrast for ARN validation badges */
+.arn-valid {
+  background-color: var(--color-success-100);
+  color: var(--color-success-800);
+  border: 1px solid var(--color-success-300);
+}
+
+.arn-invalid {
+  background-color: var(--color-error-100);
+  color: var(--color-error-800);
+  border: 1px solid var(--color-error-300);
+}
+
+.arn-pending {
+  background-color: var(--color-warning-100);
+  color: var(--color-warning-800);
+  border: 1px solid var(--color-warning-300);
+}
+
+/* ==========================================================================
+   Enhanced Touch Targets for Mobile Accessibility
+   ========================================================================== */
+
+/* Ensure all interactive elements meet minimum 44px touch target size */
+@media (hover: none) and (pointer: coarse) {
+  button,
+  .btn,
+  a,
+  input,
+  select,
+  textarea {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Navigation touch targets */
+  .navigation__link,
+  .navigation__mobile-link {
+    min-height: 44px;
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .navigation__button,
+  .navigation__mobile-button {
+    min-height: 44px;
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .navigation__mobile-toggle,
+  .navigation__mobile-close {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Form control touch targets */
+  .input {
+    min-height: 44px;
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .input-password-toggle {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Action button touch targets */
+  .action-button {
+    min-height: 44px;
+    padding: var(--space-3) var(--space-4);
+  }
+
+  /* Toast close button touch targets */
+  .toast__close {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* ==========================================================================
+   Screen Reader and Assistive Technology Support
+   ========================================================================== */
+
+/* Screen reader only content */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Skip to main content link */
+.skip-to-main {
+  position: absolute;
+  top: -40px;
+  left: 6px;
+  background: var(--color-primary-600);
+  color: var(--color-text-inverse);
+  padding: 8px;
+  text-decoration: none;
+  border-radius: var(--radius-md);
+  z-index: 1000;
+  font-weight: var(--font-medium);
+}
+
+.skip-to-main:focus {
+  top: 6px;
+  outline: 3px solid var(--color-primary-300);
+  outline-offset: 2px;
+}
+
+/* Enhanced loading states for screen readers */
+.loading-spinner[aria-label] {
+  position: relative;
+}
+
+.loading-spinner[aria-label]::after {
+  content: attr(aria-label);
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+/* Enhanced form validation announcements */
+.form-group[aria-describedby] .input-error {
+  role: alert;
+  aria-live: polite;
+}
+
+/* Enhanced status announcements */
+.status-announcement {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.status-announcement[aria-live="polite"],
+.status-announcement[aria-live="assertive"] {
+  clip: auto;
+  width: auto;
+  height: auto;
+  position: static;
+}
+
+/* ==========================================================================
+   Keyboard Navigation Enhancements
+   ========================================================================== */
+
+/* Enhanced keyboard navigation for tables */
+.user-table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.user-table th,
+.user-table td {
+  border: 1px solid var(--color-border-primary);
+}
+
+.user-table th:focus-visible,
+.user-table td:focus-visible {
+  outline: 3px solid var(--color-primary-500);
+  outline-offset: -3px;
+  position: relative;
+  z-index: 1;
+}
+
+/* Enhanced keyboard navigation for action buttons */
+.actions-container {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.action-button:focus-visible {
+  outline: 3px solid var(--color-primary-500);
+  outline-offset: 2px;
+  z-index: 1;
+  position: relative;
+}
+
+/* Enhanced keyboard navigation for mobile menu */
+.navigation__mobile-menu {
+  /* Trap focus within mobile menu when open */
+}
+
+.navigation__mobile-menu--open {
+  /* Focus management handled by JavaScript */
+}
+
+/* Enhanced keyboard navigation for forms */
+.form-group {
+  position: relative;
+}
+
+.form-group:focus-within .input-label {
+  color: var(--color-primary-600);
+  font-weight: var(--font-semibold);
+}
+
+/* ==========================================================================
+   High Contrast Mode Support
+   ========================================================================== */
+
+@media (prefers-contrast: high) {
+  /* Enhanced borders and outlines for high contrast */
+  button,
+  .btn,
+  input,
+  textarea,
+  select {
+    border-width: 2px;
+  }
+
+  /* Enhanced focus indicators */
+  :focus-visible {
+    outline-width: 4px;
+    outline-style: solid;
+  }
+
+  /* Enhanced status indicators */
+  .status-badge,
+  .arn-badge {
+    border-width: 2px;
+    font-weight: var(--font-bold);
+  }
+
+  /* Enhanced navigation indicators */
+  .navigation__link--active::after {
+    height: 4px;
+  }
+
+  /* Enhanced form validation indicators */
+  .input--error {
+    border-width: 3px;
+  }
+
+  .input-error {
+    font-weight: var(--font-bold);
+  }
+}
+
+/* ==========================================================================
+   Reduced Motion Support
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  /* Remove all animations and transitions */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Remove transform animations */
+  .btn:hover,
+  .btn:active {
+    transform: none !important;
+  }
+
+  /* Remove loading spinner animations */
+  .loading-spinner,
+  .btn__spinner-icon {
+    animation: none !important;
+  }
+
+  /* Remove toast animations */
+  .toast--visible,
+  .toast--exiting {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  /* Remove mobile menu animations */
+  .navigation__mobile-panel {
+    transform: none !important;
+  }
+}
+
+/* ==========================================================================
+   Print Accessibility
+   ========================================================================== */
+
+@media print {
+  /* Ensure focus indicators are visible in print */
+  :focus-visible {
+    outline: 2px solid #000 !important;
+  }
+
+  /* Ensure form labels are clearly associated */
+  .input-label {
+    font-weight: bold !important;
+  }
+
+  /* Ensure error messages are visible */
+  .input-error,
+  .field-error,
+  .error-message {
+    color: #000 !important;
+    font-weight: bold !important;
+  }
+
+  /* Ensure status information is clear */
+  .status-badge,
+  .arn-badge {
+    border: 2px solid #000 !important;
+    font-weight: bold !important;
+  }
+}
+
+/* ==========================================================================
+   Language and Internationalization Support
+   ========================================================================== */
+
+/* Enhanced text direction support */
+[dir="rtl"] {
+  text-align: right;
+}
+
+[dir="rtl"] .navigation__container {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .form-actions {
+  flex-direction: row-reverse;
+}
+
+/* Enhanced font support for different languages */
+:lang(ko) {
+  font-family: 'Pretendard', 'Noto Sans KR', var(--font-sans);
+}
+
+:lang(en) {
+  font-family: var(--font-sans);
+}
+
+/* ==========================================================================
+   Error Prevention and Recovery
+   ========================================================================== */
+
+/* Enhanced error state visibility */
+.form-group--error {
+  position: relative;
+}
+
+.form-group--error::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background-color: var(--color-error-500);
+  border-radius: var(--radius-sm);
+}
+
+/* Enhanced success state visibility */
+.form-group--success {
+  position: relative;
+}
+
+.form-group--success::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background-color: var(--color-success-500);
+  border-radius: var(--radius-sm);
+}
+
+/* Enhanced loading state accessibility */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.loading-overlay[aria-hidden="true"] {
+  display: none;
+}
+
+/* Enhanced form submission feedback */
+.form-submitting {
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.form-submitting .btn {
+  cursor: wait;
+}
+
+/* ==========================================================================
+   Semantic HTML Enhancements
+   ========================================================================== */
+
+/* Enhanced landmark roles */
+main {
+  min-height: calc(100vh - 4rem); /* Account for navigation height */
+}
+
+/* Enhanced heading hierarchy */
+.page-title {
+  font-size: var(--text-3xl);
+  font-weight: var(--font-bold);
+  margin-bottom: var(--space-6);
+  color: var(--color-text-primary-accessible);
+}
+
+.section-title {
+  font-size: var(--text-2xl);
+  font-weight: var(--font-semibold);
+  margin-bottom: var(--space-4);
+  color: var(--color-text-primary-accessible);
+}
+
+.subsection-title {
+  font-size: var(--text-xl);
+  font-weight: var(--font-medium);
+  margin-bottom: var(--space-3);
+  color: var(--color-text-primary-accessible);
+}
+
+/* Enhanced list semantics */
+.navigation__menu {
+  list-style: none;
+}
+
+.navigation__mobile-nav {
+  list-style: none;
+}
+
+/* Enhanced table semantics */
+.user-table caption {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  margin-bottom: var(--space-4);
+  text-align: left;
+  color: var(--color-text-primary-accessible);
+}
+
+.user-table th {
+  font-weight: var(--font-semibold);
+  text-align: left;
+  background-color: var(--color-gray-50);
+}
+
+/* Enhanced form semantics */
+fieldset {
+  border: 2px solid var(--color-border-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+legend {
+  font-weight: var(--font-semibold);
+  padding: 0 var(--space-2);
+  color: var(--color-text-primary-accessible);
+}
+
+/* Enhanced button semantics */
+.btn[aria-pressed="true"] {
+  background-color: var(--color-primary-700);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.btn[aria-expanded="true"] {
+  background-color: var(--color-primary-100);
+  color: var(--color-primary-700);
+}

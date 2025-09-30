@@ -1,0 +1,528 @@
+/* ==========================================================================
+   Responsive Enhancements and Optimizations
+   ========================================================================== */
+
+/* ==========================================================================
+   Enhanced Breakpoint System (320px - 1920px)
+   ========================================================================== */
+
+:root {
+  /* Enhanced breakpoint variables for reference */
+  --breakpoint-xs: 320px;   /* Extra small devices */
+  --breakpoint-sm: 480px;   /* Small mobile */
+  --breakpoint-md: 768px;   /* Tablet */
+  --breakpoint-lg: 1024px;  /* Desktop */
+  --breakpoint-xl: 1280px;  /* Large desktop */
+  --breakpoint-2xl: 1536px; /* Extra large desktop */
+  --breakpoint-3xl: 1920px; /* Ultra wide */
+  
+  /* Touch-friendly minimum sizes */
+  --touch-target-min: 44px;
+  --touch-spacing-min: 8px;
+}
+
+/* ==========================================================================
+   Touch Device Optimizations
+   ========================================================================== */
+
+/* Enhanced touch targets for all interactive elements */
+@media (hover: none) and (pointer: coarse) {
+  /* Buttons */
+  .btn,
+  .navigation__button,
+  .navigation__mobile-button {
+    min-height: var(--touch-target-min);
+    min-width: var(--touch-target-min);
+    padding: var(--space-3) var(--space-4);
+  }
+  
+  .btn--sm {
+    min-height: var(--touch-target-min);
+    padding: var(--space-3) var(--space-4);
+  }
+  
+  .btn--lg {
+    min-height: 56px;
+    padding: var(--space-4) var(--space-6);
+  }
+  
+  /* Navigation links */
+  .navigation__link,
+  .navigation__mobile-link {
+    min-height: var(--touch-target-min);
+    padding: var(--space-3) var(--space-4);
+  }
+  
+  /* Form inputs */
+  .input__field,
+  .form-input,
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  textarea,
+  select {
+    min-height: var(--touch-target-min);
+    padding: var(--space-3) var(--space-4);
+    font-size: 16px; /* Prevent zoom on iOS */
+  }
+  
+  /* Interactive elements spacing */
+  .btn + .btn,
+  .navigation__actions > * + *,
+  .form-group + .form-group {
+    margin-left: var(--touch-spacing-min);
+    margin-top: var(--touch-spacing-min);
+  }
+  
+  /* Larger tap areas for small icons */
+  .navigation__mobile-toggle,
+  .navigation__mobile-close {
+    min-width: var(--touch-target-min);
+    min-height: var(--touch-target-min);
+    padding: var(--space-3);
+  }
+}
+
+/* ==========================================================================
+   Ultra Small Devices (320px - 479px)
+   ========================================================================== */
+
+@media (max-width: 479px) {
+  /* Container adjustments */
+  .container {
+    padding-left: var(--space-3);
+    padding-right: var(--space-3);
+  }
+  
+  /* Typography scaling */
+  h1 { font-size: var(--text-2xl); }
+  h2 { font-size: var(--text-xl); }
+  h3 { font-size: var(--text-lg); }
+  
+  /* Grid adjustments */
+  .grid-cols-2,
+  .grid-cols-3,
+  .grid-cols-4 {
+    grid-template-columns: 1fr;
+  }
+  
+  /* Button stacking */
+  .btn-group {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  
+  .btn-group .btn {
+    width: 100%;
+  }
+  
+  /* Form optimizations */
+  .form-row {
+    flex-direction: column;
+  }
+  
+  .form-group {
+    margin-bottom: var(--space-4);
+  }
+  
+  /* Navigation adjustments */
+  .navigation__container {
+    padding: var(--space-2) var(--space-3);
+  }
+  
+  .navigation__brand {
+    font-size: var(--text-base);
+  }
+  
+  .navigation__logo {
+    width: 1.75rem;
+    height: 1.75rem;
+  }
+}
+
+/* ==========================================================================
+   Small Mobile (480px - 767px)
+   ========================================================================== */
+
+@media (min-width: 480px) and (max-width: 767px) {
+  /* Two-column layouts where appropriate */
+  .grid-responsive-sm {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  /* Form improvements */
+  .form-row-sm {
+    display: flex;
+    gap: var(--space-3);
+  }
+  
+  .form-row-sm .form-group {
+    flex: 1;
+  }
+  
+  /* Button groups */
+  .btn-group-sm {
+    display: flex;
+    gap: var(--space-2);
+  }
+  
+  .btn-group-sm .btn {
+    flex: 1;
+  }
+}
+
+/* ==========================================================================
+   Tablet Portrait (768px - 1023px)
+   ========================================================================== */
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  /* Enhanced grid layouts */
+  .grid-responsive-md {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .grid-responsive-md-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  /* Dashboard optimizations */
+  .dashboard-content {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  /* Navigation improvements */
+  .navigation__menu {
+    gap: var(--space-1);
+  }
+  
+  .navigation__link {
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-sm);
+  }
+}
+
+/* ==========================================================================
+   Desktop (1024px - 1279px)
+   ========================================================================== */
+
+@media (min-width: 1024px) and (max-width: 1279px) {
+  /* Optimal desktop layouts */
+  .grid-responsive-lg {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  .grid-responsive-lg-4 {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  
+  /* Dashboard three-column layout */
+  .dashboard-content {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* ==========================================================================
+   Large Desktop (1280px - 1535px)
+   ========================================================================== */
+
+@media (min-width: 1280px) and (max-width: 1535px) {
+  /* Enhanced layouts for large screens */
+  .grid-responsive-xl {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  
+  /* Wider containers */
+  .container-xl {
+    max-width: 1200px;
+  }
+}
+
+/* ==========================================================================
+   Ultra Wide (1536px+)
+   ========================================================================== */
+
+@media (min-width: 1536px) {
+  /* Maximum width constraints for readability */
+  .container {
+    max-width: 1400px;
+  }
+  
+  /* Prevent excessive stretching */
+  .dashboard-content {
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+  
+  /* Enhanced grid for ultra-wide */
+  .grid-responsive-2xl {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+/* ==========================================================================
+   Orientation-Specific Optimizations
+   ========================================================================== */
+
+/* Landscape mobile optimizations */
+@media (max-width: 1023px) and (orientation: landscape) {
+  /* Reduce vertical padding in landscape */
+  .App main {
+    padding-top: var(--space-4);
+    padding-bottom: var(--space-4);
+  }
+  
+  /* Compact navigation */
+  .navigation__container {
+    min-height: 3rem;
+    padding-top: var(--space-2);
+    padding-bottom: var(--space-2);
+  }
+  
+  /* Horizontal layouts for forms */
+  .form-landscape {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+  
+  .form-landscape .form-group {
+    flex: 1;
+    min-width: 200px;
+  }
+  
+  /* Dashboard cards in landscape */
+  .dashboard-content {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-4);
+  }
+}
+
+/* Portrait tablet optimizations */
+@media (min-width: 768px) and (max-width: 1023px) and (orientation: portrait) {
+  /* Maintain single column for narrow portrait tablets */
+  .dashboard-content {
+    grid-template-columns: 1fr;
+  }
+  
+  /* Larger touch targets in portrait */
+  .btn {
+    min-height: 48px;
+    padding: var(--space-3-5) var(--space-5);
+  }
+}
+
+/* ==========================================================================
+   Container Queries (Progressive Enhancement)
+   ========================================================================== */
+
+/* Container-based responsive design for modern browsers */
+@supports (container-type: inline-size) {
+  .responsive-container {
+    container-type: inline-size;
+  }
+  
+  /* Small container */
+  @container (max-width: 400px) {
+    .container-responsive {
+      padding: var(--space-2);
+    }
+    
+    .container-responsive .btn {
+      width: 100%;
+      margin-bottom: var(--space-2);
+    }
+  }
+  
+  /* Medium container */
+  @container (min-width: 401px) and (max-width: 800px) {
+    .container-responsive {
+      padding: var(--space-4);
+    }
+    
+    .container-responsive .grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  
+  /* Large container */
+  @container (min-width: 801px) {
+    .container-responsive {
+      padding: var(--space-6);
+    }
+    
+    .container-responsive .grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+}
+
+/* ==========================================================================
+   Responsive Typography Scale
+   ========================================================================== */
+
+/* Fluid typography for better scaling */
+@media (min-width: 320px) and (max-width: 1920px) {
+  h1 {
+    font-size: clamp(var(--text-2xl), 4vw, var(--text-5xl));
+  }
+  
+  h2 {
+    font-size: clamp(var(--text-xl), 3vw, var(--text-4xl));
+  }
+  
+  h3 {
+    font-size: clamp(var(--text-lg), 2.5vw, var(--text-3xl));
+  }
+  
+  .text-responsive {
+    font-size: clamp(var(--text-sm), 2vw, var(--text-lg));
+  }
+}
+
+/* ==========================================================================
+   Responsive Spacing Utilities
+   ========================================================================== */
+
+/* Responsive margin utilities */
+@media (max-width: 767px) {
+  .mb-responsive { margin-bottom: var(--space-4); }
+  .mt-responsive { margin-top: var(--space-4); }
+  .mx-responsive { margin-left: var(--space-3); margin-right: var(--space-3); }
+  .my-responsive { margin-top: var(--space-4); margin-bottom: var(--space-4); }
+}
+
+@media (min-width: 768px) {
+  .mb-responsive { margin-bottom: var(--space-6); }
+  .mt-responsive { margin-top: var(--space-6); }
+  .mx-responsive { margin-left: var(--space-6); margin-right: var(--space-6); }
+  .my-responsive { margin-top: var(--space-6); margin-bottom: var(--space-6); }
+}
+
+@media (min-width: 1024px) {
+  .mb-responsive { margin-bottom: var(--space-8); }
+  .mt-responsive { margin-top: var(--space-8); }
+  .mx-responsive { margin-left: var(--space-8); margin-right: var(--space-8); }
+  .my-responsive { margin-top: var(--space-8); margin-bottom: var(--space-8); }
+}
+
+/* Responsive padding utilities */
+@media (max-width: 767px) {
+  .p-responsive { padding: var(--space-3); }
+  .px-responsive { padding-left: var(--space-3); padding-right: var(--space-3); }
+  .py-responsive { padding-top: var(--space-4); padding-bottom: var(--space-4); }
+}
+
+@media (min-width: 768px) {
+  .p-responsive { padding: var(--space-5); }
+  .px-responsive { padding-left: var(--space-5); padding-right: var(--space-5); }
+  .py-responsive { padding-top: var(--space-6); padding-bottom: var(--space-6); }
+}
+
+@media (min-width: 1024px) {
+  .p-responsive { padding: var(--space-6); }
+  .px-responsive { padding-left: var(--space-6); padding-right: var(--space-6); }
+  .py-responsive { padding-top: var(--space-8); padding-bottom: var(--space-8); }
+}
+
+/* ==========================================================================
+   Responsive Grid Enhancements
+   ========================================================================== */
+
+/* Auto-responsive grid that adapts to container size */
+.grid-auto-responsive {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-4);
+}
+
+@media (min-width: 768px) {
+  .grid-auto-responsive {
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: var(--space-6);
+  }
+}
+
+@media (min-width: 1024px) {
+  .grid-auto-responsive {
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: var(--space-8);
+  }
+}
+
+/* Responsive flex utilities */
+.flex-responsive {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+@media (min-width: 768px) {
+  .flex-responsive {
+    flex-direction: row;
+    gap: var(--space-4);
+  }
+}
+
+/* ==========================================================================
+   Performance Optimizations
+   ========================================================================== */
+
+/* Optimize animations for different screen sizes */
+@media (max-width: 767px) {
+  /* Reduce animation complexity on mobile */
+  .btn:hover {
+    transform: none;
+  }
+  
+  .dashboard-card:hover {
+    transform: translateY(-1px);
+  }
+}
+
+/* Optimize images for different screen densities */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  /* High DPI optimizations */
+  .navigation__logo {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+}
+
+/* ==========================================================================
+   Responsive Debugging (Development Only)
+   ========================================================================== */
+
+/* Uncomment for responsive debugging */
+/*
+.debug-responsive::before {
+  content: 'XS';
+  position: fixed;
+  top: 0;
+  right: 0;
+  background: red;
+  color: white;
+  padding: 4px 8px;
+  font-size: 12px;
+  z-index: 9999;
+}
+
+@media (min-width: 480px) {
+  .debug-responsive::before { content: 'SM'; background: orange; }
+}
+
+@media (min-width: 768px) {
+  .debug-responsive::before { content: 'MD'; background: yellow; color: black; }
+}
+
+@media (min-width: 1024px) {
+  .debug-responsive::before { content: 'LG'; background: green; }
+}
+
+@media (min-width: 1280px) {
+  .debug-responsive::before { content: 'XL'; background: blue; }
+}
+
+@media (min-width: 1536px) {
+  .debug-responsive::before { content: '2XL'; background: purple; }
+}
+*/

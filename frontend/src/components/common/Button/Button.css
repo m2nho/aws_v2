@@ -1,0 +1,317 @@
+/* ==========================================================================
+   Button Component Styles
+   ========================================================================== */
+
+.btn {
+  /* Base button styles */
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  
+  /* Typography */
+  font-family: var(--font-sans);
+  font-weight: var(--font-medium);
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  
+  /* Layout */
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  
+  /* Transitions */
+  transition: var(--transition-all);
+  
+  /* Focus styles */
+  outline: none;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+}
+
+/* ==========================================================================
+   Button Variants
+   ========================================================================== */
+
+/* Primary Button */
+.btn--primary {
+  background-color: var(--color-primary-600);
+  border-color: var(--color-primary-600);
+  color: var(--color-text-inverse);
+}
+
+.btn--primary:hover:not(.btn--disabled) {
+  background-color: var(--color-primary-700);
+  border-color: var(--color-primary-700);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn--primary:active:not(.btn--disabled) {
+  background-color: var(--color-primary-800);
+  border-color: var(--color-primary-800);
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Secondary Button */
+.btn--secondary {
+  background-color: var(--color-gray-100);
+  border-color: var(--color-gray-300);
+  color: var(--color-text-primary);
+}
+
+.btn--secondary:hover:not(.btn--disabled) {
+  background-color: var(--color-gray-200);
+  border-color: var(--color-gray-400);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn--secondary:active:not(.btn--disabled) {
+  background-color: var(--color-gray-300);
+  border-color: var(--color-gray-500);
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Outline Button */
+.btn--outline {
+  background-color: transparent;
+  border-color: var(--color-primary-600);
+  color: var(--color-primary-600);
+}
+
+.btn--outline:hover:not(.btn--disabled) {
+  background-color: var(--color-primary-50);
+  border-color: var(--color-primary-700);
+  color: var(--color-primary-700);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn--outline:active:not(.btn--disabled) {
+  background-color: var(--color-primary-100);
+  border-color: var(--color-primary-800);
+  color: var(--color-primary-800);
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Danger Button */
+.btn--danger {
+  background-color: var(--color-error-600);
+  border-color: var(--color-error-600);
+  color: var(--color-text-inverse);
+}
+
+.btn--danger:hover:not(.btn--disabled) {
+  background-color: var(--color-error-700);
+  border-color: var(--color-error-700);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn--danger:active:not(.btn--disabled) {
+  background-color: var(--color-error-800);
+  border-color: var(--color-error-800);
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ==========================================================================
+   Button Sizes
+   ========================================================================== */
+
+/* Small Button */
+.btn--sm {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  line-height: var(--leading-tight);
+  min-height: 2rem; /* 32px */
+}
+
+/* Medium Button (Default) */
+.btn--md {
+  padding: var(--space-2-5) var(--space-4);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  min-height: 2.5rem; /* 40px */
+}
+
+/* Large Button */
+.btn--lg {
+  padding: var(--space-3) var(--space-6);
+  font-size: var(--text-lg);
+  line-height: var(--leading-normal);
+  min-height: 3rem; /* 48px */
+}
+
+/* ==========================================================================
+   Button States
+   ========================================================================== */
+
+/* Disabled State */
+.btn--disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.btn--disabled:hover {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Loading State */
+.btn--loading {
+  cursor: wait;
+}
+
+.btn__content--loading {
+  opacity: 0.7;
+}
+
+/* ==========================================================================
+   Loading Spinner
+   ========================================================================== */
+
+.btn__spinner {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn__spinner-icon {
+  width: 1rem;
+  height: 1rem;
+  animation: btn-spin 1s linear infinite;
+}
+
+.btn--sm .btn__spinner-icon {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.btn--lg .btn__spinner-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.btn__spinner-circle {
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-dasharray: 31.416; /* 2 * π * 5 (radius of 5) */
+  stroke-dashoffset: 31.416;
+  animation: btn-spinner-dash 1.5s ease-in-out infinite;
+}
+
+@keyframes btn-spin {
+  from {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+@keyframes btn-spinner-dash {
+  0% {
+    stroke-dasharray: 1, 150;
+    stroke-dashoffset: 0;
+  }
+  50% {
+    stroke-dasharray: 90, 150;
+    stroke-dashoffset: -35;
+  }
+  100% {
+    stroke-dasharray: 90, 150;
+    stroke-dashoffset: -124;
+  }
+}
+
+/* ==========================================================================
+   Responsive Adjustments
+   ========================================================================== */
+
+/* Touch devices - larger touch targets */
+@media (hover: none) and (pointer: coarse) {
+  .btn--sm {
+    min-height: 2.75rem; /* 44px - minimum touch target */
+    padding: var(--space-3) var(--space-4);
+  }
+  
+  .btn--md {
+    min-height: 3rem; /* 48px */
+    padding: var(--space-3-5) var(--space-5);
+  }
+  
+  .btn--lg {
+    min-height: 3.5rem; /* 56px */
+    padding: var(--space-4) var(--space-7);
+  }
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  .btn {
+    transition: none;
+  }
+  
+  .btn:hover:not(.btn--disabled) {
+    transform: none;
+  }
+  
+  .btn:active:not(.btn--disabled) {
+    transform: none;
+  }
+  
+  .btn__spinner-icon {
+    animation: none;
+  }
+  
+  .btn__spinner-circle {
+    animation: none;
+    stroke-dasharray: none;
+    stroke-dashoffset: 0;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .btn {
+    border-width: 2px;
+  }
+  
+  .btn--outline {
+    border-width: 2px;
+  }
+}
+
+/* ==========================================================================
+   Print Styles
+   ========================================================================== */
+
+@media print {
+  .btn {
+    background: transparent !important;
+    color: #000 !important;
+    border: 1px solid #000 !important;
+    box-shadow: none !important;
+    transform: none !important;
+  }
+  
+  .btn__spinner {
+    display: none !important;
+  }
+}

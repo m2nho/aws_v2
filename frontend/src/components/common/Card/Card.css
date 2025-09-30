@@ -1,0 +1,373 @@
+/* ==========================================================================
+   Card Component Styles
+   ========================================================================== */
+
+.card {
+  /* Base card styles */
+  background-color: var(--color-background);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+  
+  /* Layout */
+  display: flex;
+  flex-direction: column;
+  
+  /* Transitions */
+  transition: var(--transition-all);
+  
+  /* Ensure proper stacking */
+  position: relative;
+  z-index: var(--z-0);
+}
+
+/* ==========================================================================
+   Card Variants
+   ========================================================================== */
+
+/* Hover effect variant */
+.card--hover {
+  cursor: pointer;
+}
+
+.card--hover:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--color-border-secondary);
+}
+
+.card--hover:active {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+/* ==========================================================================
+   Card Padding Variants
+   ========================================================================== */
+
+.card--padding-none {
+  padding: 0;
+}
+
+.card--padding-sm {
+  padding: var(--space-4);
+}
+
+.card--padding-md {
+  padding: var(--space-6);
+}
+
+.card--padding-lg {
+  padding: var(--space-8);
+}
+
+/* ==========================================================================
+   Card Sub-components
+   ========================================================================== */
+
+/* Card Header */
+.card__header {
+  padding: var(--space-6) var(--space-6) var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--color-border-primary);
+  
+  /* Flex layout for header content */
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+/* Remove padding when card has custom padding */
+.card--padding-none .card__header {
+  padding: var(--space-6) var(--space-6) var(--space-4) var(--space-6);
+}
+
+.card--padding-sm .card__header {
+  padding: var(--space-4) var(--space-4) var(--space-3) var(--space-4);
+}
+
+.card--padding-lg .card__header {
+  padding: var(--space-8) var(--space-8) var(--space-6) var(--space-8);
+}
+
+/* Card Title */
+.card__title {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: var(--font-semibold);
+  line-height: var(--leading-tight);
+  color: var(--color-text-primary);
+  
+  /* Allow title to grow and wrap */
+  flex: 1;
+  min-width: 0;
+}
+
+/* Card Subtitle */
+.card__subtitle {
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
+  font-weight: var(--font-normal);
+  color: var(--color-text-secondary);
+  line-height: var(--leading-normal);
+}
+
+/* Card Content */
+.card__content {
+  padding: var(--space-6);
+  flex: 1;
+  
+  /* Typography for content */
+  font-size: var(--text-base);
+  line-height: var(--leading-relaxed);
+  color: var(--color-text-secondary);
+}
+
+/* Adjust content padding based on card padding */
+.card--padding-none .card__content {
+  padding: var(--space-6);
+}
+
+.card--padding-sm .card__content {
+  padding: var(--space-4);
+}
+
+.card--padding-lg .card__content {
+  padding: var(--space-8);
+}
+
+/* Remove top padding if header exists */
+.card__header + .card__content {
+  padding-top: var(--space-4);
+}
+
+.card--padding-sm .card__header + .card__content {
+  padding-top: var(--space-3);
+}
+
+.card--padding-lg .card__header + .card__content {
+  padding-top: var(--space-6);
+}
+
+/* Card Footer */
+.card__footer {
+  padding: var(--space-4) var(--space-6) var(--space-6) var(--space-6);
+  border-top: 1px solid var(--color-border-primary);
+  
+  /* Background for visual separation */
+  background-color: var(--color-background-secondary);
+  border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+}
+
+/* Adjust footer padding based on card padding */
+.card--padding-none .card__footer {
+  padding: var(--space-4) var(--space-6) var(--space-6) var(--space-6);
+}
+
+.card--padding-sm .card__footer {
+  padding: var(--space-3) var(--space-4) var(--space-4) var(--space-4);
+}
+
+.card--padding-lg .card__footer {
+  padding: var(--space-6) var(--space-8) var(--space-8) var(--space-8);
+}
+
+/* Card Actions */
+.card__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.card__actions--left {
+  justify-content: flex-start;
+}
+
+.card__actions--center {
+  justify-content: center;
+}
+
+.card__actions--right {
+  justify-content: flex-end;
+}
+
+.card__actions--between {
+  justify-content: space-between;
+}
+
+/* ==========================================================================
+   Card Content Spacing
+   ========================================================================== */
+
+/* Add proper spacing between content elements */
+.card__content > * + * {
+  margin-top: var(--space-4);
+}
+
+.card__content > h1,
+.card__content > h2,
+.card__content > h3,
+.card__content > h4,
+.card__content > h5,
+.card__content > h6 {
+  color: var(--color-text-primary);
+  margin-top: var(--space-6);
+}
+
+.card__content > h1:first-child,
+.card__content > h2:first-child,
+.card__content > h3:first-child,
+.card__content > h4:first-child,
+.card__content > h5:first-child,
+.card__content > h6:first-child {
+  margin-top: 0;
+}
+
+.card__content > p:last-child {
+  margin-bottom: 0;
+}
+
+/* ==========================================================================
+   Card States and Modifiers
+   ========================================================================== */
+
+/* Loading state */
+.card--loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+/* Error state */
+.card--error {
+  border-color: var(--color-error-300);
+  background-color: var(--color-error-50);
+}
+
+/* Success state */
+.card--success {
+  border-color: var(--color-success-300);
+  background-color: var(--color-success-50);
+}
+
+/* Warning state */
+.card--warning {
+  border-color: var(--color-warning-300);
+  background-color: var(--color-warning-50);
+}
+
+/* ==========================================================================
+   Responsive Design
+   ========================================================================== */
+
+/* Mobile adjustments */
+@media (max-width: 767px) {
+  .card {
+    border-radius: var(--radius-lg);
+  }
+  
+  .card__header {
+    padding: var(--space-4) var(--space-4) var(--space-3) var(--space-4);
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+  }
+  
+  .card__content {
+    padding: var(--space-4);
+  }
+  
+  .card__footer {
+    padding: var(--space-3) var(--space-4) var(--space-4) var(--space-4);
+  }
+  
+  .card__title {
+    font-size: var(--text-lg);
+  }
+  
+  .card__actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2);
+  }
+  
+  .card__actions--right,
+  .card__actions--left,
+  .card__actions--center {
+    justify-content: stretch;
+  }
+}
+
+/* Tablet adjustments */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .card__header {
+    flex-wrap: wrap;
+  }
+  
+  .card__actions {
+    gap: var(--space-2);
+  }
+}
+
+/* ==========================================================================
+   Accessibility and Motion
+   ========================================================================== */
+
+/* Focus styles for interactive cards */
+.card--hover:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition: none;
+  }
+  
+  .card--hover:hover {
+    transform: none;
+  }
+  
+  .card--hover:active {
+    transform: none;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .card {
+    border-width: 2px;
+  }
+  
+  .card__header {
+    border-bottom-width: 2px;
+  }
+  
+  .card__footer {
+    border-top-width: 2px;
+  }
+}
+
+/* ==========================================================================
+   Print Styles
+   ========================================================================== */
+
+@media print {
+  .card {
+    background: transparent !important;
+    border: 1px solid #000 !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+  
+  .card__header {
+    border-bottom: 1px solid #000 !important;
+    background: transparent !important;
+  }
+  
+  .card__footer {
+    border-top: 1px solid #000 !important;
+    background: transparent !important;
+  }
+}
