@@ -113,8 +113,60 @@ const validateStatusUpdate = (req, res, next) => {
   next();
 };
 
+/**
+ * 검사 시작 요청 검증
+ * Requirements: 1.1 - 검사 요청 시 필수 파라미터 검증
+ */
+const validateInspectionStart = (req, res, next) => {
+  const { serviceType, assumeRoleArn, inspectionConfig } = req.body;
+  const errors = [];
+
+  // Service type validation
+  if (!serviceType || typeof serviceType !== 'string') {
+    errors.push('Service type is required');
+  } else {
+    const validServiceTypes = ['EC2', 'RDS', 'S3', 'IAM', 'VPC'];
+    if (!validServiceTypes.includes(serviceType.toUpperCase())) {
+      errors.push(`Service type must be one of: ${validServiceTypes.join(', ')}`);
+    }
+  }
+
+  // Assume role ARN validation
+  if (!assumeRoleArn || typeof assumeRoleArn !== 'string') {
+    errors.push('Assume role ARN is required');
+  } else {
+    const trimmedArn = assumeRoleArn.trim();
+    if (!trimmedArn.match(/^arn:aws:iam::\d{12}:role\/[\w+=,.@-]+$/)) {
+      errors.push('Invalid AWS Role ARN format');
+    }
+  }
+
+  // Inspection config validation (optional)
+  if (inspectionConfig && typeof inspectionConfig !== 'object') {
+    errors.push('Inspection config must be an object');
+  }
+
+  if (errors.length > 0) {
+    return res.status(400).json({
+      success: false,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'Invalid inspection request data',
+        details: errors.join(', ')
+      }
+    });
+  }
+
+  // Sanitize input
+  req.body.serviceType = serviceType.toUpperCase();
+  req.body.assumeRoleArn = assumeRoleArn.trim();
+
+  next();
+};
+
 module.exports = {
   validateRegistration,
   validateLogin,
-  validateStatusUpdate
+  validateStatusUpdate,
+  validateInspectionStart
 };

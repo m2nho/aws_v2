@@ -4,3 +4,7 @@ export { default as RegisterForm } from './RegisterForm';
 export { default as LoginForm } from './LoginForm';
 export { default as UserDashboard } from './UserDashboard';
 export { default as UserList } from './UserList';
+export { default as ResourceInspectionTab } from './ResourceInspectionTab';
+export { default as InspectionDashboard } from './InspectionDashboard';
+export { default as ProgressIndicator } from './ProgressIndicator';
+export { default as EnhancedProgressMonitor } from './EnhancedProgressMonitor';

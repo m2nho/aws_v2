@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context';
-import { Navigation, ProtectedRoute, PublicRoute, UserList } from './components';
+import { Navigation, ProtectedRoute, PublicRoute, UserList, ResourceInspectionTab } from './components';
+import InspectionHistory from './components/InspectionHistory';
 import { RegisterPage, LoginPage, UserDashboardPage } from './pages';
 import './App.css';
 
@@ -75,6 +76,22 @@ function AppContent() {
               element={
                 <ProtectedRoute requireAdmin={true}>
                   <AdminPanel />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/inspection" 
+              element={
+                <ProtectedRoute>
+                  <ResourceInspectionTab />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/history" 
+              element={
+                <ProtectedRoute>
+                  <InspectionHistory />
                 </ProtectedRoute>
               } 
             />

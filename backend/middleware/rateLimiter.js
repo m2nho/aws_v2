@@ -60,19 +60,29 @@ const createRateLimiter = (options = {}) => {
 };
 
 // Specific rate limiters for different endpoints
+// 환경별 설정
+const isDevelopment = process.env.NODE_ENV !== 'production';
+
 const authLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  maxRequests: 10, // Stricter limit for auth endpoints
+  maxRequests: isDevelopment ? 50 : 10, // 개발 환경에서 더 관대
   message: 'Too many authentication attempts, please try again later'
 });
 
 const generalLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  maxRequests: 100
+  maxRequests: isDevelopment ? 2000 : 100 // 개발 환경에서 훨씬 관대
+});
+
+const inspectionLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  maxRequests: isDevelopment ? 1000 : 200, // 검사 관련 API는 더 관대한 제한
+  message: 'Too many inspection requests, please try again later'
 });
 
 module.exports = {
   createRateLimiter,
   authLimiter,
-  generalLimiter
+  generalLimiter,
+  inspectionLimiter
 };

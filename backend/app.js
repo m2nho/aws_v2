@@ -52,8 +52,14 @@ app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Rate limiting
-app.use(generalLimiter);
+// Rate limiting (WebSocket 경로 제외)
+app.use((req, res, next) => {
+  // WebSocket 업그레이드 요청은 Rate Limiting 제외
+  if (req.headers.upgrade === 'websocket' || req.url.startsWith('/ws/')) {
+    return next();
+  }
+  return generalLimiter(req, res, next);
+});
 
 // Request logging (only in development)
 if (config.nodeEnv !== 'production') {

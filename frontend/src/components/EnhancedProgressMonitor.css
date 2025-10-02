@@ -1,0 +1,524 @@
+/* Enhanced Progress Monitor Styles */
+
+.enhanced-progress-monitor {
+  background: #ffffff;
+  border: 1px solid #e1e5e9;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.enhanced-progress-monitor.small {
+  padding: 16px;
+  border-radius: 8px;
+}
+
+.enhanced-progress-monitor.large {
+  padding: 24px;
+  border-radius: 16px;
+}
+
+/* Connection Status */
+.connection-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 16px 0 12px 0;
+  padding: 8px 12px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.connection-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.connection-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #6c757d;
+  transition: background-color 0.3s ease;
+}
+
+.connection-indicator.websocket.connected .connection-dot {
+  background: #28a745;
+  box-shadow: 0 0 4px rgba(40, 167, 69, 0.5);
+}
+
+.connection-indicator.polling.connected .connection-dot {
+  background: #ffc107;
+  box-shadow: 0 0 4px rgba(255, 193, 7, 0.5);
+}
+
+.connection-indicator.disconnected .connection-dot {
+  background: #dc3545;
+  box-shadow: 0 0 4px rgba(220, 53, 69, 0.5);
+}
+
+.connection-text {
+  font-weight: 500;
+  color: #495057;
+}
+
+.error-count {
+  color: #dc3545;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.retry-websocket-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.retry-websocket-button:hover {
+  background: rgba(0, 123, 255, 0.1);
+}
+
+/* Performance Alerts */
+.performance-alerts {
+  margin: 12px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.alert {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  animation: slideIn 0.3s ease;
+}
+
+.alert-warning {
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  color: #856404;
+}
+
+.alert-info {
+  background: #d1ecf1;
+  border: 1px solid #bee5eb;
+  color: #0c5460;
+}
+
+.alert-icon {
+  font-size: 16px;
+}
+
+.alert-message {
+  flex: 1;
+  font-weight: 500;
+}
+
+.alert-dismiss {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.7;
+  padding: 2px 4px;
+  border-radius: 2px;
+  transition: opacity 0.2s ease;
+}
+
+.alert-dismiss:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Detailed Metrics */
+.detailed-metrics {
+  margin-top: 16px;
+  border-top: 1px solid #e9ecef;
+  padding-top: 16px;
+}
+
+.metrics-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.metrics-header h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #495057;
+}
+
+.toggle-advanced-view {
+  background: none;
+  border: 1px solid #dee2e6;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  color: #6c757d;
+  transition: all 0.2s ease;
+}
+
+.toggle-advanced-view:hover {
+  background: #f8f9fa;
+  border-color: #adb5bd;
+  color: #495057;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 768px) {
+  .metrics-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
+
+.metric-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border-left: 3px solid #dee2e6;
+}
+
+.metric-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #6c757d;
+}
+
+.metric-value {
+  font-size: 14px;
+  font-weight: 500;
+  color: #495057;
+}
+
+/* Trend-specific colors */
+.metric-value.trend-accelerating {
+  color: #28a745;
+}
+
+.metric-value.trend-steady {
+  color: #007bff;
+}
+
+.metric-value.trend-decelerating {
+  color: #ffc107;
+}
+
+.metric-value.trend-stagnant {
+  color: #dc3545;
+}
+
+.metric-value.trend-unknown {
+  color: #6c757d;
+}
+
+/* Connection quality colors */
+.metric-value.quality-excellent {
+  color: #28a745;
+}
+
+.metric-value.quality-good {
+  color: #20c997;
+}
+
+.metric-value.quality-fair {
+  color: #ffc107;
+}
+
+.metric-value.quality-poor {
+  color: #dc3545;
+}
+
+/* Advanced Diagnostics */
+.advanced-diagnostics {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #e9ecef;
+}
+
+.advanced-diagnostics h4 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #495057;
+}
+
+.diagnostic-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+@media (max-width: 768px) {
+  .diagnostic-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
+
+.diagnostic-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  background: #ffffff;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.diagnostic-label {
+  font-weight: 600;
+  color: #6c757d;
+}
+
+.diagnostic-value {
+  font-weight: 500;
+  color: #495057;
+}
+
+.diagnostic-value.active {
+  color: #28a745;
+}
+
+.diagnostic-value.inactive {
+  color: #6c757d;
+}
+
+.diagnostic-value.detected {
+  color: #dc3545;
+}
+
+.diagnostic-value.normal {
+  color: #28a745;
+}
+
+.diagnostic-value.inspection-id {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: #6f42c1;
+}
+
+/* Progress Error */
+.progress-error {
+  margin-top: 16px;
+  padding: 16px;
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 8px;
+  color: #721c24;
+}
+
+.error-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.error-icon {
+  font-size: 18px;
+}
+
+.error-title {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.error-details p {
+  margin: 4px 0;
+  font-size: 14px;
+}
+
+.error-code {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: #495057;
+  background: rgba(255, 255, 255, 0.5);
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+.error-actions {
+  margin-top: 12px;
+}
+
+.retry-button {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.retry-button:hover {
+  background: #c82333;
+}
+
+.retry-button:focus {
+  outline: 2px solid #721c24;
+  outline-offset: 2px;
+}
+
+/* Responsive Design */
+@media (max-width: 480px) {
+  .enhanced-progress-monitor {
+    padding: 16px;
+  }
+  
+  .connection-status {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .metrics-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .toggle-advanced-view {
+    align-self: flex-end;
+  }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .enhanced-progress-monitor {
+    background: #2d3748;
+    border-color: #4a5568;
+    color: #e2e8f0;
+  }
+  
+  .connection-status {
+    background: #4a5568;
+  }
+  
+  .connection-text,
+  .metric-label,
+  .diagnostic-label {
+    color: #e2e8f0;
+  }
+  
+  .metric-value,
+  .diagnostic-value {
+    color: #f7fafc;
+  }
+  
+  .metric-item,
+  .diagnostic-item {
+    background: #4a5568;
+    border-color: #718096;
+  }
+  
+  .toggle-advanced-view {
+    background: #4a5568;
+    border-color: #718096;
+    color: #e2e8f0;
+  }
+  
+  .toggle-advanced-view:hover {
+    background: #718096;
+  }
+  
+  .alert-warning {
+    background: #744210;
+    border-color: #975a16;
+    color: #faf089;
+  }
+  
+  .alert-info {
+    background: #065f46;
+    border-color: #047857;
+    color: #a7f3d0;
+  }
+  
+  .progress-error {
+    background: #742a2a;
+    border-color: #e53e3e;
+    color: #fed7d7;
+  }
+  
+  .retry-button {
+    background: #e53e3e;
+  }
+  
+  .retry-button:hover {
+    background: #c53030;
+  }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+  .enhanced-progress-monitor {
+    border: 2px solid #000;
+  }
+  
+  .connection-dot {
+    border: 1px solid #000;
+  }
+  
+  .metric-item,
+  .diagnostic-item {
+    border: 1px solid #000;
+  }
+  
+  .toggle-advanced-view,
+  .retry-button,
+  .alert-dismiss {
+    border: 2px solid #000;
+  }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .alert,
+  .connection-dot,
+  .toggle-advanced-view,
+  .retry-websocket-button,
+  .alert-dismiss,
+  .retry-button {
+    animation: none;
+    transition: none;
+  }
+}

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>간단한 WebSocket 테스트</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        button { padding: 10px 20px; margin: 5px; border: none; border-radius: 4px; cursor: pointer; }
+        .primary { background-color: #007bff; color: white; }
+        .log { background-color: #f8f9fa; border: 1px solid #dee2e6; padding: 15px; margin: 10px 0; max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <h1>🔌 간단한 WebSocket 연결 테스트</h1>
+    
+    <button onclick="testConnection()" class="primary">WebSocket 연결 테스트</button>
+    <button onclick="clearLog()">로그 지우기</button>
+    
+    <div id="status" class="status info">준비됨</div>
+    <div id="log" class="log"></div>
+
+    <script>
+        let ws = null;
+        
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `[${timestamp}] ${message}\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        function updateStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+        }
+        
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+        
+        async function testConnection() {
+            try {
+                // 1. 로그인하여 토큰 획득
+                log('🔐 로그인 시도 중...');
+                updateStatus('로그인 중...', 'info');
+                
+                const loginResponse = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: 'andy0401@naver.com',
+                        password: 'test1234'
+                    })
+                });
+                
+                const loginData = await loginResponse.json();
+                if (!loginData.success) {
+                    throw new Error('로그인 실패: ' + loginData.message);
+                }
+                
+                log('✅ 로그인 성공');
+                const token = loginData.token;
+                
+                // 2. WebSocket 연결
+                log('🔌 WebSocket 연결 시도 중...');
+                updateStatus('WebSocket 연결 중...', 'info');
+                
+                const wsUrl = `ws://localhost:5000/ws/inspections?token=${encodeURIComponent(token)}`;
+                log(`연결 URL: ${wsUrl.replace(/token=[^&]+/, 'token=***')}`);
+                
+                ws = new WebSocket(wsUrl);
+                
+                ws.onopen = () => {
+                    log('✅ WebSocket 연결 성공');
+                    updateStatus('WebSocket 연결됨', 'success');
+                };
+                
+                ws.onmessage = (event) => {
+                    const message = JSON.parse(event.data);
+                    log(`📨 메시지 수신: ${JSON.stringify(message, null, 2)}`);
+                    
+                    if (message.type === 'connection_established') {
+                        log('🎉 연결 확립 완료');
+                        
+                        // 테스트 구독
+                        const subscribeMsg = {
+                            type: 'subscribe_inspection',
+                            payload: { inspectionId: 'test-' + Date.now() }
+                        };
+                        log(`📤 구독 메시지 전송: ${JSON.stringify(subscribeMsg)}`);
+                        ws.send(JSON.stringify(subscribeMsg));
+                    }
+                };
+                
+                ws.onerror = (error) => {
+                    log(`❌ WebSocket 오류: ${error.message || 'Unknown error'}`);
+                    updateStatus('WebSocket 오류', 'error');
+                };
+                
+                ws.onclose = (event) => {
+                    log(`🔌 WebSocket 연결 종료: ${event.code} - ${event.reason}`);
+                    updateStatus('WebSocket 연결 종료', 'info');
+                };
+                
+            } catch (error) {
+                log(`❌ 테스트 실패: ${error.message}`);
+                updateStatus(`테스트 실패: ${error.message}`, 'error');
+            }
+        }
+        
+        // 페이지 언로드 시 WebSocket 정리
+        window.addEventListener('beforeunload', () => {
+            if (ws) ws.close();
+        });
+    </script>
+</body>
+</html>

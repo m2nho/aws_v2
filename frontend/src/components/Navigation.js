@@ -120,6 +120,28 @@ const Navigation = () => {
               대시보드
             </Link>
           </li>
+          <li role="none">
+            <Link 
+              to="/inspection" 
+              className={`navigation__link ${isActiveRoute('/inspection') ? 'navigation__link--active' : ''}`}
+              role="menuitem"
+              aria-current={isActiveRoute('/inspection') ? 'page' : undefined}
+              aria-label="리소스 검사 페이지로 이동"
+            >
+              리소스 검사
+            </Link>
+          </li>
+          <li role="none">
+            <Link 
+              to="/history" 
+              className={`navigation__link ${isActiveRoute('/history') ? 'navigation__link--active' : ''}`}
+              role="menuitem"
+              aria-current={isActiveRoute('/history') ? 'page' : undefined}
+              aria-label="검사 히스토리 페이지로 이동"
+            >
+              검사 히스토리
+            </Link>
+          </li>
           {isAdmin() && (
             <li role="none">
               <Link 
@@ -198,6 +220,28 @@ const Navigation = () => {
                   onClick={closeMobileMenu}
                 >
                   대시보드
+                </Link>
+              </li>
+              <li role="none">
+                <Link 
+                  to="/inspection" 
+                  className={`navigation__mobile-link ${isActiveRoute('/inspection') ? 'navigation__mobile-link--active' : ''}`}
+                  role="menuitem"
+                  aria-current={isActiveRoute('/inspection') ? 'page' : undefined}
+                  onClick={closeMobileMenu}
+                >
+                  리소스 검사
+                </Link>
+              </li>
+              <li role="none">
+                <Link 
+                  to="/history" 
+                  className={`navigation__mobile-link ${isActiveRoute('/history') ? 'navigation__mobile-link--active' : ''}`}
+                  role="menuitem"
+                  aria-current={isActiveRoute('/history') ? 'page' : undefined}
+                  onClick={closeMobileMenu}
+                >
+                  검사 히스토리
                 </Link>
               </li>
               {isAdmin() && (

@@ -1,0 +1,413 @@
+.inspection-results-view {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* 헤더 */
+.results-header {
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.back-button {
+  padding: 8px 16px;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  color: #374151;
+  text-decoration: none;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.back-button:hover {
+  background: #e5e7eb;
+  transform: translateX(-2px);
+}
+
+.service-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.service-icon {
+  font-size: 48px;
+}
+
+.service-info h1 {
+  margin: 0 0 4px 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.service-info p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 14px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+/* 요약 대시보드 */
+.summary-dashboard {
+  margin-bottom: 32px;
+}
+
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.summary-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.summary-card.critical {
+  border-left: 4px solid #dc2626;
+}
+
+.summary-card.high {
+  border-left: 4px solid #ea580c;
+}
+
+.summary-card.medium {
+  border-left: 4px solid #d97706;
+}
+
+.summary-card.low {
+  border-left: 4px solid #65a30d;
+}
+
+.summary-card.total {
+  border-left: 4px solid #3b82f6;
+}
+
+.summary-card.score {
+  border-left: 4px solid #8b5cf6;
+}
+
+.card-icon {
+  font-size: 24px;
+}
+
+.card-content h3 {
+  margin: 0 0 4px 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.card-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+/* 필터 */
+.filters {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 24px;
+  padding: 16px 20px;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-group label {
+  font-weight: 500;
+  color: #374151;
+  font-size: 14px;
+}
+
+.filter-group select {
+  padding: 6px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: white;
+  font-size: 14px;
+}
+
+.results-count {
+  margin-left: auto;
+  font-size: 14px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+/* 검사 결과 목록 */
+.findings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 40px;
+}
+
+.no-findings {
+  text-align: center;
+  padding: 40px;
+  color: #6b7280;
+}
+
+.finding-card {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.finding-card.critical {
+  border-left: 4px solid #dc2626;
+}
+
+.finding-card.high {
+  border-left: 4px solid #ea580c;
+}
+
+.finding-card.medium {
+  border-left: 4px solid #d97706;
+}
+
+.finding-card.low {
+  border-left: 4px solid #65a30d;
+}
+
+.finding-header {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.finding-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.severity-badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.finding-title h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+  flex: 1;
+}
+
+.finding-meta {
+  display: flex;
+  gap: 16px;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.resource-type {
+  font-weight: 500;
+}
+
+.resource-id {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.finding-content {
+  padding: 0 24px 16px;
+}
+
+.recommendation {
+  margin-bottom: 16px;
+}
+
+.recommendation h4 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.recommendation p {
+  margin: 0;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.finding-details h4 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.details-content {
+  background: #f9fafb;
+  border-radius: 6px;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+}
+
+.details-content pre {
+  margin: 0;
+  font-size: 12px;
+  color: #374151;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.finding-footer {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 24px;
+  background: #f9fafb;
+  border-top: 1px solid #f3f4f6;
+  font-size: 12px;
+}
+
+.category-tag {
+  padding: 2px 8px;
+  background: #e5e7eb;
+  border-radius: 4px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.risk-score {
+  color: #6b7280;
+}
+
+.timestamp {
+  margin-left: auto;
+  color: #9ca3af;
+}
+
+/* 권장사항 섹션 */
+.recommendations-section {
+  margin-top: 40px;
+  padding-top: 32px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.recommendations-section h2 {
+  margin-bottom: 24px;
+  font-size: 24px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.recommendations-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.recommendation-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.recommendation-card h3 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.recommendation-card p {
+  margin: 0 0 12px 0;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.priority-badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.priority-badge.high {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.priority-badge.medium {
+  background: #fffbeb;
+  color: #d97706;
+}
+
+.priority-badge.low {
+  background: #f0fdf4;
+  color: #65a30d;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .header-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  
+  .summary-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .filters {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  
+  .results-count {
+    margin-left: 0;
+  }
+  
+  .finding-meta {
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .finding-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .timestamp {
+    margin-left: 0;
+  }
+}
