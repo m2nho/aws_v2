@@ -27,7 +27,7 @@ class TransactionService {
     }
     
     this.historyTableName = process.env.AWS_DYNAMODB_INSPECTION_HISTORY_TABLE || 'InspectionHistory';
-    this.itemsTableName = 'InspectionItemResults';
+    this.itemsTableName = process.env.AWS_DYNAMODB_INSPECTION_ITEMS_TABLE || 'InspectionItemResults';
     
     this.logger = this.createLogger();
   }

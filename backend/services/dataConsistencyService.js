@@ -496,7 +496,7 @@ class DataConsistencyService {
       }));
 
       const command = new UpdateCommand({
-        TableName: 'InspectionItemResults',
+        TableName: process.env.AWS_DYNAMODB_INSPECTION_ITEMS_TABLE || 'InspectionItemResults',
         Key: {
           customerId,
           itemKey

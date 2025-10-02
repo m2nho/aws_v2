@@ -13,7 +13,7 @@ class InspectionItemService {
     this.client = DynamoDBDocumentClient.from(new DynamoDBClient({
       region: process.env.AWS_REGION || 'us-east-1'
     }));
-    this.tableName = 'InspectionItemResults';
+    this.tableName = process.env.AWS_DYNAMODB_INSPECTION_ITEMS_TABLE || 'InspectionItemResults';
   }
 
   /**

@@ -987,7 +987,7 @@ class InspectionService {
       };
 
       const command = new PutCommand({
-        TableName: 'InspectionHistory',
+        TableName: process.env.AWS_DYNAMODB_INSPECTION_HISTORY_TABLE || 'InspectionHistory',
         Item: emergencyData
       });
 
@@ -1002,7 +1002,7 @@ class InspectionService {
       try {
         if (inspectionResult.results?.findings?.length > 0) {
           const itemCommand = new PutCommand({
-            TableName: 'InspectionItemResults',
+            TableName: process.env.AWS_DYNAMODB_INSPECTION_ITEMS_TABLE || 'InspectionItemResults',
             Item: {
               customerId: inspectionResult.customerId,
               itemKey: `${inspectionResult.serviceType}#emergency_save`,
