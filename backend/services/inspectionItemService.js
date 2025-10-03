@@ -24,12 +24,11 @@ class InspectionItemService {
    */
   async saveItemResult(customerId, inspectionId, itemResult) {
     try {
-      const itemKey = `${itemResult.serviceType}#${itemResult.itemId}`;
       const now = Date.now();
-
-      const item = {
+      
+      // 공통 아이템 데이터
+      const baseItem = {
         customerId,
-        itemKey,
         serviceType: itemResult.serviceType,
         itemId: itemResult.itemId,
         itemName: itemResult.itemName,
@@ -51,13 +50,35 @@ class InspectionItemService {
         createdAt: itemResult.createdAt || now
       };
 
-      const command = new PutCommand({
-        TableName: this.tableName,
-        Item: item
-      });
+      // 1. 히스토리용 레코드 저장 (검사 ID 포함)
+      const historyItem = {
+        ...baseItem,
+        itemKey: `${itemResult.serviceType}#${itemResult.itemId}#${inspectionId}`,
+        recordType: 'HISTORY'
+      };
 
-      await this.client.send(command);
-      return { success: true, data: item };
+      // 2. 최신 상태용 레코드 저장/업데이트 (LATEST)
+      const latestItem = {
+        ...baseItem,
+        itemKey: `${itemResult.serviceType}#${itemResult.itemId}#LATEST`,
+        recordType: 'LATEST'
+      };
+
+      // 두 레코드 모두 저장
+      await Promise.all([
+        this.client.send(new PutCommand({
+          TableName: this.tableName,
+          Item: historyItem
+        })),
+        this.client.send(new PutCommand({
+          TableName: this.tableName,
+          Item: latestItem
+        }))
+      ]);
+
+      console.log(`✅ [InspectionItemService] Saved both LATEST and HISTORY records for ${itemResult.serviceType}#${itemResult.itemId}`);
+
+      return { success: true, data: { historyItem, latestItem } };
 
     } catch (error) {
       console.error('Failed to save item result:', error);
@@ -96,7 +117,7 @@ class InspectionItemService {
   }
 
   /**
-   * 모든 서비스의 최근 검사 항목 결과 조회
+   * 모든 서비스의 최근 검사 항목 결과 조회 (LATEST만)
    * @param {string} customerId - 고객 ID
    */
   async getAllItemResults(customerId) {
@@ -104,12 +125,16 @@ class InspectionItemService {
       const command = new QueryCommand({
         TableName: this.tableName,
         KeyConditionExpression: 'customerId = :customerId',
+        FilterExpression: 'recordType = :recordType',
         ExpressionAttributeValues: {
-          ':customerId': customerId
+          ':customerId': customerId,
+          ':recordType': 'LATEST'
         }
       });
 
       const result = await this.client.send(command);
+      
+      console.log(`🔍 [InspectionItemService] Found ${result.Items?.length || 0} LATEST item results`);
       
       // 서비스별로 그룹화
       const groupedResults = {};
@@ -170,6 +195,90 @@ class InspectionItemService {
   }
 
   /**
+   * 고객의 모든 검사 항목 히스토리 조회 (시간순 정렬)
+   * @param {string} customerId - 고객 ID
+   * @param {Object} options - 조회 옵션
+   */
+  async getItemHistory(customerId, options = {}) {
+    try {
+      const { serviceType, limit = 50, startDate, endDate } = options;
+      
+      console.log(`🔍 [InspectionItemService] Getting item history for customer: ${customerId}`);
+      console.log(`🔍 [InspectionItemService] Options:`, { serviceType, limit, startDate, endDate });
+      
+      let queryParams = {
+        TableName: this.tableName,
+        KeyConditionExpression: 'customerId = :customerId',
+        FilterExpression: 'recordType = :recordType',
+        ExpressionAttributeValues: {
+          ':customerId': customerId,
+          ':recordType': 'HISTORY'
+        },
+        ScanIndexForward: false // 최신순 정렬
+      };
+
+      // 서비스 타입 필터가 있는 경우 GSI 사용
+      if (serviceType) {
+        queryParams.IndexName = 'customerId-serviceType-index';
+        queryParams.KeyConditionExpression = 'customerId = :customerId AND serviceType = :serviceType';
+        queryParams.ExpressionAttributeValues[':serviceType'] = serviceType;
+      }
+
+      // 날짜 필터가 있는 경우 FilterExpression 추가
+      if (startDate || endDate) {
+        let filterExpressions = [];
+        
+        if (startDate) {
+          filterExpressions.push('lastInspectionTime >= :startDate');
+          queryParams.ExpressionAttributeValues[':startDate'] = new Date(startDate).getTime();
+        }
+        
+        if (endDate) {
+          filterExpressions.push('lastInspectionTime <= :endDate');
+          queryParams.ExpressionAttributeValues[':endDate'] = new Date(endDate).getTime();
+        }
+        
+        if (filterExpressions.length > 0) {
+          queryParams.FilterExpression = filterExpressions.join(' AND ');
+        }
+      }
+
+      if (limit) {
+        queryParams.Limit = parseInt(limit);
+      }
+
+      const command = new QueryCommand(queryParams);
+      const result = await this.client.send(command);
+      
+      console.log(`🔍 [InspectionItemService] Found ${result.Items?.length || 0} item history records`);
+      
+      // 각 항목의 itemKey 구조 확인
+      if (result.Items && result.Items.length > 0) {
+        console.log('🔍 [InspectionItemService] Sample itemKeys:');
+        result.Items.slice(0, 3).forEach((item, index) => {
+          console.log(`  ${index + 1}. ${item.itemKey} - ${item.itemName} (${new Date(item.lastInspectionTime).toLocaleString()})`);
+        });
+      }
+      
+      // 시간순으로 정렬 (DynamoDB 쿼리 결과를 추가로 정렬)
+      const sortedItems = (result.Items || []).sort((a, b) => 
+        (b.lastInspectionTime || 0) - (a.lastInspectionTime || 0)
+      );
+
+      return {
+        success: true,
+        data: sortedItems,
+        count: result.Count || 0,
+        hasMore: !!result.LastEvaluatedKey
+      };
+
+    } catch (error) {
+      console.error('Failed to get item history:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
    * 검사 결과를 기반으로 상태 결정
    * @param {Object} itemResult - 검사 항목 결과
    * @returns {string} 상태 (PASS, FAIL, WARNING, NOT_CHECKED)
@@ -201,13 +310,40 @@ class InspectionItemService {
    */
   async processInspectionResult(customerId, inspectionId, inspectionResult) {
     try {
-      const { serviceType, results } = inspectionResult;
+      const { serviceType, results, metadata } = inspectionResult;
       
       if (!results || !results.findings) {
         return { success: true, message: 'No findings to process' };
       }
 
-      // 검사 항목별로 결과 분류
+      // 개별 항목 검사인 경우 해당 항목으로만 분류
+      if (metadata && metadata.targetItem && metadata.targetItem !== 'all') {
+        const targetItemId = metadata.targetItem;
+        const itemMapping = this.getServiceItemMappings(serviceType)[targetItemId];
+        
+        // 모든 findings를 해당 항목으로 분류
+        const itemResult = {
+          serviceType,
+          itemId: targetItemId,
+          itemName: itemMapping?.name || metadata.itemName || targetItemId,
+          category: itemMapping?.category || 'other',
+          totalResources: results.findings.length,
+          issuesFound: results.findings.length,
+          riskLevel: this.calculateMaxRiskLevel(results.findings),
+          score: this.calculateScore(results.findings),
+          findings: results.findings,
+          recommendations: results.recommendations || []
+        };
+
+        await this.saveItemResult(customerId, inspectionId, itemResult);
+        
+        return {
+          success: true,
+          message: `Processed single inspection item: ${targetItemId}`
+        };
+      }
+
+      // 전체 검사인 경우 기존 로직 사용
       const itemResults = this.categorizeFindings(serviceType, results.findings);
       
       // 각 항목별 결과 저장
@@ -329,6 +465,34 @@ class InspectionItemService {
     if (issue.includes('mfa')) return 'mfa_enabled';
     
     return 'other';
+  }
+
+  /**
+   * 최대 위험도 계산
+   * @param {Array} findings - 검사 결과 목록
+   * @returns {string} 최대 위험도
+   */
+  calculateMaxRiskLevel(findings) {
+    let maxRiskLevel = 'LOW';
+    findings.forEach(finding => {
+      if (this.getRiskPriority(finding.riskLevel) > this.getRiskPriority(maxRiskLevel)) {
+        maxRiskLevel = finding.riskLevel;
+      }
+    });
+    return maxRiskLevel;
+  }
+
+  /**
+   * 점수 계산
+   * @param {Array} findings - 검사 결과 목록
+   * @returns {number} 점수 (0-100)
+   */
+  calculateScore(findings) {
+    let score = 100;
+    findings.forEach(finding => {
+      score = Math.max(0, score - (finding.riskScore || 10));
+    });
+    return score;
   }
 
   /**

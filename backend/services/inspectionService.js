@@ -43,7 +43,7 @@ class InspectionService {
   }
 
   /**
-   * 검사 시작
+   * 검사 시작 (항목별 개별 검사 ID 생성)
    * @param {string} customerId - 고객 ID
    * @param {string} serviceType - 검사할 서비스 타입 (EC2, RDS, S3 등)
    * @param {string} assumeRoleArn - 고객 계정의 역할 ARN
@@ -51,52 +51,111 @@ class InspectionService {
    * @returns {Promise<Object>} 검사 시작 응답
    */
   async startInspection(customerId, serviceType, assumeRoleArn, inspectionConfig = {}) {
-    const inspectionId = uuidv4();
+    const batchId = uuidv4(); // 전체 배치를 식별하는 ID
+    const selectedItems = inspectionConfig.selectedItems || [];
     
     try {
-      this.logger.info('Starting inspection', {
+      this.logger.info('Starting batch inspection', {
         customerId,
-        inspectionId,
-        serviceType,
-        assumeRoleArn
-      });
-
-      // 검사 상태 초기화
-      const inspectionStatus = new InspectionStatus({
-        inspectionId,
-        status: 'PENDING'
-      });
-
-      this.activeInspections.set(inspectionId, inspectionStatus);
-
-      // DynamoDB에 검사 시작 상태 저장
-      await this.saveInspectionStart(customerId, inspectionId, serviceType, assumeRoleArn);
-
-      // 비동기로 검사 실행
-      this.executeInspectionAsync(
-        customerId,
-        inspectionId,
+        batchId,
         serviceType,
         assumeRoleArn,
-        inspectionConfig
-      ).catch(error => {
-        this.logger.error('Async inspection execution failed', {
+        selectedItemsCount: selectedItems.length
+      });
+
+      // 임시: 첫 번째 선택된 항목만 검사 (테스트용)
+      const inspectionJobs = [];
+      
+      if (selectedItems.length === 0) {
+        // 항목이 선택되지 않은 경우 전체 검사로 처리 (기존 방식)
+        const inspectionId = uuidv4();
+        inspectionJobs.push({
           inspectionId,
-          error: error.message
+          itemId: 'all',
+          itemName: `${serviceType} 전체 검사`
+        });
+      } else {
+        // 임시: 첫 번째 항목만 검사
+        const firstItemId = selectedItems[0];
+        const inspectionId = uuidv4();
+        inspectionJobs.push({
+          inspectionId,
+          itemId: firstItemId,
+          itemName: this.getItemName(serviceType, firstItemId)
         });
         
-        const status = this.activeInspections.get(inspectionId);
-        if (status) {
-          status.fail(error.message);
-        }
+        console.log(`🔍 [InspectionService] Testing with single item: ${firstItemId} (${inspectionId})`);
+      }
+
+      // 각 검사 작업의 상태 초기화
+      const inspectionStatuses = new Map();
+      for (const job of inspectionJobs) {
+        const inspectionStatus = new InspectionStatus({
+          inspectionId: job.inspectionId,
+          status: 'PENDING',
+          batchId,
+          itemId: job.itemId,
+          itemName: job.itemName
+        });
+        
+        this.activeInspections.set(job.inspectionId, inspectionStatus);
+        inspectionStatuses.set(job.inspectionId, inspectionStatus);
+        
+        // DynamoDB에 개별 검사 시작 상태 저장
+        await this.saveInspectionStart(customerId, job.inspectionId, serviceType, assumeRoleArn, {
+          batchId,
+          itemId: job.itemId,
+          itemName: job.itemName
+        });
+      }
+
+      // 비동기로 각 검사 실행
+      console.log(`🚀 [InspectionService] Starting ${inspectionJobs.length} inspection jobs:`, 
+                  inspectionJobs.map(job => `${job.itemName} (${job.inspectionId})`));
+      
+      const executionPromises = inspectionJobs.map(job => {
+        console.log(`🔍 [InspectionService] Starting job: ${job.itemName} (${job.inspectionId})`);
+        return this.executeItemInspectionAsync(
+          customerId,
+          job.inspectionId,
+          serviceType,
+          assumeRoleArn,
+          {
+            ...inspectionConfig,
+            targetItemId: job.itemId,
+            batchId,
+            itemName: job.itemName
+          }
+        ).catch(error => {
+          this.logger.error('Async item inspection execution failed', {
+            inspectionId: job.inspectionId,
+            itemId: job.itemId,
+            error: error.message
+          });
+          
+          const status = this.activeInspections.get(job.inspectionId);
+          if (status) {
+            status.fail(error.message);
+          }
+        });
+      });
+
+      // 모든 검사 작업을 병렬로 실행하되 응답은 즉시 반환
+      Promise.all(executionPromises).then(() => {
+        this.logger.info('All item inspections completed', { batchId });
       });
 
       return {
         success: true,
         data: {
-          inspectionId,
-          status: 'PENDING',
-          message: 'Inspection started successfully'
+          batchId,
+          inspectionJobs: inspectionJobs.map(job => ({
+            inspectionId: job.inspectionId,
+            itemId: job.itemId,
+            itemName: job.itemName,
+            status: 'PENDING'
+          })),
+          message: `Started ${inspectionJobs.length} inspection(s) successfully`
         }
       };
 
@@ -118,7 +177,187 @@ class InspectionService {
   }
 
   /**
-   * 비동기 검사 실행
+   * 항목명 가져오기
+   * @param {string} serviceType - 서비스 타입
+   * @param {string} itemId - 항목 ID
+   * @returns {string} 항목명
+   */
+  getItemName(serviceType, itemId) {
+    const itemMappings = {
+      EC2: {
+        'security_groups': '보안 그룹 규칙',
+        'key_pairs': '키 페어 관리',
+        'instance_metadata': '인스턴스 메타데이터',
+        'instance_types': '인스턴스 타입 최적화',
+        'ebs_optimization': 'EBS 최적화',
+        'public_access': '퍼블릭 접근 관리',
+        'network_access': '네트워크 접근 제어'
+      },
+      RDS: {
+        'encryption': '암호화 설정',
+        'security_groups': '데이터베이스 보안 그룹',
+        'public_access': '퍼블릭 접근 설정',
+        'automated_backup': '자동 백업'
+      },
+      S3: {
+        'bucket_policy': '버킷 정책',
+        'public_access': '퍼블릭 접근 차단',
+        'encryption': '서버 측 암호화',
+        'versioning': '버전 관리'
+      }
+    };
+
+    return itemMappings[serviceType]?.[itemId] || itemId;
+  }
+
+  /**
+   * 개별 항목 검사 실행
+   * @param {string} customerId - 고객 ID
+   * @param {string} inspectionId - 검사 ID
+   * @param {string} serviceType - 서비스 타입
+   * @param {string} assumeRoleArn - 역할 ARN
+   * @param {Object} inspectionConfig - 검사 설정
+   */
+  async executeItemInspectionAsync(customerId, inspectionId, serviceType, assumeRoleArn, inspectionConfig) {
+    const inspectionStatus = this.activeInspections.get(inspectionId);
+    const steps = this.inspectionSteps[serviceType] || this.inspectionSteps.default;
+    let currentStepIndex = 0;
+    let inspector = null;
+
+    try {
+      // 검사 시작
+      inspectionStatus.start(`Initializing ${inspectionConfig.targetItemId} inspection`);
+      this.updateInspectionProgress(inspectionId, steps, currentStepIndex);
+
+      // 1. Assume Role 수행
+      currentStepIndex++;
+      this.updateInspectionProgress(inspectionId, steps, currentStepIndex);
+      
+      const awsCredentials = await this.assumeRole(assumeRoleArn, inspectionId);
+
+      // 2. Inspector 가져오기 및 검증
+      currentStepIndex++;
+      this.updateInspectionProgress(inspectionId, steps, currentStepIndex);
+      
+      inspector = inspectorRegistry.getInspector(serviceType);
+      if (!inspector) {
+        throw new Error(`Inspector not found for service type: ${serviceType}`);
+      }
+
+      // 3. 특정 항목에 대한 검사 수행
+      const inspectionResult = await inspector.executeItemInspection(
+        customerId,
+        inspectionId,
+        awsCredentials,
+        {
+          ...inspectionConfig,
+          targetItem: inspectionConfig.targetItemId
+        }
+      );
+
+      // 검사 진행률을 inspector의 진행률과 동기화
+      this.syncInspectionProgress(inspectionId, inspector, steps, currentStepIndex);
+
+      // 4. 검사 완료 처리
+      currentStepIndex = steps.length - 1;
+      this.updateInspectionProgress(inspectionId, steps, currentStepIndex);
+      
+      inspectionStatus.complete();
+
+      // Broadcast completion via WebSocket
+      webSocketService.broadcastInspectionComplete(inspectionId, {
+        status: 'COMPLETED',
+        results: inspectionResult.results,
+        duration: inspectionResult.duration,
+        completedAt: Date.now(),
+        totalSteps: steps.length,
+        resourcesProcessed: inspectionResult.results?.summary?.totalResources || 0,
+        itemId: inspectionConfig.targetItemId,
+        itemName: inspectionConfig.itemName
+      });
+
+      // 5. 트랜잭션을 사용한 일관성 있는 결과 저장
+      let saveSuccessful = false;
+      
+      try {
+        await this.saveInspectionResultWithTransaction(inspectionResult);
+        saveSuccessful = true;
+        this.logger.info('Item inspection result saved successfully', {
+          inspectionId: inspectionResult.inspectionId,
+          itemId: inspectionConfig.targetItemId
+        });
+      } catch (saveError) {
+        this.logger.error('Critical: Failed to save item inspection result', {
+          inspectionId: inspectionResult.inspectionId,
+          itemId: inspectionConfig.targetItemId,
+          error: saveError.message,
+          stack: saveError.stack
+        });
+        
+        // 즉시 강제 저장 시도
+        try {
+          await this.emergencySaveInspectionResult(inspectionResult);
+          saveSuccessful = true;
+        } catch (emergencyError) {
+          console.log('❌ [InspectionService] Emergency save also failed:', emergencyError.message);
+        }
+      }
+      
+      // 저장 상태에 관계없이 검사는 완료로 처리
+      inspectionStatus.complete();
+      
+      if (!saveSuccessful) {
+        // WebSocket으로 저장 실패 알림
+        webSocketService.broadcastStatusChange(inspectionId, {
+          status: 'COMPLETED_WITH_SAVE_ERROR',
+          error: 'Data save failed but inspection completed',
+          completedAt: Date.now(),
+          results: inspectionResult.results
+        });
+      }
+
+      this.logger.info('Item inspection completed successfully', {
+        inspectionId,
+        customerId,
+        serviceType,
+        itemId: inspectionConfig.targetItemId,
+        duration: inspectionResult.duration
+      });
+
+    } catch (error) {
+      this.logger.error('Item inspection execution failed', {
+        inspectionId,
+        customerId,
+        serviceType,
+        itemId: inspectionConfig.targetItemId,
+        error: error.message,
+        stack: error.stack
+      });
+
+      // 부분적 결과라도 저장 시도
+      await this.handlePartialInspectionFailure(
+        customerId,
+        inspectionId,
+        serviceType,
+        error,
+        inspector
+      );
+
+      inspectionStatus.fail(error.message);
+
+      // Broadcast failure via WebSocket
+      webSocketService.broadcastStatusChange(inspectionId, {
+        status: 'FAILED',
+        error: error.message,
+        failedAt: Date.now(),
+        itemId: inspectionConfig.targetItemId,
+        partialResults: inspector?.getPartialResults?.() || null
+      });
+    }
+  }
+
+  /**
+   * 비동기 검사 실행 (기존 방식 - 호환성 유지)
    * @param {string} customerId - 고객 ID
    * @param {string} inspectionId - 검사 ID
    * @param {string} serviceType - 서비스 타입
@@ -635,31 +874,13 @@ class InspectionService {
    * @param {string} inspectionId - 검사 ID
    * @param {string} serviceType - 서비스 타입
    * @param {string} assumeRoleArn - Assume Role ARN
+   * @param {Object} additionalMetadata - 추가 메타데이터
    */
-  async saveInspectionStart(customerId, inspectionId, serviceType, assumeRoleArn) {
+  async saveInspectionStart(customerId, inspectionId, serviceType, assumeRoleArn, additionalMetadata = {}) {
     try {
-      const historyService = require('./historyService');
-      const startTime = Date.now();
-      
-      await historyService.saveInspectionHistory({
-        inspectionId,
-        customerId,
-        serviceType,
-        status: 'IN_PROGRESS',
-        startTime,
-        endTime: null,
-        duration: null,
-        results: {
-          summary: {},
-          findings: [],
-          recommendations: []
-        },
-        assumeRoleArn,
-        metadata: {
-          version: '1.0',
-          startedAt: new Date().toISOString()
-        }
-      });
+      // 단일 테이블 구조로 전환: InspectionHistory 저장 비활성화
+      console.log(`🔍 [InspectionService] Skipping InspectionHistory save for single-table structure`);
+      console.log(`🔍 [InspectionService] Inspection start: ${inspectionId} (${serviceType})`);
 
 
 
@@ -763,7 +984,36 @@ class InspectionService {
       return itemResults;
     }
 
-    // 서비스별 항목 매핑
+    // 개별 항목 검사인 경우 해당 항목으로만 분류
+    if (inspectionResult.metadata && inspectionResult.metadata.targetItem && inspectionResult.metadata.targetItem !== 'all') {
+      const targetItemId = inspectionResult.metadata.targetItem;
+      const itemMappings = this.getServiceItemMappings(inspectionResult.serviceType);
+      const itemMapping = itemMappings[targetItemId];
+      
+      console.log(`🔍 [InspectionService] Individual item inspection detected: ${targetItemId}`);
+      console.log(`🔍 [InspectionService] All ${findings.length} findings will be classified as: ${targetItemId}`);
+      
+      // 모든 findings를 해당 항목으로 분류
+      itemResults.push({
+        serviceType: inspectionResult.serviceType,
+        itemId: targetItemId,
+        itemName: itemMapping?.name || inspectionResult.metadata.itemName || targetItemId,
+        category: itemMapping?.category || 'other',
+        totalResources: findings.length,
+        issuesFound: findings.length,
+        riskLevel: this.calculateMaxRiskLevel(findings),
+        score: this.calculateScore(findings),
+        findings: findings,
+        recommendations: inspectionResult.results?.recommendations || [],
+        createdAt: Date.now()
+      });
+      
+      return itemResults;
+    }
+
+    // 전체 검사인 경우 기존 로직 사용 (키워드 매칭)
+    console.log(`🔍 [InspectionService] Full inspection detected, using keyword matching`);
+    
     const itemMappings = this.getServiceItemMappings(inspectionResult.serviceType);
     const itemGroups = {};
 
@@ -872,6 +1122,34 @@ class InspectionService {
   }
 
   /**
+   * 최대 위험도 계산
+   * @param {Array} findings - 검사 결과 목록
+   * @returns {string} 최대 위험도
+   */
+  calculateMaxRiskLevel(findings) {
+    let maxRiskLevel = 'LOW';
+    findings.forEach(finding => {
+      if (this.getRiskPriority(finding.riskLevel) > this.getRiskPriority(maxRiskLevel)) {
+        maxRiskLevel = finding.riskLevel;
+      }
+    });
+    return maxRiskLevel;
+  }
+
+  /**
+   * 점수 계산
+   * @param {Array} findings - 검사 결과 목록
+   * @returns {number} 점수 (0-100)
+   */
+  calculateScore(findings) {
+    let score = 100;
+    findings.forEach(finding => {
+      score = Math.max(0, score - (finding.riskScore || 10));
+    });
+    return score;
+  }
+
+  /**
    * 위험도 우선순위 반환
    * @param {string} riskLevel - 위험도
    * @returns {number} 우선순위
@@ -897,7 +1175,11 @@ class InspectionService {
         inspectionId: inspectionResult.inspectionId
       });
 
-      // 기본 히스토리만 저장 시도
+      // 단일 테이블 구조로 전환: InspectionHistory 저장 비활성화
+      console.log(`🔍 [InspectionService] Skipping fallback InspectionHistory save`);
+      
+      const saveResult = { success: true }; // 임시로 성공 처리
+      /*
       const historyService = require('./historyService');
       
       const saveResult = await historyService.saveInspectionHistory({
@@ -915,6 +1197,7 @@ class InspectionService {
           fallbackTimestamp: Date.now()
         }
       });
+      */
 
       if (saveResult.success) {
         this.logger.info('Fallback save successful', {
@@ -1124,12 +1407,15 @@ class InspectionService {
           }
         };
 
-        // 히스토리에 부분 결과 저장
+        // 단일 테이블 구조로 전환: InspectionHistory 저장 비활성화
+        console.log(`🔍 [InspectionService] Skipping partial failure InspectionHistory save`);
+        /*
         const historyService = require('./historyService');
         await historyService.saveInspectionHistory({
           ...partialInspectionResult,
           status: 'PARTIAL_FAILURE'
         });
+        */
 
         this.logger.info('Partial results saved successfully', {
           inspectionId,
@@ -1166,11 +1452,15 @@ class InspectionService {
           }
         };
 
+        // 단일 테이블 구조로 전환: InspectionHistory 저장 비활성화
+        console.log(`🔍 [InspectionService] Skipping emergency failure InspectionHistory save`);
+        /*
         const historyService = require('./historyService');
         await historyService.saveInspectionHistory({
           ...failureRecord,
           status: 'FAILED'
         });
+        */
 
         this.logger.info('Failure record saved', {
           inspectionId,

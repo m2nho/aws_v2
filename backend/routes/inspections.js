@@ -38,6 +38,13 @@ router.post('/start', validateInspectionStart, inspectionController.startInspect
 router.get('/history', inspectionController.getInspectionHistory);
 
 /**
+ * GET /api/inspections/items/history
+ * 검사 항목별 히스토리 조회
+ * 각 검사 항목별로 개별 기록을 시간순으로 표시
+ */
+router.get('/items/history', inspectionController.getItemHistory);
+
+/**
  * GET /api/inspections/items/status
  * 모든 서비스의 검사 항목 상태 조회
  * Trusted Advisor 스타일 - 각 검사 항목별 최근 상태

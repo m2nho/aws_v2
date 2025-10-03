@@ -26,7 +26,6 @@ class TransactionService {
       }));
     }
     
-    this.historyTableName = process.env.AWS_DYNAMODB_INSPECTION_HISTORY_TABLE || 'InspectionHistory';
     this.itemsTableName = process.env.AWS_DYNAMODB_INSPECTION_ITEMS_TABLE || 'InspectionItemResults';
     
     this.logger = this.createLogger();
@@ -55,64 +54,53 @@ class TransactionService {
         findingsCount: inspectionData.results?.findings?.length || 0
       });
 
-      // 트랜잭션 아이템들 준비
+      // 트랜잭션 아이템들 준비 (단일 테이블 구조)
       const transactItems = [];
+      const now = Date.now();
 
-      // 1. InspectionHistory 저장/업데이트
-      const historyItem = this.prepareHistoryItem(inspectionData);
-      transactItems.push({
-        Put: {
-          TableName: this.historyTableName,
-          Item: historyItem,
-          // 조건부 업데이트: 기존 항목이 있으면 업데이트, 없으면 생성
-          // COMPLETED 상태로의 업데이트도 허용 (검사 완료 시 결과와 함께 저장)
-          ConditionExpression: 'attribute_not_exists(inspectionId) OR #status IN (:inProgress, :pending, :completed)',
-          ExpressionAttributeNames: {
-            '#status': 'status'
-          },
-          ExpressionAttributeValues: {
-            ':inProgress': 'IN_PROGRESS',
-            ':pending': 'PENDING',
-            ':completed': 'COMPLETED'
-          }
-        }
-      });
-
-      // 2. InspectionItemResults 저장/업데이트
+      // InspectionItemResults에 LATEST + HISTORY 레코드 저장
       itemResults.forEach(itemResult => {
-        const itemKey = `${itemResult.serviceType}#${itemResult.itemId}`;
-        
+        const baseItem = {
+          customerId: inspectionData.customerId,
+          serviceType: itemResult.serviceType,
+          itemId: itemResult.itemId,
+          itemName: itemResult.itemName,
+          category: itemResult.category,
+          
+          lastInspectionId: inspectionData.inspectionId,
+          lastInspectionTime: now,
+          status: this.determineItemStatus(itemResult),
+          
+          riskLevel: itemResult.riskLevel || 'LOW',
+          score: itemResult.score || 100,
+          
+          findings: itemResult.findings || [],
+          recommendations: itemResult.recommendations || [],
+          
+          updatedAt: now,
+          createdAt: itemResult.createdAt || now
+        };
+
+        // 1. HISTORY 레코드 (검사 ID 포함)
         transactItems.push({
           Put: {
             TableName: this.itemsTableName,
             Item: {
-              customerId: inspectionData.customerId,
-              itemKey,
-              serviceType: itemResult.serviceType,
-              itemId: itemResult.itemId,
-              itemName: itemResult.itemName,
-              category: itemResult.category,
-              
-              lastInspectionId: inspectionData.inspectionId,
-              lastInspectionTime: Date.now(),
-              status: this.determineItemStatus(itemResult),
-              
-              totalResources: itemResult.totalResources || 0,
-              issuesFound: itemResult.issuesFound || 0,
-              riskLevel: itemResult.riskLevel || 'LOW',
-              score: itemResult.score || 100,
-              
-              findings: itemResult.findings || [],
-              recommendations: itemResult.recommendations || [],
-              
-              updatedAt: Date.now(),
-              createdAt: itemResult.createdAt || Date.now(),
-              
-              // 메타데이터
-              metadata: {
-                inspectionVersion: inspectionData.metadata?.version || '1.0',
-                lastUpdatedBy: 'inspection-service'
-              }
+              ...baseItem,
+              itemKey: `${itemResult.serviceType}#${itemResult.itemId}#${inspectionData.inspectionId}`,
+              recordType: 'HISTORY'
+            }
+          }
+        });
+
+        // 2. LATEST 레코드 (덮어쓰기)
+        transactItems.push({
+          Put: {
+            TableName: this.itemsTableName,
+            Item: {
+              ...baseItem,
+              itemKey: `${itemResult.serviceType}#${itemResult.itemId}#LATEST`,
+              recordType: 'LATEST'
             }
           }
         });

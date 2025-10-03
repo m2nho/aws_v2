@@ -40,6 +40,81 @@ class BaseInspector {
   }
 
   /**
+   * 개별 항목 검사 실행 템플릿 메서드
+   * @param {string} customerId - 고객 ID
+   * @param {string} inspectionId - 검사 ID
+   * @param {Object} awsCredentials - AWS 자격 증명
+   * @param {Object} inspectionConfig - 검사 설정
+   * @returns {Promise<InspectionResult>} 검사 결과
+   */
+  async executeItemInspection(customerId, inspectionId, awsCredentials, inspectionConfig = {}) {
+    const inspectionResult = new InspectionResult({
+      customerId,
+      inspectionId,
+      serviceType: this.serviceType,
+      status: 'IN_PROGRESS',
+      assumeRoleArn: awsCredentials.roleArn,
+      metadata: {
+        ...this.metadata,
+        inspectorVersion: this.getVersion(),
+        targetItem: inspectionConfig.targetItem,
+        itemName: inspectionConfig.itemName
+      }
+    });
+
+    try {
+      this.logger.info(`Starting ${this.serviceType} item inspection`, {
+        customerId,
+        inspectionId,
+        serviceType: this.serviceType,
+        targetItem: inspectionConfig.targetItem
+      });
+
+      this.metadata.startTime = Date.now();
+      
+      // 사전 검증
+      await this.preInspectionValidation(awsCredentials, inspectionConfig);
+      
+      // 개별 항목 검사 실행
+      const results = await this.performItemInspection(awsCredentials, inspectionConfig);
+      
+      // 사후 처리
+      await this.postInspectionProcessing(results);
+      
+      this.metadata.endTime = Date.now();
+      
+      // 검사 결과 완료 처리
+      const finalResults = this.buildFinalResults(results);
+      inspectionResult.complete(finalResults);
+      
+      this.logger.info(`Completed ${this.serviceType} item inspection`, {
+        customerId,
+        inspectionId,
+        targetItem: inspectionConfig.targetItem,
+        duration: inspectionResult.duration,
+        resourcesScanned: this.metadata.resourcesScanned,
+        findingsCount: this.findings.length
+      });
+
+      return inspectionResult;
+
+    } catch (error) {
+      this.metadata.endTime = Date.now();
+      
+      this.logger.error(`Failed ${this.serviceType} item inspection`, {
+        customerId,
+        inspectionId,
+        targetItem: inspectionConfig.targetItem,
+        error: error.message,
+        stack: error.stack
+      });
+
+      inspectionResult.fail(error.message);
+      return inspectionResult;
+    }
+  }
+
+  /**
    * 검사 실행 템플릿 메서드
    * 공통 검사 플로우를 정의하고 하위 클래스의 구체적인 검사 로직을 호출
    * @param {string} customerId - 고객 ID
@@ -137,6 +212,18 @@ class BaseInspector {
    */
   async performInspection(awsCredentials, inspectionConfig) {
     throw new Error('performInspection() method must be implemented by subclass');
+  }
+
+  /**
+   * 개별 항목 검사 수행 (추상 메서드)
+   * 하위 클래스에서 구현 가능 (선택사항)
+   * @param {Object} awsCredentials - AWS 자격 증명
+   * @param {Object} inspectionConfig - 검사 설정
+   * @returns {Promise<Object>} 검사 원시 결과
+   */
+  async performItemInspection(awsCredentials, inspectionConfig) {
+    // 기본적으로 전체 검사로 폴백
+    return this.performInspection(awsCredentials, inspectionConfig);
   }
 
   /**

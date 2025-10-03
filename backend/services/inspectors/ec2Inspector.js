@@ -57,6 +57,91 @@ class EC2Inspector extends BaseInspector {
   }
 
   /**
+   * 개별 항목 검사 수행
+   * @param {Object} awsCredentials - AWS 자격 증명
+   * @param {Object} inspectionConfig - 검사 설정
+   * @returns {Promise<Object>} 검사 원시 결과
+   */
+  async performItemInspection(awsCredentials, inspectionConfig) {
+    const targetItem = inspectionConfig.targetItem;
+    const results = {
+      securityGroups: [],
+      instances: [],
+      findings: []
+    };
+
+    try {
+      switch (targetItem) {
+        case 'security_groups':
+          this.updateProgress('Retrieving Security Groups', 20);
+          const securityGroups = await this.getSecurityGroups();
+          results.securityGroups = securityGroups;
+          this.incrementResourceCount(securityGroups.length);
+          
+          this.updateProgress('Analyzing Security Groups', 60);
+          await this.analyzeSecurityGroups(securityGroups);
+          break;
+
+        case 'key_pairs':
+          this.updateProgress('Analyzing Key Pairs', 50);
+          await this.analyzeKeyPairs();
+          break;
+
+        case 'instance_metadata':
+          this.updateProgress('Retrieving EC2 Instances', 30);
+          const instances = await this.getEC2Instances();
+          results.instances = instances;
+          this.incrementResourceCount(instances.length);
+          
+          this.updateProgress('Analyzing Instance Metadata', 70);
+          await this.analyzeInstanceMetadata(instances);
+          break;
+
+        case 'public_access':
+          this.updateProgress('Retrieving Resources', 25);
+          const [sgList, instList] = await Promise.all([
+            this.getSecurityGroups(),
+            this.getEC2Instances()
+          ]);
+          results.securityGroups = sgList;
+          results.instances = instList;
+          this.incrementResourceCount(sgList.length + instList.length);
+          
+          this.updateProgress('Analyzing Public Access', 75);
+          await this.analyzePublicAccess(instList, sgList);
+          break;
+
+        case 'network_access':
+          this.updateProgress('Retrieving Network Configuration', 30);
+          const [secGroups, ec2Instances] = await Promise.all([
+            this.getSecurityGroups(),
+            this.getEC2Instances()
+          ]);
+          results.securityGroups = secGroups;
+          results.instances = ec2Instances;
+          this.incrementResourceCount(secGroups.length + ec2Instances.length);
+          
+          this.updateProgress('Analyzing Network Access', 80);
+          await this.analyzeNetworkAccessibility(ec2Instances, secGroups);
+          break;
+
+        default:
+          // 알 수 없는 항목인 경우 전체 검사로 폴백
+          return this.performInspection(awsCredentials, inspectionConfig);
+      }
+
+      this.updateProgress('Finalizing Analysis', 95);
+      results.findings = this.findings;
+
+      return results;
+
+    } catch (error) {
+      console.error(`❌ [EC2Inspector] Item inspection failed for ${targetItem}:`, error);
+      throw error;
+    }
+  }
+
+  /**
    * 실제 검사 수행 (향상된 진행률 보고)
    * @param {Object} awsCredentials - AWS 자격 증명
    * @param {Object} inspectionConfig - 검사 설정
@@ -659,6 +744,88 @@ class EC2Inspector extends BaseInspector {
         checksCompleted: this.getCompletedChecks().length
       }
     };
+  }
+
+  /**
+   * 키 페어 분석
+   */
+  async analyzeKeyPairs() {
+    try {
+      // 키 페어 관련 검사는 인스턴스 정보에서 추출
+      const instances = await this.getEC2Instances();
+      
+      instances.forEach(instance => {
+        if (!instance.KeyName) {
+          this.addFinding(InspectionFinding.createEC2Finding(
+            instance,
+            'EC2 인스턴스에 키 페어가 설정되지 않았습니다',
+            'SSH 접근을 위해 키 페어를 설정하거나 Session Manager를 사용하세요',
+            'MEDIUM'
+          ));
+        }
+      });
+    } catch (error) {
+      console.error('키 페어 분석 실패:', error);
+    }
+  }
+
+  /**
+   * 인스턴스 메타데이터 분석
+   */
+  async analyzeInstanceMetadata(instances) {
+    instances.forEach(instance => {
+      // IMDSv2 강제 사용 확인
+      if (instance.MetadataOptions?.HttpTokens !== 'required') {
+        this.addFinding(InspectionFinding.createEC2Finding(
+          instance,
+          'EC2 인스턴스에서 IMDSv2가 강제되지 않습니다',
+          'Instance Metadata Service v2 (IMDSv2)를 강제로 사용하도록 설정하세요',
+          'HIGH'
+        ));
+      }
+
+      // 메타데이터 홉 제한 확인
+      if (instance.MetadataOptions?.HttpPutResponseHopLimit > 1) {
+        this.addFinding(InspectionFinding.createEC2Finding(
+          instance,
+          'EC2 인스턴스의 메타데이터 홉 제한이 너무 높습니다',
+          '메타데이터 홉 제한을 1로 설정하여 보안을 강화하세요',
+          'MEDIUM'
+        ));
+      }
+    });
+  }
+
+  /**
+   * 퍼블릭 접근 분석
+   */
+  async analyzePublicAccess(instances, securityGroups) {
+    // 퍼블릭 IP를 가진 인스턴스 확인
+    instances.forEach(instance => {
+      if (instance.PublicIpAddress) {
+        this.addFinding(InspectionFinding.createEC2Finding(
+          instance,
+          'EC2 인스턴스가 퍼블릭 IP 주소를 가지고 있습니다',
+          '필요하지 않은 경우 퍼블릭 IP를 제거하고 NAT Gateway나 VPC 엔드포인트를 사용하세요',
+          'MEDIUM'
+        ));
+      }
+    });
+
+    // 퍼블릭 접근이 가능한 보안 그룹 확인
+    securityGroups.forEach(sg => {
+      sg.IpPermissions?.forEach(rule => {
+        rule.IpRanges?.forEach(ipRange => {
+          if (ipRange.CidrIp === '0.0.0.0/0') {
+            this.addFinding(InspectionFinding.createSecurityGroupFinding(
+              sg,
+              `보안 그룹이 모든 IP(0.0.0.0/0)에서의 접근을 허용합니다 (포트: ${rule.FromPort}-${rule.ToPort})`,
+              '필요한 IP 범위로만 접근을 제한하세요'
+            ));
+          }
+        });
+      });
+    });
   }
 
   /**

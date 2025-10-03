@@ -56,13 +56,26 @@ const startInspection = async (req, res) => {
             }));
         }
 
-        res.status(201).json(ApiResponse.success({
-            message: 'Inspection started successfully',
-            inspectionId: result.data.inspectionId,
-            serviceType: serviceType,
-            status: result.data.status,
-            estimatedDuration: result.estimatedDuration
-        }));
+        // 새로운 배치 방식 응답 처리
+        if (result.data.batchId) {
+            // 배치 방식 (여러 개별 검사)
+            res.status(201).json(ApiResponse.success({
+                message: result.data.message,
+                batchId: result.data.batchId,
+                inspectionJobs: result.data.inspectionJobs,
+                serviceType: serviceType,
+                totalJobs: result.data.inspectionJobs.length
+            }));
+        } else {
+            // 기존 방식 (단일 검사) - 호환성 유지
+            res.status(201).json(ApiResponse.success({
+                message: 'Inspection started successfully',
+                inspectionId: result.data.inspectionId,
+                serviceType: serviceType,
+                status: result.data.status,
+                estimatedDuration: result.estimatedDuration
+            }));
+        }
 
     } catch (error) {
         console.error('Start inspection error:', error);
@@ -413,6 +426,65 @@ const getServiceItemStatus = async (req, res) => {
 };
 
 /**
+ * 검사 항목별 히스토리 조회
+ * GET /api/inspections/items/history
+ */
+const getItemHistory = async (req, res) => {
+    try {
+        const customerId = req.user.userId;
+        const { 
+            serviceType, 
+            limit = 50, 
+            startDate,
+            endDate 
+        } = req.query;
+
+        console.log('=== GET ITEM HISTORY ===');
+        console.log('Customer ID:', customerId);
+        console.log('Service Type:', serviceType);
+
+        // 검사 항목 히스토리 조회
+        const result = await inspectionItemService.getItemHistory(customerId, {
+            serviceType,
+            limit: parseInt(limit),
+            startDate,
+            endDate
+        });
+        
+        if (!result.success) {
+            return res.status(500).json(ApiResponse.error({
+                code: 'ITEM_HISTORY_RETRIEVAL_FAILED',
+                message: 'Failed to retrieve item history',
+                details: result.error
+            }));
+        }
+
+        // 응답 형태로 변환
+        const formattedItems = result.data.map(item => ({
+            ...item,
+            type: 'item',
+            displayTime: item.lastInspectionTime,
+            displayId: `${item.serviceType}-${item.itemId}-${item.lastInspectionTime}`
+        }));
+
+        res.status(200).json(ApiResponse.success({
+            message: 'Item history retrieved successfully',
+            items: formattedItems,
+            totalCount: result.count,
+            hasMore: result.hasMore
+        }));
+
+    } catch (error) {
+        console.error('Get item history error:', error);
+        res.status(500).json(ApiResponse.error({
+            code: 'INTERNAL_ERROR',
+            message: 'Internal server error',
+            details: 'An unexpected error occurred while retrieving item history'
+        }));
+    }
+};
+
+/**
  * 모든 서비스의 검사 항목 상태 조회
  * GET /api/inspections/items/status
  */
@@ -559,6 +631,7 @@ module.exports = {
     getAvailableServices,
     getServiceItemStatus,
     getAllItemStatus,
+    getItemHistory,
     validateDataConsistency,
     recoverDataConsistency
 };
