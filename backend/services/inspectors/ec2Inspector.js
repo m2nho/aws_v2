@@ -73,32 +73,42 @@ class EC2Inspector extends BaseInspector {
     try {
       switch (targetItem) {
         case 'security_groups':
-          this.updateProgress('Retrieving Security Groups', 20);
+          this.updateProgress('보안 그룹 조회 중', 20);
           const securityGroups = await this.getSecurityGroups();
           results.securityGroups = securityGroups;
           this.incrementResourceCount(securityGroups.length);
           
-          this.updateProgress('Analyzing Security Groups', 60);
-          await this.analyzeSecurityGroups(securityGroups);
+          this.updateProgress('보안 그룹 규칙 분석 중', 60);
+          await this.analyzeSecurityGroupRules(securityGroups);
+          break;
+
+        case 'security_group_management':
+          this.updateProgress('보안 그룹 조회 중', 20);
+          const sgManagementList = await this.getSecurityGroups();
+          results.securityGroups = sgManagementList;
+          this.incrementResourceCount(sgManagementList.length);
+          
+          this.updateProgress('보안 그룹 관리 상태 분석 중', 60);
+          await this.analyzeSecurityGroupManagement(sgManagementList);
           break;
 
         case 'key_pairs':
-          this.updateProgress('Analyzing Key Pairs', 50);
+          this.updateProgress('키 페어 분석 중', 50);
           await this.analyzeKeyPairs();
           break;
 
         case 'instance_metadata':
-          this.updateProgress('Retrieving EC2 Instances', 30);
+          this.updateProgress('EC2 인스턴스 조회 중', 30);
           const instances = await this.getEC2Instances();
           results.instances = instances;
           this.incrementResourceCount(instances.length);
           
-          this.updateProgress('Analyzing Instance Metadata', 70);
+          this.updateProgress('인스턴스 메타데이터 분석 중', 70);
           await this.analyzeInstanceMetadata(instances);
           break;
 
         case 'public_access':
-          this.updateProgress('Retrieving Resources', 25);
+          this.updateProgress('리소스 조회 중', 25);
           const [sgList, instList] = await Promise.all([
             this.getSecurityGroups(),
             this.getEC2Instances()
@@ -107,12 +117,12 @@ class EC2Inspector extends BaseInspector {
           results.instances = instList;
           this.incrementResourceCount(sgList.length + instList.length);
           
-          this.updateProgress('Analyzing Public Access', 75);
+          this.updateProgress('퍼블릭 접근 분석 중', 75);
           await this.analyzePublicAccess(instList, sgList);
           break;
 
         case 'network_access':
-          this.updateProgress('Retrieving Network Configuration', 30);
+          this.updateProgress('네트워크 구성 조회 중', 30);
           const [secGroups, ec2Instances] = await Promise.all([
             this.getSecurityGroups(),
             this.getEC2Instances()
@@ -121,7 +131,7 @@ class EC2Inspector extends BaseInspector {
           results.instances = ec2Instances;
           this.incrementResourceCount(secGroups.length + ec2Instances.length);
           
-          this.updateProgress('Analyzing Network Access', 80);
+          this.updateProgress('네트워크 접근 분석 중', 80);
           await this.analyzeNetworkAccessibility(ec2Instances, secGroups);
           break;
 
@@ -130,7 +140,7 @@ class EC2Inspector extends BaseInspector {
           return this.performInspection(awsCredentials, inspectionConfig);
       }
 
-      this.updateProgress('Finalizing Analysis', 95);
+      this.updateProgress('분석 완료 중', 95);
       results.findings = this.findings;
 
       return results;
@@ -156,60 +166,60 @@ class EC2Inspector extends BaseInspector {
 
     try {
       // 1. 보안 그룹 검사
-      this.updateProgress('Retrieving Security Groups', 5, {
-        stepDetails: 'Fetching security group configurations from AWS'
+      this.updateProgress('보안 그룹 조회 중', 5, {
+        stepDetails: 'AWS에서 보안 그룹 구성 정보를 가져오는 중'
       });
 
       const securityGroups = await this.getSecurityGroups();
       results.securityGroups = securityGroups;
       this.incrementResourceCount(securityGroups.length);
 
-      this.updateProgress('Analyzing Security Groups', 15, {
+      this.updateProgress('보안 그룹 분석 중', 15, {
         resourcesProcessed: 0,
         totalResources: securityGroups.length,
-        stepDetails: `Found ${securityGroups.length} security groups to analyze`
+        stepDetails: `분석할 보안 그룹 ${securityGroups.length}개를 발견했습니다`
       });
 
       await this.analyzeSecurityGroups(securityGroups);
 
       // 2. EC2 인스턴스 검사
-      this.updateProgress('Retrieving EC2 Instances', 35, {
-        stepDetails: 'Fetching EC2 instance configurations from AWS'
+      this.updateProgress('EC2 인스턴스 조회 중', 35, {
+        stepDetails: 'AWS에서 EC2 인스턴스 구성 정보를 가져오는 중'
       });
 
       const instances = await this.getEC2Instances();
       results.instances = instances;
       this.incrementResourceCount(instances.length);
 
-      this.updateProgress('Analyzing EC2 Instances', 45, {
+      this.updateProgress('EC2 인스턴스 분석 중', 45, {
         resourcesProcessed: 0,
         totalResources: instances.length,
-        stepDetails: `Found ${instances.length} instances to analyze`
+        stepDetails: `분석할 인스턴스 ${instances.length}개를 발견했습니다`
       });
 
       await this.analyzeEC2Instances(instances);
 
       // 3. 인스턴스-보안그룹 관계 검사
-      this.updateProgress('Analyzing Instance-Security Group Relationships', 70, {
-        stepDetails: 'Checking relationships between instances and security groups'
+      this.updateProgress('인스턴스-보안그룹 관계 분석 중', 70, {
+        stepDetails: '인스턴스와 보안 그룹 간의 관계를 확인하는 중'
       });
 
       await this.analyzeInstanceSecurityRelationships(instances, securityGroups);
 
       // 4. 네트워크 접근성 검사
-      this.updateProgress('Analyzing Network Accessibility', 85, {
-        stepDetails: 'Evaluating network access patterns and risks'
+      this.updateProgress('네트워크 접근성 분석 중', 85, {
+        stepDetails: '네트워크 접근 패턴과 위험 요소를 평가하는 중'
       });
 
       await this.analyzeNetworkAccessibility(instances, securityGroups);
 
       // 5. 최종 결과 정리
-      this.updateProgress('Finalizing Inspection Results', 95, {
-        stepDetails: 'Compiling findings and generating recommendations'
+      this.updateProgress('검사 결과 정리 중', 95, {
+        stepDetails: '발견 사항을 정리하고 권장사항을 생성하는 중'
       });
 
-      this.updateProgress('Inspection Complete', 100, {
-        stepDetails: `Inspection completed successfully. Found ${this.findings.length} findings.`
+      this.updateProgress('검사 완료', 100, {
+        stepDetails: `검사가 성공적으로 완료되었습니다. ${this.findings.length}개의 발견 사항이 있습니다.`
       });
 
     } catch (error) {
@@ -268,10 +278,22 @@ class EC2Inspector extends BaseInspector {
   }
 
   /**
-   * 보안 그룹 분석
+   * 보안 그룹 분석 (전체 검사용)
    * @param {Array} securityGroups - 보안 그룹 목록
    */
   async analyzeSecurityGroups(securityGroups) {
+    // 보안 규칙 검사
+    await this.analyzeSecurityGroupRules(securityGroups);
+    
+    // 관리 상태 검사
+    await this.analyzeSecurityGroupManagement(securityGroups);
+  }
+
+  /**
+   * 보안 그룹 규칙 분석 (보안 중심)
+   * @param {Array} securityGroups - 보안 그룹 목록
+   */
+  async analyzeSecurityGroupRules(securityGroups) {
     for (const sg of securityGroups) {
       try {
         // 1. 과도하게 열린 포트 검사
@@ -280,18 +302,34 @@ class EC2Inspector extends BaseInspector {
         // 2. SSH/RDP 접근 검사
         this.checkSSHRDPAccess(sg);
 
-        // 3. 미사용 보안 그룹 검사
-        this.checkUnusedSecurityGroup(sg);
-
-        // 4. 기본 보안 그룹 사용 검사
+        // 3. 기본 보안 그룹 사용 검사
         this.checkDefaultSecurityGroup(sg);
 
-        // 5. 보안 그룹 설명 검사
+      } catch (error) {
+        this.recordError(error, {
+          operation: 'analyzeSecurityGroupRules',
+          securityGroupId: sg.GroupId
+        });
+      }
+    }
+  }
+
+  /**
+   * 보안 그룹 관리 상태 분석 (관리 중심)
+   * @param {Array} securityGroups - 보안 그룹 목록
+   */
+  async analyzeSecurityGroupManagement(securityGroups) {
+    for (const sg of securityGroups) {
+      try {
+        // 1. 미사용 보안 그룹 검사
+        this.checkUnusedSecurityGroup(sg);
+
+        // 2. 보안 그룹 설명 검사
         this.checkSecurityGroupDescription(sg);
 
       } catch (error) {
         this.recordError(error, {
-          operation: 'analyzeSecurityGroups',
+          operation: 'analyzeSecurityGroupManagement',
           securityGroupId: sg.GroupId
         });
       }
@@ -316,7 +354,7 @@ class EC2Inspector extends BaseInspector {
 
         const finding = InspectionFinding.createSecurityGroupFinding(
           securityGroup,
-          `Security group allows unrestricted access (0.0.0.0/0) on port ${portRange}`,
+          `보안 그룹이 포트 ${portRange}에서 모든 IP(0.0.0.0/0)의 무제한 접근을 허용합니다`,
           `모든 트래픽을 허용하는 대신 특정 IP 범위나 보안 그룹으로 접근을 제한하세요`
         );
         finding.riskLevel = 'HIGH';
@@ -349,7 +387,7 @@ class EC2Inspector extends BaseInspector {
             const service = port === 22 ? 'SSH' : 'RDP';
             const finding = InspectionFinding.createSecurityGroupFinding(
               securityGroup,
-              `${service} access (port ${port}) is open to the internet (0.0.0.0/0)`,
+              `${service} 접근(포트 ${port})이 인터넷(0.0.0.0/0)에 개방되어 있습니다`,
               `${service} 접근을 특정 IP 주소로 제한하거나 VPN/배스천 호스트를 사용하세요`
             );
             finding.riskLevel = 'CRITICAL';
@@ -388,7 +426,7 @@ class EC2Inspector extends BaseInspector {
       if (hasCustomRules) {
         const finding = InspectionFinding.createSecurityGroupFinding(
           securityGroup,
-          'Default security group has custom rules configured',
+          '기본 보안 그룹에 사용자 정의 규칙이 설정되어 있습니다',
           '기본 보안 그룹을 수정하는 대신 전용 보안 그룹을 생성하세요'
         );
         finding.riskLevel = 'MEDIUM';
@@ -409,7 +447,7 @@ class EC2Inspector extends BaseInspector {
 
       const finding = InspectionFinding.createSecurityGroupFinding(
         securityGroup,
-        'Security group lacks meaningful description',
+        '보안 그룹에 의미 있는 설명이 없습니다',
         '이 보안 그룹의 목적과 범위를 식별하는 데 도움이 되는 설명 정보를 추가하세요'
       );
       finding.riskLevel = 'LOW';
@@ -459,7 +497,7 @@ class EC2Inspector extends BaseInspector {
     if (instance.PublicIpAddress) {
       const finding = InspectionFinding.createEC2Finding(
         instance,
-        'Instance has a public IP address assigned',
+        '인스턴스에 퍼블릭 IP 주소가 할당되어 있습니다',
         '더 나은 보안을 위해 NAT Gateway나 VPN과 함께 프라이빗 서브넷 사용을 고려하세요',
         'MEDIUM'
       );
@@ -479,7 +517,7 @@ class EC2Inspector extends BaseInspector {
     if (!metadataOptions) {
       const finding = InspectionFinding.createEC2Finding(
         instance,
-        'Instance metadata service configuration is not available',
+        '인스턴스 메타데이터 서비스 구성 정보를 사용할 수 없습니다',
         '향상된 보안을 위해 IMDSv2가 강제로 적용되도록 하세요',
         'MEDIUM'
       );
@@ -492,7 +530,7 @@ class EC2Inspector extends BaseInspector {
     if (metadataOptions.HttpTokens !== 'required') {
       const finding = InspectionFinding.createEC2Finding(
         instance,
-        'Instance allows IMDSv1 (Instance Metadata Service version 1)',
+        '인스턴스가 IMDSv1(인스턴스 메타데이터 서비스 버전 1)을 허용합니다',
         '더 나은 보안을 위해 HttpTokens를 "required"로 설정하여 IMDSv2를 강제하세요',
         'HIGH'
       );
@@ -505,7 +543,7 @@ class EC2Inspector extends BaseInspector {
     if (metadataOptions.HttpEndpoint === 'disabled') {
       const finding = InspectionFinding.createEC2Finding(
         instance,
-        'Instance metadata service is completely disabled',
+        '인스턴스 메타데이터 서비스가 완전히 비활성화되어 있습니다',
         '메타데이터 서비스를 완전히 비활성화하는 대신 IMDSv2 활성화를 고려하세요',
         'LOW'
       );
@@ -522,7 +560,7 @@ class EC2Inspector extends BaseInspector {
     if (!instance.Monitoring || instance.Monitoring.State !== 'enabled') {
       const finding = InspectionFinding.createEC2Finding(
         instance,
-        'Detailed monitoring is not enabled for this instance',
+        '이 인스턴스에 대해 세부 모니터링이 활성화되지 않았습니다',
         '인스턴스 성능에 대한 더 나은 가시성을 위해 세부 모니터링을 활성화하세요',
         'LOW'
       );
@@ -542,7 +580,7 @@ class EC2Inspector extends BaseInspector {
         if (mapping.Ebs && !mapping.Ebs.Encrypted) {
           const finding = InspectionFinding.createEC2Finding(
             instance,
-            `EBS volume ${mapping.Ebs.VolumeId} is not encrypted`,
+            `EBS 볼륨 ${mapping.Ebs.VolumeId}이 암호화되지 않았습니다`,
             '저장 데이터 보호를 위해 EBS 암호화를 활성화하세요',
             'HIGH'
           );
@@ -576,7 +614,7 @@ class EC2Inspector extends BaseInspector {
       if (!usedSecurityGroupIds.has(sg.GroupId) && sg.GroupName !== 'default') {
         const finding = InspectionFinding.createSecurityGroupFinding(
           sg,
-          'Security group is not attached to any instances',
+          '보안 그룹이 어떤 인스턴스에도 연결되어 있지 않습니다',
           '공격 표면을 줄이고 관리를 개선하기 위해 사용하지 않는 보안 그룹을 제거하세요'
         );
         finding.riskLevel = 'LOW';
@@ -591,7 +629,7 @@ class EC2Inspector extends BaseInspector {
       if (instance.SecurityGroups && instance.SecurityGroups.length > 5) {
         const finding = InspectionFinding.createEC2Finding(
           instance,
-          `Instance has ${instance.SecurityGroups.length} security groups attached`,
+          `인스턴스에 ${instance.SecurityGroups.length}개의 보안 그룹이 연결되어 있습니다`,
           '관리를 단순화하기 위해 보안 그룹 통합을 고려하세요',
           'LOW'
         );
@@ -657,7 +695,7 @@ class EC2Inspector extends BaseInspector {
 
             const finding = InspectionFinding.createEC2Finding(
               instance,
-              `Instance with public IP allows ${services[port]} access (port ${port}) from anywhere`,
+              `퍼블릭 IP를 가진 인스턴스가 모든 곳에서 ${services[port]} 접근(포트 ${port})을 허용합니다`,
               `${services[port]} 접근을 특정 IP 범위로 제한하거나 프라이빗 네트워킹을 사용하세요`,
               'CRITICAL'
             );

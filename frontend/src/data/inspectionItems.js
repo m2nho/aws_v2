@@ -20,6 +20,13 @@ export const inspectionItems = {
             enabled: true
           },
           {
+            id: 'security_group_management',
+            name: '보안 그룹 관리',
+            description: '보안 그룹 설명, 명명 규칙, 관리 상태를 검사합니다',
+            severity: 'LOW',
+            enabled: false
+          },
+          {
             id: 'key_pairs',
             name: '키 페어 관리',
             description: '사용되지 않는 키 페어나 보안 위험을 검사합니다',
