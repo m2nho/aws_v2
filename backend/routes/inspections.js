@@ -42,7 +42,7 @@ router.get('/history', inspectionController.getInspectionHistory);
  * 검사 항목별 히스토리 조회
  * 각 검사 항목별로 개별 기록을 시간순으로 표시
  */
-router.get('/items/history', inspectionController.getItemHistory);
+router.get('/items/history', inspectionController.getItemInspectionHistory);
 
 /**
  * GET /api/inspections/items/status

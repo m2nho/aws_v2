@@ -115,6 +115,20 @@ class InspectionService {
       
       const executionPromises = inspectionJobs.map(job => {
         console.log(`🔍 [InspectionService] Starting job: ${job.itemName} (${job.inspectionId})`);
+        
+        // WebSocket 연결 상태 확인 및 초기 상태 브로드캐스트
+        const wsStats = webSocketService.getConnectionStats();
+        console.log(`🔌 [InspectionService] WebSocket stats:`, wsStats);
+        
+        // 검사 시작 즉시 WebSocket으로 상태 브로드캐스트
+        webSocketService.broadcastStatusChange(job.inspectionId, {
+          status: 'STARTING',
+          message: `Starting ${job.itemName} inspection`,
+          timestamp: Date.now(),
+          itemId: job.itemId,
+          itemName: job.itemName
+        });
+        
         return this.executeItemInspectionAsync(
           customerId,
           job.inspectionId,

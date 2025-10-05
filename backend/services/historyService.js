@@ -23,7 +23,8 @@ const { dynamoDBDocClient } = require('../config/aws');
 class HistoryService {
   constructor() {
     this.client = dynamoDBDocClient;
-    this.tableName = process.env.AWS_DYNAMODB_INSPECTION_HISTORY_TABLE || 'InspectionHistory';
+    // 단일 테이블 구조: InspectionItemResults 테이블만 사용
+    this.tableName = process.env.AWS_DYNAMODB_INSPECTION_ITEMS_TABLE || 'InspectionItemResults';
   }
 
   /**
@@ -99,7 +100,7 @@ class HistoryService {
   }
 
   /**
-   * 특정 검사 이력 조회
+   * 특정 검사 이력 조회 (단일 테이블 구조)
    * 
    * @param {string} customerId - 고객 ID
    * @param {string} inspectionId - 검사 ID
@@ -107,84 +108,400 @@ class HistoryService {
    */
   async getInspectionHistory(customerId, inspectionId) {
     try {
+      console.log('🔍 [HistoryService] Getting inspection history:', { customerId, inspectionId });
+      
+      // 단일 테이블에서 특정 검사 ID의 모든 항목 조회
       const params = {
         TableName: this.tableName,
-        Key: {
-          customerId,
-          inspectionId
+        FilterExpression: 'customerId = :customerId AND lastInspectionId = :inspectionId AND recordType = :recordType',
+        ExpressionAttributeValues: {
+          ':customerId': customerId,
+          ':inspectionId': inspectionId,
+          ':recordType': 'HISTORY'
         }
       };
 
-      const command = new GetCommand(params);
+      const command = new ScanCommand(params);
       const result = await this.client.send(command);
 
-      if (!result.Item) {
+      if (!result.Items || result.Items.length === 0) {
+        console.log('⚠️ [HistoryService] No inspection history found');
         return {
           success: false,
           error: '검사 이력을 찾을 수 없습니다'
         };
       }
 
+      // 검사 결과를 집계하여 반환
+      const inspectionData = this.aggregateInspectionResults(result.Items, inspectionId);
+      
+      console.log('✅ [HistoryService] Inspection history found:', {
+        inspectionId,
+        itemCount: result.Items.length,
+        hasResults: !!inspectionData.results
+      });
+
       return {
         success: true,
-        data: result.Item
+        data: inspectionData
       };
     } catch (error) {
-      console.error('검사 이력 조회 실패:', error);
+      console.error('❌ [HistoryService] 검사 이력 조회 실패:', error);
       throw new Error(`검사 이력 조회 실패: ${error.message}`);
     }
   }
 
   /**
-   * 고객별 검사 이력 목록 조회 (날짜순 정렬)
+   * 검사 항목들을 집계하여 전체 검사 결과로 변환
+   * @param {Array} items - 검사 항목들
+   * @param {string} inspectionId - 검사 ID
+   * @returns {Object} 집계된 검사 결과
+   */
+  aggregateInspectionResults(items, inspectionId) {
+    if (!items || items.length === 0) {
+      return null;
+    }
+
+    // 첫 번째 항목에서 공통 정보 추출
+    const firstItem = items[0];
+    
+    // 모든 findings 수집
+    const allFindings = [];
+    let totalResources = 0;
+    let highRiskIssues = 0;
+    let mediumRiskIssues = 0;
+    let lowRiskIssues = 0;
+
+    items.forEach(item => {
+      if (item.findings && Array.isArray(item.findings)) {
+        allFindings.push(...item.findings);
+      }
+      
+      // 리스크 레벨별 집계
+      if (item.findings) {
+        item.findings.forEach(finding => {
+          switch (finding.riskLevel) {
+            case 'HIGH':
+              highRiskIssues++;
+              break;
+            case 'MEDIUM':
+              mediumRiskIssues++;
+              break;
+            case 'LOW':
+              lowRiskIssues++;
+              break;
+          }
+        });
+      }
+      
+      totalResources += item.resourcesScanned || 1; // 기본값 1로 설정
+    });
+
+    return {
+      inspectionId: inspectionId,
+      customerId: firstItem.customerId,
+      serviceType: firstItem.serviceType,
+      status: 'COMPLETED',
+      startTime: firstItem.lastInspectionTime,
+      endTime: firstItem.lastInspectionTime,
+      duration: firstItem.duration || 0,
+      results: {
+        summary: {
+          totalResources,
+          highRiskIssues,
+          mediumRiskIssues,
+          lowRiskIssues,
+          score: this.calculateOverallScore(highRiskIssues, mediumRiskIssues, lowRiskIssues)
+        },
+        findings: allFindings
+      },
+      assumeRoleArn: firstItem.assumeRoleArn,
+      metadata: {
+        version: '1.0',
+        itemCount: items.length
+      }
+    };
+  }
+
+  /**
+   * 전체 점수 계산
+   * @param {number} high - 높은 위험 이슈 수
+   * @param {number} medium - 중간 위험 이슈 수  
+   * @param {number} low - 낮은 위험 이슈 수
+   * @returns {number} 점수 (0-100)
+   */
+  calculateOverallScore(high, medium, low) {
+    const totalIssues = high + medium + low;
+    if (totalIssues === 0) return 100;
+    
+    // 가중치: HIGH=3, MEDIUM=2, LOW=1
+    const weightedScore = (high * 3) + (medium * 2) + (low * 1);
+    const maxPossibleScore = totalIssues * 3;
+    
+    return Math.max(0, Math.round(100 - (weightedScore / maxPossibleScore) * 100));
+  }
+
+  /**
+   * 항목별 검사 이력 조회 (단일 테이블 구조)
+   * @param {string} customerId - 고객 ID
+   * @param {Object} options - 조회 옵션
+   * @returns {Promise<Object>} 항목별 검사 이력 목록
+   */
+  async getItemInspectionHistory(customerId, options = {}) {
+    try {
+      console.log('🔍 [HistoryService] Getting item inspection history:', { customerId, options });
+      
+      const { limit = 50, serviceType } = options;
+
+      // 단일 테이블에서 HISTORY 레코드만 조회
+      let filterExpression = 'customerId = :customerId AND recordType = :recordType';
+      const expressionAttributeValues = {
+        ':customerId': customerId,
+        ':recordType': 'HISTORY'
+      };
+
+      // 서비스 타입 필터 추가
+      if (serviceType && serviceType !== 'all') {
+        filterExpression += ' AND serviceType = :serviceType';
+        expressionAttributeValues[':serviceType'] = serviceType;
+      }
+
+      const params = {
+        TableName: this.tableName,
+        FilterExpression: filterExpression,
+        ExpressionAttributeValues: expressionAttributeValues
+      };
+
+      const command = new ScanCommand(params);
+      const result = await this.client.send(command);
+
+      if (!result.Items || result.Items.length === 0) {
+        console.log('⚠️ [HistoryService] No item inspection history found');
+        return {
+          success: true,
+          data: {
+            items: [],
+            count: 0
+          }
+        };
+      }
+
+      // 최신순으로 정렬
+      const sortedItems = result.Items.sort((a, b) => (b.lastInspectionTime || 0) - (a.lastInspectionTime || 0));
+
+      // 제한 수만큼 자르기
+      const limitedItems = sortedItems.slice(0, limit);
+
+      console.log('✅ [HistoryService] Item inspection history found:', {
+        totalItems: sortedItems.length,
+        returnedItems: limitedItems.length
+      });
+
+      return {
+        success: true,
+        data: {
+          items: limitedItems,
+          count: limitedItems.length
+        }
+      };
+    } catch (error) {
+      console.error('❌ [HistoryService] 항목별 검사 이력 조회 실패:', error);
+      throw new Error(`항목별 검사 이력 조회 실패: ${error.message}`);
+    }
+  }
+
+  /**
+   * 고객별 검사 이력 목록 조회 (단일 테이블 구조)
    * Requirements: 3.2 - WHEN 고객이 검사 이력을 요청 THEN 시스템은 날짜순으로 정렬된 검사 이력을 표시해야 합니다
    * 
    * @param {string} customerId - 고객 ID
    * @param {Object} options - 조회 옵션
    * @param {number} options.limit - 조회 제한 수
-   * @param {Object} options.lastEvaluatedKey - 페이지네이션 키
-   * @param {boolean} options.ascending - 오름차순 정렬 여부 (기본: false - 최신순)
+   * @param {string} options.serviceType - 서비스 타입 필터
    * @returns {Promise<Object>} 검사 이력 목록
    */
   async getInspectionHistoryList(customerId, options = {}) {
     try {
-      const {
-        limit = 50,
-        lastEvaluatedKey = null,
-        ascending = false
-      } = options;
+      console.log('🔍 [HistoryService] Getting inspection history list:', { customerId, options });
+      
+      const { limit = 20, serviceType } = options;
+
+      // 단일 테이블에서 HISTORY 레코드만 조회
+      let filterExpression = 'customerId = :customerId AND recordType = :recordType';
+      const expressionAttributeValues = {
+        ':customerId': customerId,
+        ':recordType': 'HISTORY'
+      };
+
+      // 서비스 타입 필터 추가
+      if (serviceType && serviceType !== 'all') {
+        filterExpression += ' AND serviceType = :serviceType';
+        expressionAttributeValues[':serviceType'] = serviceType;
+      }
 
       const params = {
         TableName: this.tableName,
-        IndexName: 'TimestampIndex',
-        KeyConditionExpression: 'customerId = :customerId',
-        ExpressionAttributeValues: {
-          ':customerId': customerId
-        },
-        ScanIndexForward: ascending, // false = 내림차순 (최신순)
-        Limit: limit
+        FilterExpression: filterExpression,
+        ExpressionAttributeValues: expressionAttributeValues
       };
 
-      if (lastEvaluatedKey) {
-        params.ExclusiveStartKey = lastEvaluatedKey;
+      const command = new ScanCommand(params);
+      const result = await this.client.send(command);
+
+      if (!result.Items || result.Items.length === 0) {
+        console.log('⚠️ [HistoryService] No inspection history found');
+        return {
+          success: true,
+          data: {
+            inspections: [],
+            count: 0,
+            hasMore: false
+          }
+        };
       }
 
-      const command = new QueryCommand(params);
-      const result = await this.client.send(command);
+      // 검사 ID별로 그룹화
+      const inspectionGroups = {};
+      result.Items.forEach(item => {
+        const inspectionId = item.lastInspectionId;
+        if (!inspectionGroups[inspectionId]) {
+          inspectionGroups[inspectionId] = [];
+        }
+        inspectionGroups[inspectionId].push(item);
+      });
+
+      // 각 검사별로 집계된 결과 생성
+      const inspections = Object.keys(inspectionGroups).map(inspectionId => {
+        const items = inspectionGroups[inspectionId];
+        return this.aggregateInspectionResults(items, inspectionId);
+      }).filter(inspection => inspection !== null);
+
+      // 최신순으로 정렬
+      inspections.sort((a, b) => (b.startTime || 0) - (a.startTime || 0));
+
+      // 제한 수만큼 자르기
+      const limitedInspections = inspections.slice(0, limit);
+
+      console.log('✅ [HistoryService] Inspection history list found:', {
+        totalInspections: inspections.length,
+        returnedInspections: limitedInspections.length
+      });
 
       return {
         success: true,
         data: {
-          items: result.Items || [],
-          count: result.Count || 0,
-          lastEvaluatedKey: result.LastEvaluatedKey || null,
-          hasMore: !!result.LastEvaluatedKey
+          inspections: limitedInspections,
+          count: limitedInspections.length,
+          hasMore: inspections.length > limit
         }
       };
     } catch (error) {
-      console.error('검사 이력 목록 조회 실패:', error);
+      console.error('❌ [HistoryService] 검사 이력 목록 조회 실패:', error);
       throw new Error(`검사 이력 목록 조회 실패: ${error.message}`);
     }
+  }
+
+  /**
+   * 최신 검사 결과 조회 (리소스 검사 탭용)
+   * @param {string} customerId - 고객 ID
+   * @param {string} serviceType - 서비스 타입 (선택사항)
+   * @returns {Promise<Object>} 최신 검사 결과들
+   */
+  async getLatestInspectionResults(customerId, serviceType = null) {
+    try {
+      console.log('🔍 [HistoryService] Getting latest inspection results:', { customerId, serviceType });
+      
+      let filterExpression = 'customerId = :customerId AND recordType = :recordType';
+      const expressionAttributeValues = {
+        ':customerId': customerId,
+        ':recordType': 'LATEST'
+      };
+
+      // 서비스 타입 필터 추가
+      if (serviceType) {
+        filterExpression += ' AND serviceType = :serviceType';
+        expressionAttributeValues[':serviceType'] = serviceType;
+      }
+
+      const params = {
+        TableName: this.tableName,
+        FilterExpression: filterExpression,
+        ExpressionAttributeValues: expressionAttributeValues
+      };
+
+      const command = new ScanCommand(params);
+      const result = await this.client.send(command);
+
+      console.log('✅ [HistoryService] Latest inspection results found:', {
+        itemCount: result.Items?.length || 0
+      });
+
+      return {
+        success: true,
+        data: {
+          services: this.groupItemsByService(result.Items || [])
+        }
+      };
+    } catch (error) {
+      console.error('❌ [HistoryService] 최신 검사 결과 조회 실패:', error);
+      throw new Error(`최신 검사 결과 조회 실패: ${error.message}`);
+    }
+  }
+
+  /**
+   * 검사 항목들을 서비스별로 그룹화
+   * @param {Array} items - 검사 항목들
+   * @returns {Object} 서비스별 그룹화된 결과
+   */
+  groupItemsByService(items) {
+    const services = {};
+    
+    items.forEach(item => {
+      const serviceType = item.serviceType;
+      if (!services[serviceType]) {
+        services[serviceType] = {};
+      }
+      
+      // itemKey에서 itemId 추출
+      // LATEST 레코드의 경우: "EC2#security_groups#LATEST" -> "security_groups"
+      const keyParts = item.itemKey.split('#');
+      let itemId;
+      
+      if (keyParts.length >= 3 && keyParts[2] === 'LATEST') {
+        // LATEST 레코드: EC2#security_groups#LATEST
+        itemId = keyParts[1];
+      } else {
+        // 다른 형태의 키
+        itemId = keyParts[keyParts.length - 1];
+      }
+      
+      console.log('🔍 [HistoryService] Processing item:', {
+        itemKey: item.itemKey,
+        serviceType,
+        itemId,
+        status: item.status,
+        findingsCount: item.findings?.length || 0
+      });
+      
+      services[serviceType][itemId] = {
+        status: item.status,
+        lastInspectionTime: item.lastInspectionTime,
+        lastInspectionId: item.lastInspectionId,
+        issuesFound: item.issuesFound || (item.findings ? item.findings.length : 0),
+        resourcesScanned: item.resourcesScanned || 1, // 기본값 설정
+        findings: item.findings || []
+      };
+    });
+    
+    console.log('✅ [HistoryService] Grouped services:', Object.keys(services));
+    Object.entries(services).forEach(([serviceType, items]) => {
+      console.log(`  ${serviceType}: ${Object.keys(items).length}개 항목`);
+      Object.entries(items).forEach(([itemId, itemData]) => {
+        console.log(`    - ${itemId}: ${itemData.status} (문제: ${itemData.issuesFound}개)`);
+      });
+    });
+    
+    return services;
   }
 
   /**

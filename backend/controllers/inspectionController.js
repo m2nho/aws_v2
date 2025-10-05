@@ -192,13 +192,12 @@ const getInspectionHistory = async (req, res) => {
             endDate: endDate ? new Date(endDate).getTime() : undefined
         };
 
-        // 검사 이력 조회
+        // 검사 이력 조회 (단일 테이블 구조)
         const result = await historyService.getInspectionHistoryList(
             customerId,
             {
                 limit: queryLimit,
-                lastEvaluatedKey,
-                ascending: false // 최신순 정렬
+                serviceType
             }
         );
 
@@ -212,8 +211,7 @@ const getInspectionHistory = async (req, res) => {
 
         res.status(200).json(ApiResponse.success({
             message: 'Inspection history retrieved successfully',
-            inspections: result.data.items,
-            lastEvaluatedKey: result.data.lastEvaluatedKey,
+            inspections: result.data.inspections,
             hasMore: result.data.hasMore,
             totalCount: result.data.count
         }));
@@ -495,9 +493,14 @@ const getAllItemStatus = async (req, res) => {
         console.log('=== GET ALL ITEM STATUS ===');
         console.log('Customer ID:', customerId);
 
-        const result = await inspectionItemService.getAllItemResults(customerId);
+        // 단일 테이블 구조에서 최신 검사 결과 조회
+        const historyService = require('../services/historyService');
+        const result = await historyService.getLatestInspectionResults(customerId);
         
-        console.log('Query result:', JSON.stringify(result, null, 2));
+        console.log('=== getAllItemStatus Debug ===');
+        console.log('Query result success:', result.success);
+        console.log('Query result data keys:', result.data ? Object.keys(result.data) : 'no data');
+        console.log('Query result data:', JSON.stringify(result.data, null, 2));
 
         if (!result.success) {
             return res.status(500).json(ApiResponse.error({
@@ -507,10 +510,10 @@ const getAllItemStatus = async (req, res) => {
             }));
         }
 
-        res.status(200).json(ApiResponse.success({
-            message: 'All item status retrieved successfully',
-            services: result.data
-        }));
+        console.log('=== Response Debug ===');
+        console.log('About to send response with data:', result.data);
+        
+        res.status(200).json(ApiResponse.success(result.data));
 
     } catch (error) {
         console.error('Get all item status error:', error);
@@ -518,6 +521,59 @@ const getAllItemStatus = async (req, res) => {
             code: 'INTERNAL_ERROR',
             message: 'Internal server error',
             details: 'An unexpected error occurred while retrieving all item status'
+        }));
+    }
+};
+
+/**
+ * 항목별 검사 이력 조회
+ * GET /api/inspections/items/history
+ */
+const getItemInspectionHistory = async (req, res) => {
+    try {
+        const customerId = req.user.userId;
+        const { 
+            serviceType, 
+            limit = 50
+        } = req.query;
+
+        console.log('=== GET ITEM INSPECTION HISTORY ===');
+        console.log('Customer ID:', customerId);
+        console.log('Service Type:', serviceType);
+        console.log('Limit:', limit);
+
+        // 쿼리 파라미터 검증
+        const queryLimit = Math.min(parseInt(limit) || 50, 100); // 최대 100개로 제한
+
+        // 항목별 검사 이력 조회
+        const result = await historyService.getItemInspectionHistory(
+            customerId,
+            {
+                limit: queryLimit,
+                serviceType
+            }
+        );
+
+        if (!result.success) {
+            return res.status(500).json(ApiResponse.error({
+                code: result.error?.code || 'ITEM_HISTORY_RETRIEVAL_FAILED',
+                message: result.error?.message || 'Failed to retrieve item inspection history',
+                details: result.error?.details || 'An error occurred while retrieving item inspection history'
+            }));
+        }
+
+        res.status(200).json(ApiResponse.success({
+            message: 'Item inspection history retrieved successfully',
+            items: result.data.items,
+            totalCount: result.data.count
+        }));
+
+    } catch (error) {
+        console.error('Get item inspection history error:', error);
+        res.status(500).json(ApiResponse.error({
+            code: 'INTERNAL_ERROR',
+            message: 'Internal server error',
+            details: 'An unexpected error occurred while retrieving item inspection history'
         }));
     }
 };
@@ -632,6 +688,7 @@ module.exports = {
     getServiceItemStatus,
     getAllItemStatus,
     getItemHistory,
+    getItemInspectionHistory,
     validateDataConsistency,
     recoverDataConsistency
 };
