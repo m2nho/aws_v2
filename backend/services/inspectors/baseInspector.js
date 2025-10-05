@@ -71,22 +71,22 @@ class BaseInspector {
       });
 
       this.metadata.startTime = Date.now();
-      
+
       // 사전 검증
       await this.preInspectionValidation(awsCredentials, inspectionConfig);
-      
+
       // 개별 항목 검사 실행
       const results = await this.performItemInspection(awsCredentials, inspectionConfig);
-      
+
       // 사후 처리
       await this.postInspectionProcessing(results);
-      
+
       this.metadata.endTime = Date.now();
-      
+
       // 검사 결과 완료 처리
       const finalResults = this.buildFinalResults(results);
       inspectionResult.complete(finalResults);
-      
+
       this.logger.info(`Completed ${this.serviceType} item inspection`, {
         customerId,
         inspectionId,
@@ -100,7 +100,7 @@ class BaseInspector {
 
     } catch (error) {
       this.metadata.endTime = Date.now();
-      
+
       this.logger.error(`Failed ${this.serviceType} item inspection`, {
         customerId,
         inspectionId,
@@ -144,22 +144,22 @@ class BaseInspector {
       });
 
       this.metadata.startTime = Date.now();
-      
+
       // 사전 검증
       await this.preInspectionValidation(awsCredentials, inspectionConfig);
-      
+
       // 실제 검사 실행
       const results = await this.performInspection(awsCredentials, inspectionConfig);
-      
+
       // 사후 처리
       await this.postInspectionProcessing(results);
-      
+
       this.metadata.endTime = Date.now();
-      
+
       // 검사 결과 완료 처리
       const finalResults = this.buildFinalResults(results);
       inspectionResult.complete(finalResults);
-      
+
       this.logger.info(`Completed ${this.serviceType} inspection`, {
         customerId,
         inspectionId,
@@ -172,7 +172,7 @@ class BaseInspector {
 
     } catch (error) {
       this.metadata.endTime = Date.now();
-      
+
       this.logger.error(`Failed ${this.serviceType} inspection`, {
         customerId,
         inspectionId,
@@ -242,7 +242,7 @@ class BaseInspector {
    */
   buildFinalResults(rawResults) {
     const summary = InspectionFinding.generateSummary(this.findings);
-    
+
     return {
       summary: {
         totalResources: this.metadata.resourcesScanned,
@@ -270,7 +270,7 @@ class BaseInspector {
    */
   buildPartialResults(error) {
     const summary = InspectionFinding.generateSummary(this.findings);
-    
+
     return {
       summary: {
         totalResources: this.metadata.resourcesScanned,
@@ -354,7 +354,7 @@ class BaseInspector {
       low: 1
     };
 
-    const totalWeightedIssues = 
+    const totalWeightedIssues =
       (summary.criticalIssues * weights.critical) +
       (summary.highRiskIssues * weights.high) +
       (summary.mediumRiskIssues * weights.medium) +
@@ -410,7 +410,7 @@ class BaseInspector {
    */
   async retryableApiCall(apiCall, operationName) {
     let lastError;
-    
+
     for (let attempt = 1; attempt <= this.options.maxRetries; attempt++) {
       try {
         this.logger.debug(`Attempting ${operationName}`, { attempt });
@@ -418,7 +418,7 @@ class BaseInspector {
         return result;
       } catch (error) {
         lastError = error;
-        
+
         if (attempt === this.options.maxRetries) {
           this.logger.error(`Failed ${operationName} after ${attempt} attempts`, {
             error: error.message
@@ -433,7 +433,7 @@ class BaseInspector {
             error: error.message,
             retryDelay: this.options.retryDelay
           });
-          
+
           await this.sleep(this.options.retryDelay * attempt);
         } else {
           // 재시도 불가능한 오류는 즉시 throw
@@ -460,7 +460,7 @@ class BaseInspector {
       'NetworkingError'
     ];
 
-    return retryableErrorCodes.some(code => 
+    return retryableErrorCodes.some(code =>
       error.code === code || (error.message && error.message.includes(code))
     );
   }
@@ -481,10 +481,14 @@ class BaseInspector {
   createLogger() {
     return {
       debug: (message, meta = {}) => {
-        console.log(`[DEBUG] [${this.serviceType}Inspector] ${message}`, meta);
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`[DEBUG] [${this.serviceType}Inspector] ${message}`, meta);
+        }
       },
       info: (message, meta = {}) => {
-        console.log(`[INFO] [${this.serviceType}Inspector] ${message}`, meta);
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`[INFO] [${this.serviceType}Inspector] ${message}`, meta);
+        }
       },
       warn: (message, meta = {}) => {
         console.warn(`[WARN] [${this.serviceType}Inspector] ${message}`, meta);
@@ -543,7 +547,7 @@ class BaseInspector {
     this.metadata.currentStep = currentStep;
     this.metadata.progress = progress;
     this.metadata.lastUpdated = Date.now();
-    
+
     // 추가 데이터 병합
     if (additionalData.resourcesProcessed !== undefined) {
       this.metadata.resourcesProcessed = additionalData.resourcesProcessed;

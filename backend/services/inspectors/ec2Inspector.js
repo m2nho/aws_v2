@@ -146,7 +146,7 @@ class EC2Inspector extends BaseInspector {
       return results;
 
     } catch (error) {
-      console.error(`❌ [EC2Inspector] Item inspection failed for ${targetItem}:`, error);
+
       throw error;
     }
   }
@@ -803,7 +803,7 @@ class EC2Inspector extends BaseInspector {
         }
       });
     } catch (error) {
-      console.error('키 페어 분석 실패:', error);
+
     }
   }
 

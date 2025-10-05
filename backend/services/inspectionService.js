@@ -84,7 +84,7 @@ class InspectionService {
           itemName: this.getItemName(serviceType, firstItemId)
         });
         
-        console.log(`🔍 [InspectionService] Testing with single item: ${firstItemId} (${inspectionId})`);
+
       }
 
       // 각 검사 작업의 상태 초기화
@@ -110,15 +110,13 @@ class InspectionService {
       }
 
       // 비동기로 각 검사 실행
-      console.log(`🚀 [InspectionService] Starting ${inspectionJobs.length} inspection jobs:`, 
-                  inspectionJobs.map(job => `${job.itemName} (${job.inspectionId})`));
+
       
       const executionPromises = inspectionJobs.map(job => {
-        console.log(`🔍 [InspectionService] Starting job: ${job.itemName} (${job.inspectionId})`);
+
         
         // WebSocket 연결 상태 확인 및 초기 상태 브로드캐스트
         const wsStats = webSocketService.getConnectionStats();
-        console.log(`🔌 [InspectionService] WebSocket stats:`, wsStats);
         
         // 검사 시작 즉시 WebSocket으로 상태 브로드캐스트
         webSocketService.broadcastStatusChange(job.inspectionId, {
@@ -313,7 +311,6 @@ class InspectionService {
           await this.emergencySaveInspectionResult(inspectionResult);
           saveSuccessful = true;
         } catch (emergencyError) {
-          console.log('❌ [InspectionService] Emergency save also failed:', emergencyError.message);
         }
       }
       
@@ -448,13 +445,10 @@ class InspectionService {
         });
         
         // 즉시 강제 저장 시도
-        console.log('🚨 [InspectionService] Attempting immediate emergency save...');
         try {
           await this.emergencySaveInspectionResult(inspectionResult);
           saveSuccessful = true;
-          console.log('✅ [InspectionService] Emergency save successful');
         } catch (emergencyError) {
-          console.log('❌ [InspectionService] Emergency save also failed:', emergencyError.message);
         }
       }
       

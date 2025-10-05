@@ -39,10 +39,7 @@ const ResourceInspectionTab = () => {
       setError(null);
       setCurrentView(VIEW_STATES.INSPECTION);
 
-      console.log('Starting inspection with config:', inspectionRequest);
-
       // 검사 시작 시에만 WebSocket 연결
-      console.log('🔌 검사 시작 - WebSocket 연결 중...');
       
       // WebSocket 디버깅 시작 (개발 환경에서만)
       if (process.env.NODE_ENV === 'development') {
@@ -51,7 +48,6 @@ const ResourceInspectionTab = () => {
 
       // 기존 연결이 있다면 정리
       if (webSocketService.getConnectionStatus().isConnected) {
-        console.log('🔄 기존 WebSocket 연결 정리 중...');
         webSocketService.disconnect();
       }
 
@@ -59,15 +55,10 @@ const ResourceInspectionTab = () => {
       const token = webSocketService.getStoredToken();
       if (token) {
         try {
-          console.log('🔌 검사용 WebSocket 연결 시도...');
           await webSocketService.connect(token);
-          console.log('✅ 검사용 WebSocket 연결 성공');
         } catch (wsError) {
-          console.error('❌ WebSocket 연결 실패:', wsError);
           // 연결 실패해도 검사는 계속 진행 (폴링으로 대체 가능)
         }
-      } else {
-        console.warn('⚠️ 인증 토큰이 없어 WebSocket 연결 불가');
       }
 
       // inspectionService.startInspection은 하나의 객체를 받음
@@ -80,13 +71,6 @@ const ResourceInspectionTab = () => {
       if (result.success) {
         // 배치 검사의 경우 첫 번째 검사 ID 사용
         const inspectionId = result.data.inspectionJobs?.[0]?.inspectionId || result.data.inspectionId;
-        
-        console.log('🎯 Inspection started successfully:', result.data);
-        console.log('🔍 Using inspection ID for monitoring:', inspectionId);
-        
-        // WebSocket 연결 상태 확인
-        const finalWsStatus = webSocketService.getConnectionStatus();
-        console.log('🔌 검사 시작 후 WebSocket 상태:', finalWsStatus);
         
         // WebSocket 구독 테스트 (개발 환경에서만)
         if (process.env.NODE_ENV === 'development') {
@@ -105,12 +89,10 @@ const ResourceInspectionTab = () => {
         throw new Error(result.error?.message || '검사 시작에 실패했습니다.');
       }
     } catch (error) {
-      console.error('❌ 검사 시작 실패:', error);
       setError(error.message);
       setCurrentView(VIEW_STATES.SELECTION);
       
       // 오류 발생 시 WebSocket 연결 해제
-      console.log('🔌 오류 발생 - WebSocket 연결 해제 중...');
       webSocketService.disconnect();
       
       // 디버깅 중지 (개발 환경에서만)
@@ -126,17 +108,12 @@ const ResourceInspectionTab = () => {
    * 검사 완료 핸들러
    */
   const handleInspectionComplete = useCallback((inspectionData) => {
-    console.log('✅ 검사 완료:', inspectionData);
-    
     // 검사 완료 시 WebSocket 연결 해제
-    console.log('🔌 검사 완료 - WebSocket 연결 해제 중...');
     webSocketService.disconnect();
-    console.log('✅ WebSocket 연결 해제 완료');
     
     // WebSocket 디버깅 중지 (개발 환경에서만)
     if (process.env.NODE_ENV === 'development') {
       webSocketDebugger.stopDebugging();
-      console.log('🛑 WebSocket 디버깅 중지');
     }
     
     // 검사 완료 후 선택 화면으로 돌아가기 (Trusted Advisor 스타일)
@@ -153,13 +130,9 @@ const ResourceInspectionTab = () => {
    * 새 검사 시작으로 돌아가기
    */
   const handleBackToSelection = () => {
-    console.log('🔙 선택 화면으로 돌아가기');
-    
     // WebSocket 연결이 있다면 해제
     if (webSocketService.getConnectionStatus().isConnected) {
-      console.log('🔌 WebSocket 연결 해제 중...');
       webSocketService.disconnect();
-      console.log('✅ WebSocket 연결 해제 완료');
     }
     
     // 디버깅 중지 (개발 환경에서만)
@@ -177,7 +150,6 @@ const ResourceInspectionTab = () => {
   // 컴포넌트 언마운트 시 WebSocket 정리
   useEffect(() => {
     return () => {
-      console.log('🧹 ResourceInspectionTab 언마운트 - WebSocket 정리');
       
       // WebSocket 연결 해제
       if (webSocketService.getConnectionStatus().isConnected) {
@@ -229,7 +201,6 @@ const ResourceInspectionTab = () => {
             serviceType={currentInspection.serviceType}
             onComplete={handleInspectionComplete}
             onError={(errorData) => {
-              console.error('Inspection monitoring error:', errorData);
               setError(errorData.message || '검사 중 오류가 발생했습니다.');
               setCurrentView(VIEW_STATES.SELECTION);
             }}

@@ -47,7 +47,7 @@ class STSService {
         packedPolicySize: result.PackedPolicySize,
       };
     } catch (error) {
-      console.error('STS validateRoleArn error:', error);
+
 
       // 에러 타입별 처리
       let errorMessage = error.message;
@@ -89,7 +89,7 @@ class STSService {
         arn: result.Arn,
       };
     } catch (error) {
-      console.error('STS getCallerIdentity error:', error);
+
       throw new Error(`자격증명 조회 실패: ${error.message}`);
     }
   }
@@ -123,7 +123,7 @@ class STSService {
       const parts = arn.split(':');
       return parts[4]; // arn:aws:iam::account-id:role/role-name에서 account-id 부분
     } catch (error) {
-      console.error('Error extracting account ID from ARN:', error);
+
       return null;
     }
   }
@@ -142,7 +142,7 @@ class STSService {
       const parts = arn.split('/');
       return parts[parts.length - 1]; // role/role-name에서 role-name 부분
     } catch (error) {
-      console.error('Error extracting role name from ARN:', error);
+
       return null;
     }
   }
@@ -179,7 +179,7 @@ class STSService {
         }
       });
     } catch (error) {
-      console.error('STS validateMultipleRoleArns error:', error);
+
       throw new Error(`배치 ARN 검증 실패: ${error.message}`);
     }
   }

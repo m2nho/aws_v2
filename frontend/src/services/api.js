@@ -41,16 +41,12 @@ api.interceptors.response.use(
       }
     } else if (error.response?.status === 403) {
       // Handle forbidden access
-      console.warn('Access forbidden:', error.response.data);
     } else if (error.response?.status >= 500) {
       // Handle server errors
-      console.error('Server error:', error.response.data);
     } else if (error.code === 'ECONNABORTED') {
       // Handle timeout
-      console.error('Request timeout');
     } else if (!error.response) {
       // Handle network errors
-      console.error('Network error:', error.message);
     }
     
     return Promise.reject(error);

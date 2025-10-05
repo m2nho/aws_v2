@@ -35,7 +35,6 @@ const withRetry = async (apiCall, maxAttempts = MAX_RETRY_ATTEMPTS, delayMs = RE
       
       // 마지막 시도가 아니고, 재시도 가능한 에러인 경우에만 재시도
       if (attempt < maxAttempts && isRetryableError(error)) {
-        console.warn(`API call failed (attempt ${attempt}/${maxAttempts}):`, error.message);
         await delay(delayMs * attempt); // 지수 백오프
         continue;
       }
@@ -226,7 +225,6 @@ export const inspectionService = {
    * @returns {Object} 모니터링 제어 객체
    */
   startWebSocketMonitoring: async (inspectionId, callbacks = {}, options = {}) => {
-    console.log('🔌 Starting WebSocket monitoring for inspection:', inspectionId);
     
     const {
       onProgress,
@@ -252,71 +250,53 @@ export const inspectionService = {
     try {
       // Ensure WebSocket connection
       const token = webSocketService.getStoredToken();
-      console.log('🔑 Retrieved token for WebSocket:', token ? 'Token available' : 'No token');
       
       if (!token) {
         throw new Error('No authentication token available for WebSocket connection');
       }
 
       const connectionStatus = webSocketService.getConnectionStatus();
-      console.log('🔗 Current WebSocket connection status:', connectionStatus);
 
       if (!connectionStatus.isConnected) {
-        console.log('🔌 WebSocket not connected, attempting to connect...');
         await webSocketService.connect(token);
-        console.log('✅ WebSocket connection established');
-      } else {
-        console.log('✅ WebSocket already connected');
       }
 
       // Subscribe to inspection updates
-      console.log('📋 Subscribing to inspection updates for:', inspectionId);
       unsubscribe = webSocketService.subscribeToInspection(inspectionId, (message) => {
         if (!isActive) {
-          console.log('⚠️ Received message but monitoring is inactive:', message);
           return;
         }
-
-        console.log('📨 Received WebSocket message:', message);
         const { type, data } = message;
         const now = Date.now();
 
         switch (type) {
           case 'progress':
-            console.log('📊 Handling progress update:', data);
             handleProgressUpdate(data, now);
             break;
 
           case 'status_change':
-            console.log('🔄 Handling status change:', data);
             handleStatusChange(data, now);
             break;
 
           case 'complete':
-            console.log('✅ Handling completion:', data);
             handleCompletion(data, now);
             break;
 
           case 'subscription_confirmed':
-            console.log('✅ Subscription confirmed for inspection:', data.inspectionId);
             break;
 
           case 'disconnected':
-            console.log('🔌 WebSocket disconnected for inspection:', data.inspectionId);
             if (onDisconnection) {
               onDisconnection(data);
             }
             break;
 
           default:
-            console.log('❓ Unknown WebSocket message type:', type, data);
+            break;
         }
       });
 
-      console.log('✅ WebSocket monitoring setup completed for inspection:', inspectionId);
-
     } catch (error) {
-      console.error('❌ Failed to start WebSocket monitoring:', error);
       
       if (onError) {
         onError({
@@ -414,11 +394,9 @@ export const inspectionService = {
     const handleCompletion = (data, timestamp) => {
       // 이미 비활성화된 경우 중복 처리 방지
       if (!isActive) {
-        console.log('Completion already handled, skipping WebSocket completion...');
         return;
       }
       
-      console.log('WebSocket handling completion:', data);
       isActive = false;
       
       // 완료 시 진행률을 100%로 업데이트

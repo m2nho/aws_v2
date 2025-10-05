@@ -115,29 +115,22 @@ class WebSocketService {
    * Requirements: 7.4 - 클라이언트 연결 종료 시 리소스 정리
    */
   disconnect() {
-    console.log('🔌 WebSocket 연결 해제 시작');
     this.logger.info('Disconnecting WebSocket');
     
     // Clear timers
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
-      console.log('⏰ 재연결 타이머 정리됨');
     }
     
     if (this.heartbeatTimer) {
       clearInterval(this.heartbeatTimer);
       this.heartbeatTimer = null;
-      console.log('💓 하트비트 타이머 정리됨');
     }
     
     // Send unsubscribe messages for all active subscriptions
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      const subscriptionCount = this.subscriptions.size;
-      console.log(`📋 ${subscriptionCount}개 구독 해제 메시지 전송 중...`);
-      
       this.subscriptions.forEach((callbacks, inspectionId) => {
-        console.log(`📤 구독 해제: ${inspectionId}`);
         this.sendMessage({
           type: 'unsubscribe_inspection',
           payload: { inspectionId }
@@ -149,7 +142,6 @@ class WebSocketService {
         this.finalizeDisconnection();
       }, 100);
     } else {
-      console.log('⚠️ WebSocket이 이미 닫혀있음 - 즉시 정리');
       this.finalizeDisconnection();
     }
   }
@@ -159,26 +151,19 @@ class WebSocketService {
    * @private
    */
   finalizeDisconnection() {
-    console.log('🔌 WebSocket 연결 최종 정리 시작');
-    
     // Close connection
     if (this.ws) {
-      console.log('🔒 WebSocket 연결 닫는 중...');
       this.ws.close(1000, 'Client disconnect');
       this.ws = null;
-      console.log('✅ WebSocket 연결 닫힘');
     }
     
     // Reset status
     this.connectionStatus.isConnected = false;
     this.connectionStatus.isConnecting = false;
     this.connectionStatus.reconnectAttempts = 0;
-    console.log('📊 연결 상태 초기화됨');
     
     // Clear subscriptions and notify callbacks about disconnection
-    const subscriptionCount = this.subscriptions.size;
-    if (subscriptionCount > 0) {
-      console.log(`📋 ${subscriptionCount}개 구독 콜백에 연결 해제 알림 중...`);
+    if (this.subscriptions.size > 0) {
       
       this.subscriptions.forEach((callbacks, inspectionId) => {
         callbacks.forEach(callback => {
@@ -203,8 +188,6 @@ class WebSocketService {
     this.messageQueue = [];
     this.token = null;
     
-    console.log('🧹 모든 데이터 정리 완료');
-    console.log('✅ WebSocket 연결 해제 완료');
     this.logger.info('WebSocket disconnection completed');
   }
 
@@ -215,13 +198,9 @@ class WebSocketService {
    * @returns {Function} Unsubscribe function
    */
   subscribeToInspection(inspectionId, callback) {
-    console.log('🔔 Attempting to subscribe to inspection:', inspectionId);
-    console.log('🔌 Current connection status:', this.getConnectionStatus());
-    console.log('🔗 WebSocket ready state:', this.getReadyState());
     
     // 이미 구독된 검사인지 확인
     if (this.subscriptions.has(inspectionId) && this.subscriptions.get(inspectionId).has(callback)) {
-      console.log('⚠️ Already subscribed to inspection:', inspectionId);
       return () => {
         this.unsubscribeFromInspection(inspectionId, callback);
       };
@@ -239,12 +218,9 @@ class WebSocketService {
       payload: { inspectionId }
     };
     
-    console.log('📤 Sending subscription message:', subscriptionMessage);
     this.sendMessage(subscriptionMessage);
     
     this.logger.info('Subscribed to inspection', { inspectionId });
-    console.log('✅ Subscription setup completed for:', inspectionId);
-    console.log('📊 Current subscriptions count:', this.getSubscriptionCount());
     
     // Return unsubscribe function
     return () => {
@@ -307,54 +283,44 @@ class WebSocketService {
   handleMessage(event) {
     try {
       const message = JSON.parse(event.data);
-      console.log('📨 WebSocket message received:', message);
       this.logger.debug('Message received', { message });
       
       const { type, data } = message;
       
       switch (type) {
         case 'connection_established':
-          console.log('🎉 WebSocket connection established:', data);
           this.logger.info('Connection established', { connectionId: data.connectionId });
           break;
           
         case 'subscription_confirmed':
-          console.log('✅ Subscription confirmed for inspection:', data.inspectionId);
           this.logger.info('Subscription confirmed', { inspectionId: data.inspectionId });
           break;
           
         case 'progress_update':
-          console.log('📊 Progress update received:', data);
           this.handleProgressUpdate(data);
           break;
           
         case 'status_change':
-          console.log('🔄 Status change received:', data);
           this.handleStatusChange(data);
           break;
           
         case 'inspection_complete':
-          console.log('✅ Inspection complete received:', data);
           this.handleInspectionComplete(data);
           break;
           
         case 'pong':
-          console.log('🏓 Pong received');
           this.logger.debug('Heartbeat pong received');
           break;
           
         case 'error':
-          console.error('❌ WebSocket server error:', data);
           this.logger.error('Server error', { error: data });
           break;
           
         default:
-          console.warn('❓ Unknown WebSocket message type:', type, data);
           this.logger.warn('Unknown message type', { type, data });
       }
       
     } catch (error) {
-      console.error('❌ Failed to parse WebSocket message:', error, 'Raw data:', event.data);
       this.logger.error('Failed to parse WebSocket message', { 
         error: error.message, 
         data: event.data 
@@ -732,12 +698,11 @@ class WebSocketService {
     
     return {
       debug: (message, meta = {}) => {
-        if (isDevelopment) {
-          console.log(`[DEBUG] [WebSocketService] ${message}`, meta);
-        }
+        // DEBUG 로그는 완전히 비활성화
       },
       info: (message, meta = {}) => {
-        if (isDevelopment) {
+        // 연결/해제 관련 중요한 정보만 출력
+        if (isDevelopment && (message.includes('Connecting') || message.includes('disconnection completed'))) {
           console.log(`[INFO] [WebSocketService] ${message}`, meta);
         }
       },

@@ -20,32 +20,17 @@ const ServiceInspectionSelector = ({ onStartInspection, isLoading }) => {
   const loadAllItemStatuses = async () => {
     try {
       setLoadingStatuses(true);
-      console.log('🔄 Loading all item statuses...');
       
       const result = await inspectionService.getAllItemStatus();
       
-      console.log('📊 API Response:', {
-        success: result.success,
-        hasData: !!result.data,
-        dataKeys: result.data ? Object.keys(result.data) : [],
-        fullResponse: result
-      });
-      
       if (result.success) {
-        console.log('📊 Setting item statuses:', result.data);
         // API 응답 구조: result.data = { services: { EC2: { security_groups: {...} } } }
         // itemStatuses는 { EC2: { security_groups: {...} } } 형태여야 함
         setItemStatuses(result.data.services || {});
         
-        // 설정 후 확인
-        setTimeout(() => {
-          console.log('📊 Item statuses after setting:', result.data.services);
-        }, 100);
       } else {
-        console.error('❌ API call failed:', result.error);
       }
     } catch (error) {
-      console.error('❌ Failed to load item statuses:', error);
     } finally {
       setLoadingStatuses(false);
     }
@@ -71,7 +56,6 @@ const ServiceInspectionSelector = ({ onStartInspection, isLoading }) => {
 
     // 선택된 서비스의 최신 상태는 이미 loadAllItemStatuses에서 로드됨
     // 별도로 서비스별 상태를 다시 로드할 필요 없음
-    console.log('🔍 Service selected:', serviceId, 'Current statuses:', itemStatuses[serviceId]);
   };
 
   // 검사 항목 선택/해제 핸들러
@@ -99,17 +83,7 @@ const ServiceInspectionSelector = ({ onStartInspection, isLoading }) => {
     const serviceStatuses = itemStatuses[serviceType] || {};
     const status = serviceStatuses[itemId];
     
-    // 디버깅 로그 (개발 환경에서만)
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔍 getItemStatus:', {
-        serviceType,
-        itemId,
-        hasServiceStatuses: !!serviceStatuses,
-        serviceStatusesKeys: Object.keys(serviceStatuses),
-        status,
-        itemStatuses: Object.keys(itemStatuses)
-      });
-    }
+
     
     return status;
   };
@@ -295,17 +269,7 @@ const ServiceInspectionSelector = ({ onStartInspection, isLoading }) => {
                     const isExpanded = expandedItems[item.id];
                     const hasDetails = itemStatus && itemStatus.findings && itemStatus.findings.length > 0;
                     
-                    // 디버깅 로그 (첫 번째 항목만)
-                    if (item.id === category.items[0].id && process.env.NODE_ENV === 'development') {
-                      console.log('🎯 Rendering item:', {
-                        itemId: item.id,
-                        selectedService,
-                        itemStatus,
-                        statusDisplay,
-                        hasDetails,
-                        currentItemStatuses: itemStatuses
-                      });
-                    }
+
                     
                     return (
                       <div

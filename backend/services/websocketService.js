@@ -191,15 +191,9 @@ class WebSocketService {
   handleSubscribeInspection(ws, payload) {
     const { inspectionId } = payload;
 
-    console.log('🔔 Handling subscription request:', {
-      userId: ws.userId,
-      connectionId: ws.connectionId,
-      inspectionId,
-      payload
-    });
+
 
     if (!inspectionId) {
-      console.log('❌ Missing inspection ID in subscription request');
       this.sendMessage(ws, {
         type: 'error',
         data: {
@@ -212,11 +206,6 @@ class WebSocketService {
 
     // 이미 구독된 검사인지 확인
     if (ws.subscribedInspections && ws.subscribedInspections.has(inspectionId)) {
-      console.log('⚠️ Client already subscribed to inspection:', {
-        userId: ws.userId,
-        connectionId: ws.connectionId,
-        inspectionId
-      });
       
       // 이미 구독된 경우에도 확인 메시지 전송
       this.sendMessage(ws, {
@@ -233,7 +222,6 @@ class WebSocketService {
     // Add to inspection subscribers
     if (!this.clients.has(inspectionId)) {
       this.clients.set(inspectionId, new Set());
-      console.log('📋 Created new subscription set for inspection:', inspectionId);
     }
     
     this.clients.get(inspectionId).add(ws);
@@ -241,13 +229,7 @@ class WebSocketService {
 
     const subscriberCount = this.clients.get(inspectionId).size;
     
-    console.log('✅ Client subscribed to inspection successfully:', {
-      userId: ws.userId,
-      connectionId: ws.connectionId,
-      inspectionId,
-      subscriberCount,
-      totalInspections: this.clients.size
-    });
+
 
     this.logger.info('Client subscribed to inspection', {
       userId: ws.userId,
@@ -265,7 +247,7 @@ class WebSocketService {
       }
     };
     
-    console.log('📤 Sending subscription confirmation:', confirmationMessage);
+
     this.sendMessage(ws, confirmationMessage);
   }
 
@@ -362,15 +344,15 @@ class WebSocketService {
   broadcastProgressUpdate(inspectionId, progressData) {
     const subscribers = this.clients.get(inspectionId);
     
-    console.log('📊 Broadcasting progress update:', {
-      inspectionId,
-      subscriberCount: subscribers?.size || 0,
-      progressData: progressData.progress?.percentage
-    });
+    if (process.env.NODE_ENV === 'development') {
+      console.log('📊 Broadcasting progress update:', {
+        inspectionId,
+        subscriberCount: subscribers?.size || 0,
+        progressData: progressData.progress?.percentage
+      });
+    }
     
     if (!subscribers || subscribers.size === 0) {
-      console.log('⚠️ No subscribers found for inspection:', inspectionId);
-      console.log('📋 Available inspections:', Array.from(this.clients.keys()));
       return;
     }
 
@@ -383,7 +365,7 @@ class WebSocketService {
       }
     };
 
-    console.log('📤 Broadcasting message to', subscribers.size, 'subscribers:', message);
+
 
     let successCount = 0;
     let errorCount = 0;
@@ -396,12 +378,7 @@ class WebSocketService {
       }
     });
 
-    console.log('📊 Broadcast result:', {
-      inspectionId,
-      subscriberCount: subscribers.size,
-      successCount,
-      errorCount
-    });
+
 
     this.logger.debug('Progress update broadcasted', {
       inspectionId,
@@ -421,15 +398,9 @@ class WebSocketService {
   broadcastStatusChange(inspectionId, statusData) {
     const subscribers = this.clients.get(inspectionId);
     
-    console.log('🔄 Broadcasting status change:', {
-      inspectionId,
-      subscriberCount: subscribers?.size || 0,
-      status: statusData.status
-    });
+
     
     if (!subscribers || subscribers.size === 0) {
-      console.log('⚠️ No subscribers found for status change:', inspectionId);
-      console.log('📋 Available inspections:', Array.from(this.clients.keys()));
       return;
     }
 
@@ -442,13 +413,13 @@ class WebSocketService {
       }
     };
 
-    console.log('📤 Broadcasting status message to', subscribers.size, 'subscribers:', message);
+
 
     subscribers.forEach(ws => {
       this.sendMessage(ws, message);
     });
 
-    console.log('✅ Status change broadcast completed for:', inspectionId);
+
 
     this.logger.info('Status change broadcasted', {
       inspectionId,
@@ -587,7 +558,9 @@ class WebSocketService {
         }
       },
       info: (message, meta = {}) => {
-        console.log(`[INFO] [WebSocketService] ${message}`, meta);
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`[INFO] [WebSocketService] ${message}`, meta);
+        }
       },
       warn: (message, meta = {}) => {
         console.warn(`[WARN] [WebSocketService] ${message}`, meta);

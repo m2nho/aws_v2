@@ -217,12 +217,9 @@ export const useInspectionProgress = (inspectionId, options = {}) => {
    * Handle completion
    */
   const handleComplete = useCallback(async (completionData) => {
-    console.log('useInspectionProgress: Handling inspection completion:', completionData);
-    console.log('useInspectionProgress: isMonitoring status:', isMonitoring);
     
     // 이미 완료 처리된 경우 중복 실행 방지 (하지만 onComplete 콜백은 한 번은 호출해야 함)
     if (!isMonitoring) {
-      console.log('useInspectionProgress: Completion already handled, but calling onComplete once...');
       if (onComplete) {
         onComplete({
           ...completionData,
@@ -251,11 +248,9 @@ export const useInspectionProgress = (inspectionId, options = {}) => {
 
     // 검사 완료 시 실제 검사 결과를 가져옴 (한 번만)
     try {
-      console.log('Fetching inspection details for completed inspection:', inspectionId);
       const inspectionResult = await inspectionService.getInspectionDetails(inspectionId);
       
       if (inspectionResult.success && inspectionResult.data) {
-        console.log('Inspection result fetched successfully');
         
         if (onComplete) {
           onComplete({
@@ -265,7 +260,6 @@ export const useInspectionProgress = (inspectionId, options = {}) => {
           });
         }
       } else {
-        console.warn('Failed to fetch inspection details, using completion data only');
         if (onComplete) {
           onComplete({
             ...completionData,
@@ -274,7 +268,6 @@ export const useInspectionProgress = (inspectionId, options = {}) => {
         }
       }
     } catch (error) {
-      console.error('Error fetching inspection details:', error);
       if (onComplete) {
         onComplete({
           ...completionData,
@@ -318,7 +311,6 @@ export const useInspectionProgress = (inspectionId, options = {}) => {
    * Handle WebSocket disconnection
    */
   const handleDisconnection = useCallback((disconnectionData) => {
-    console.log('useInspectionProgress: WebSocket 연결 해제됨:', disconnectionData);
     
     setConnectionStatus(prev => ({
       ...prev,
@@ -329,7 +321,6 @@ export const useInspectionProgress = (inspectionId, options = {}) => {
 
     // 검사가 진행 중이었다면 모니터링 중지
     if (isMonitoring) {
-      console.log('useInspectionProgress: 연결 해제로 인한 모니터링 중지');
       setIsMonitoring(false);
     }
   }, [isMonitoring]);
@@ -373,7 +364,6 @@ export const useInspectionProgress = (inspectionId, options = {}) => {
       monitoringControllerRef.current = controller;
 
     } catch (error) {
-      console.error('Failed to start monitoring:', error);
       setError({
         code: 'MONITORING_START_FAILED',
         message: 'Failed to start progress monitoring',
@@ -428,12 +418,10 @@ export const useInspectionProgress = (inspectionId, options = {}) => {
   // Auto-start monitoring when inspectionId changes
   useEffect(() => {
     if (inspectionId && !isMonitoring) {
-      console.log('Starting monitoring for inspection:', inspectionId);
       startMonitoring();
     }
 
     return () => {
-      console.log('Cleaning up monitoring for inspection:', inspectionId);
       stopMonitoring();
     };
   }, [inspectionId]); // startMonitoring, stopMonitoring 제거하여 무한 루프 방지

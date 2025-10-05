@@ -24,7 +24,6 @@ const generateToken = (payload) => {
       expiresIn: config.jwt.expiresIn,
     });
   } catch (error) {
-    console.error('JWT generation error:', error);
     throw new Error('토큰 생성 실패');
   }
 };
@@ -59,7 +58,6 @@ const decodeToken = (token) => {
   try {
     return jwt.decode(token);
   } catch (error) {
-    console.error('JWT decode error:', error);
     throw new Error('토큰 디코딩 실패');
   }
 };

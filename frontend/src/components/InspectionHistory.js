@@ -144,8 +144,6 @@ const InspectionHistory = () => {
 
       // 항목별 검사 이력 조회
       const result = await inspectionService.getItemInspectionHistory(params);
-      console.log('📋 Item inspection history loaded:', result);
-      console.log('📋 Raw data structure:', JSON.stringify(result.data, null, 2));
 
       if (result.success) {
         let newData = result.data.items || [];
@@ -153,7 +151,6 @@ const InspectionHistory = () => {
         newData = enrichItemData(newData);
         // 클라이언트 사이드 필터링 적용
         newData = applyClientSideFilters(newData);
-        console.log('📋 Enriched item data:', newData);
 
         setHistoryData(prev => loadMore ? [...prev, ...newData] : newData);
         setPagination({
@@ -164,7 +161,6 @@ const InspectionHistory = () => {
         throw new Error(result.error?.message || '히스토리를 불러오는데 실패했습니다.');
       }
     } catch (error) {
-      console.error('Failed to load inspection history:', error);
       setError(`데이터를 불러오는데 실패했습니다: ${error.message}`);
       setHistoryData([]);
       setPagination({ hasMore: false, lastEvaluatedKey: null });

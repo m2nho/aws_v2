@@ -46,13 +46,7 @@ class TransactionService {
         hasResults: !!inspectionData.results
       });
       
-      console.log('🔍 [TransactionService] Starting transaction with data:', {
-        inspectionId: inspectionData.inspectionId,
-        customerId: inspectionData.customerId,
-        serviceType: inspectionData.serviceType,
-        hasResults: !!inspectionData.results,
-        findingsCount: inspectionData.results?.findings?.length || 0
-      });
+
 
       // 트랜잭션 아이템들 준비 (단일 테이블 구조)
       const transactItems = [];
@@ -115,10 +109,9 @@ class TransactionService {
         TransactItems: transactItems
       });
 
-      console.log('🔍 [TransactionService] Executing transaction command...');
       await this.client.send(command);
       
-      console.log('🔍 [TransactionService] Transaction executed successfully');
+
       this.logger.info('Transaction completed successfully', {
         inspectionId: inspectionData.inspectionId,
         itemsProcessed: itemResults.length
@@ -132,9 +125,6 @@ class TransactionService {
       };
 
     } catch (error) {
-      console.log('🔍 [TransactionService] Transaction failed:', {
-        inspectionId: inspectionData.inspectionId,
-        error: error.message,
         errorCode: error.name,
         stack: error.stack
       });
@@ -529,10 +519,14 @@ class TransactionService {
   createLogger() {
     return {
       debug: (message, meta = {}) => {
-        console.log(`[DEBUG] [TransactionService] ${message}`, meta);
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`[DEBUG] [TransactionService] ${message}`, meta);
+        }
       },
       info: (message, meta = {}) => {
-        console.log(`[INFO] [TransactionService] ${message}`, meta);
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`[INFO] [TransactionService] ${message}`, meta);
+        }
       },
       warn: (message, meta = {}) => {
         console.warn(`[WARN] [TransactionService] ${message}`, meta);

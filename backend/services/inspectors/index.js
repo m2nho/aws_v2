@@ -57,7 +57,6 @@ class InspectorRegistry {
     }
 
     this.inspectors.set(serviceType.toUpperCase(), inspectorClass);
-    console.log(`[INFO] Registered ${serviceType} inspector`);
   }
 
   /**
@@ -105,7 +104,7 @@ class InspectorRegistry {
         const tempInstance = new InspectorClass(serviceType);
         infoList.push(tempInstance.getInspectorInfo());
       } catch (error) {
-        console.error(`[ERROR] Failed to get info for ${serviceType} inspector:`, error.message);
+
       }
     }
 
@@ -119,9 +118,6 @@ class InspectorRegistry {
    */
   unregister(serviceType) {
     const result = this.inspectors.delete(serviceType.toUpperCase());
-    if (result) {
-      console.log(`[INFO] Unregistered ${serviceType} inspector`);
-    }
     return result;
   }
 
@@ -130,7 +126,6 @@ class InspectorRegistry {
    */
   clear() {
     this.inspectors.clear();
-    console.log('[INFO] Cleared all inspector registrations');
   }
 
   /**
@@ -205,7 +200,7 @@ function getInspectorInfo(serviceType) {
     const tempInstance = new InspectorClass(serviceType);
     return tempInstance.getInspectorInfo();
   } catch (error) {
-    console.error(`[ERROR] Failed to get info for ${serviceType} inspector:`, error.message);
+
     return null;
   }
 }

@@ -51,7 +51,6 @@ class WebSocketDebugger {
     };
     
     this.debugLog.push(logEntry);
-    console.log(`[WebSocketDebugger] ${message}`, data || '');
     
     // 최대 100개 로그만 유지
     if (this.debugLog.length > 100) {
@@ -208,7 +207,6 @@ class WebSocketDebugger {
       logs: [...this.debugLog]
     };
 
-    console.log('📋 WebSocket 디버그 리포트:', report);
     return report;
   }
 
