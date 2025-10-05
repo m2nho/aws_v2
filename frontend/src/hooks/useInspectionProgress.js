@@ -315,6 +315,26 @@ export const useInspectionProgress = (inspectionId, options = {}) => {
   }, [onStagnant]);
 
   /**
+   * Handle WebSocket disconnection
+   */
+  const handleDisconnection = useCallback((disconnectionData) => {
+    console.log('useInspectionProgress: WebSocket 연결 해제됨:', disconnectionData);
+    
+    setConnectionStatus(prev => ({
+      ...prev,
+      isConnected: false,
+      connectionType: 'none',
+      lastUpdate: Date.now()
+    }));
+
+    // 검사가 진행 중이었다면 모니터링 중지
+    if (isMonitoring) {
+      console.log('useInspectionProgress: 연결 해제로 인한 모니터링 중지');
+      setIsMonitoring(false);
+    }
+  }, [isMonitoring]);
+
+  /**
    * Start monitoring
    */
   const startMonitoring = useCallback(async () => {
@@ -336,7 +356,8 @@ export const useInspectionProgress = (inspectionId, options = {}) => {
           onTimeUpdate: handleTimeUpdate,
           onComplete: handleComplete,
           onError: handleError,
-          onStagnant: handleStagnant
+          onStagnant: handleStagnant,
+          onDisconnection: handleDisconnection
         },
         {
           stagnantThreshold

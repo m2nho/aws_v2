@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './context';
 import { Navigation, ProtectedRoute, PublicRoute, UserList, ResourceInspectionTab } from './components';
 import InspectionHistory from './components/InspectionHistory';
+import WebSocketStatus from './components/WebSocketStatus';
 import { RegisterPage, LoginPage, UserDashboardPage } from './pages';
 import './App.css';
 
@@ -97,6 +98,9 @@ function AppContent() {
             />
           </Routes>
         </main>
+        
+        {/* WebSocket 상태 표시 (개발 환경에서만) */}
+        <WebSocketStatus />
       </div>
     </Router>
   );

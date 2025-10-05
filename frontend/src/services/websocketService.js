@@ -112,35 +112,100 @@ class WebSocketService {
 
   /**
    * Disconnect from WebSocket server
+   * Requirements: 7.4 - 클라이언트 연결 종료 시 리소스 정리
    */
   disconnect() {
+    console.log('🔌 WebSocket 연결 해제 시작');
     this.logger.info('Disconnecting WebSocket');
     
     // Clear timers
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
+      console.log('⏰ 재연결 타이머 정리됨');
     }
     
     if (this.heartbeatTimer) {
       clearInterval(this.heartbeatTimer);
       this.heartbeatTimer = null;
+      console.log('💓 하트비트 타이머 정리됨');
     }
+    
+    // Send unsubscribe messages for all active subscriptions
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      const subscriptionCount = this.subscriptions.size;
+      console.log(`📋 ${subscriptionCount}개 구독 해제 메시지 전송 중...`);
+      
+      this.subscriptions.forEach((callbacks, inspectionId) => {
+        console.log(`📤 구독 해제: ${inspectionId}`);
+        this.sendMessage({
+          type: 'unsubscribe_inspection',
+          payload: { inspectionId }
+        });
+      });
+      
+      // Wait a bit for unsubscribe messages to be sent
+      setTimeout(() => {
+        this.finalizeDisconnection();
+      }, 100);
+    } else {
+      console.log('⚠️ WebSocket이 이미 닫혀있음 - 즉시 정리');
+      this.finalizeDisconnection();
+    }
+  }
+
+  /**
+   * Finalize disconnection process
+   * @private
+   */
+  finalizeDisconnection() {
+    console.log('🔌 WebSocket 연결 최종 정리 시작');
     
     // Close connection
     if (this.ws) {
+      console.log('🔒 WebSocket 연결 닫는 중...');
       this.ws.close(1000, 'Client disconnect');
       this.ws = null;
+      console.log('✅ WebSocket 연결 닫힘');
     }
     
     // Reset status
     this.connectionStatus.isConnected = false;
     this.connectionStatus.isConnecting = false;
     this.connectionStatus.reconnectAttempts = 0;
+    console.log('📊 연결 상태 초기화됨');
     
-    // Clear subscriptions
+    // Clear subscriptions and notify callbacks about disconnection
+    const subscriptionCount = this.subscriptions.size;
+    if (subscriptionCount > 0) {
+      console.log(`📋 ${subscriptionCount}개 구독 콜백에 연결 해제 알림 중...`);
+      
+      this.subscriptions.forEach((callbacks, inspectionId) => {
+        callbacks.forEach(callback => {
+          try {
+            callback({
+              type: 'disconnected',
+              data: {
+                inspectionId,
+                reason: 'Client disconnect',
+                timestamp: Date.now()
+              }
+            });
+          } catch (error) {
+            this.logger.error('Error in disconnection callback', { error, inspectionId });
+          }
+        });
+      });
+    }
+    
+    // Clear all data
     this.subscriptions.clear();
     this.messageQueue = [];
+    this.token = null;
+    
+    console.log('🧹 모든 데이터 정리 완료');
+    console.log('✅ WebSocket 연결 해제 완료');
+    this.logger.info('WebSocket disconnection completed');
   }
 
   /**
@@ -150,9 +215,13 @@ class WebSocketService {
    * @returns {Function} Unsubscribe function
    */
   subscribeToInspection(inspectionId, callback) {
+    console.log('🔔 Attempting to subscribe to inspection:', inspectionId);
+    console.log('🔌 Current connection status:', this.getConnectionStatus());
+    console.log('🔗 WebSocket ready state:', this.getReadyState());
+    
     // 이미 구독된 검사인지 확인
     if (this.subscriptions.has(inspectionId) && this.subscriptions.get(inspectionId).has(callback)) {
-      console.log('Already subscribed to inspection:', inspectionId);
+      console.log('⚠️ Already subscribed to inspection:', inspectionId);
       return () => {
         this.unsubscribeFromInspection(inspectionId, callback);
       };
@@ -165,12 +234,17 @@ class WebSocketService {
     this.subscriptions.get(inspectionId).add(callback);
     
     // Send subscription message only for new subscriptions
-    this.sendMessage({
+    const subscriptionMessage = {
       type: 'subscribe_inspection',
       payload: { inspectionId }
-    });
+    };
+    
+    console.log('📤 Sending subscription message:', subscriptionMessage);
+    this.sendMessage(subscriptionMessage);
     
     this.logger.info('Subscribed to inspection', { inspectionId });
+    console.log('✅ Subscription setup completed for:', inspectionId);
+    console.log('📊 Current subscriptions count:', this.getSubscriptionCount());
     
     // Return unsubscribe function
     return () => {
@@ -233,44 +307,54 @@ class WebSocketService {
   handleMessage(event) {
     try {
       const message = JSON.parse(event.data);
+      console.log('📨 WebSocket message received:', message);
       this.logger.debug('Message received', { message });
       
       const { type, data } = message;
       
       switch (type) {
         case 'connection_established':
+          console.log('🎉 WebSocket connection established:', data);
           this.logger.info('Connection established', { connectionId: data.connectionId });
           break;
           
         case 'subscription_confirmed':
+          console.log('✅ Subscription confirmed for inspection:', data.inspectionId);
           this.logger.info('Subscription confirmed', { inspectionId: data.inspectionId });
           break;
           
         case 'progress_update':
+          console.log('📊 Progress update received:', data);
           this.handleProgressUpdate(data);
           break;
           
         case 'status_change':
+          console.log('🔄 Status change received:', data);
           this.handleStatusChange(data);
           break;
           
         case 'inspection_complete':
+          console.log('✅ Inspection complete received:', data);
           this.handleInspectionComplete(data);
           break;
           
         case 'pong':
+          console.log('🏓 Pong received');
           this.logger.debug('Heartbeat pong received');
           break;
           
         case 'error':
+          console.error('❌ WebSocket server error:', data);
           this.logger.error('Server error', { error: data });
           break;
           
         default:
+          console.warn('❓ Unknown WebSocket message type:', type, data);
           this.logger.warn('Unknown message type', { type, data });
       }
       
     } catch (error) {
+      console.error('❌ Failed to parse WebSocket message:', error, 'Raw data:', event.data);
       this.logger.error('Failed to parse WebSocket message', { 
         error: error.message, 
         data: event.data 
@@ -330,6 +414,7 @@ class WebSocketService {
 
   /**
    * Handle inspection completion messages
+   * Requirements: 7.3 - 검사 완료 시 구독 정리
    * @param {Object} data - Completion data
    */
   handleInspectionComplete(data) {
@@ -352,9 +437,18 @@ class WebSocketService {
       });
     }
     
-    // Auto-unsubscribe after completion
+    // Send explicit unsubscribe message to server
+    this.sendMessage({
+      type: 'unsubscribe_inspection',
+      payload: { inspectionId }
+    });
+    
+    // Auto-unsubscribe after completion with proper cleanup
     setTimeout(() => {
-      this.subscriptions.delete(inspectionId);
+      if (this.subscriptions.has(inspectionId)) {
+        this.logger.info('Auto-unsubscribing from completed inspection', { inspectionId });
+        this.subscriptions.delete(inspectionId);
+      }
     }, 5000); // 5 seconds delay
   }
 
@@ -504,6 +598,129 @@ class WebSocketService {
    */
   getQueuedMessageCount() {
     return this.messageQueue.length;
+  }
+
+  /**
+   * Force cleanup of all resources
+   * Requirements: 7.4, 7.7 - 리소스 정리 및 비정상 상태 감지
+   */
+  forceCleanup() {
+    this.logger.warn('Force cleanup initiated');
+    
+    // Clear all timers
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
+    
+    // Terminate connection immediately
+    if (this.ws) {
+      this.ws.terminate ? this.ws.terminate() : this.ws.close();
+      this.ws = null;
+    }
+    
+    // Reset all state
+    this.connectionStatus = {
+      isConnected: false,
+      isConnecting: false,
+      lastConnected: null,
+      reconnectAttempts: 0,
+      maxReconnectAttempts: 5
+    };
+    
+    this.subscriptions.clear();
+    this.messageQueue = [];
+    this.token = null;
+    
+    this.logger.info('Force cleanup completed');
+  }
+
+  /**
+   * Check connection health
+   * Requirements: 7.7 - 비정상적인 연결 상태 감지
+   * @returns {Object} Health status
+   */
+  checkConnectionHealth() {
+    const now = Date.now();
+    const health = {
+      isHealthy: true,
+      issues: [],
+      readyState: this.getReadyState(),
+      lastConnected: this.connectionStatus.lastConnected,
+      timeSinceLastConnection: this.connectionStatus.lastConnected ? now - this.connectionStatus.lastConnected : null,
+      reconnectAttempts: this.connectionStatus.reconnectAttempts,
+      subscriptionCount: this.getSubscriptionCount(),
+      queuedMessages: this.getQueuedMessageCount()
+    };
+
+    // Check for issues
+    if (!this.connectionStatus.isConnected && this.connectionStatus.reconnectAttempts > 0) {
+      health.isHealthy = false;
+      health.issues.push('Connection lost, attempting reconnection');
+    }
+
+    if (this.connectionStatus.reconnectAttempts >= this.connectionStatus.maxReconnectAttempts) {
+      health.isHealthy = false;
+      health.issues.push('Max reconnection attempts reached');
+    }
+
+    if (this.messageQueue.length > 10) {
+      health.isHealthy = false;
+      health.issues.push('Message queue is growing (possible connection issue)');
+    }
+
+    if (this.ws && this.ws.readyState === WebSocket.CONNECTING && 
+        this.connectionStatus.lastConnected && 
+        (now - this.connectionStatus.lastConnected) > this.config.connectionTimeout) {
+      health.isHealthy = false;
+      health.issues.push('Connection attempt taking too long');
+    }
+
+    return health;
+  }
+
+  /**
+   * Validate WebSocket connection
+   * Requirements: 7.1 - 연결 상태 검증
+   * @returns {Promise<boolean>} Validation result
+   */
+  async validateConnection() {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      return false;
+    }
+
+    return new Promise((resolve) => {
+      const timeout = setTimeout(() => {
+        resolve(false);
+      }, 5000); // 5 second timeout
+
+      const pingMessage = {
+        type: 'ping',
+        timestamp: Date.now(),
+        validation: true
+      };
+
+      const messageHandler = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          if (message.type === 'pong' && message.validation) {
+            clearTimeout(timeout);
+            this.ws.removeEventListener('message', messageHandler);
+            resolve(true);
+          }
+        } catch (error) {
+          // Ignore parsing errors for other messages
+        }
+      };
+
+      this.ws.addEventListener('message', messageHandler);
+      this.sendMessage(pingMessage);
+    });
   }
 
   /**

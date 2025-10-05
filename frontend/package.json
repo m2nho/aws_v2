@@ -13,6 +13,7 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
+    "test:websocket": "react-scripts test --testPathPattern=websocketService.test.js --watchAll=false",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {

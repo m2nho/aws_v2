@@ -71,3 +71,17 @@ AWS 리소스 검사 기능은 AWS Trust Advisor와 유사하지만 서비스별
 2. WHEN 검사가 진행 THEN 시스템은 현재 검사 중인 항목을 표시해야 합니다
 3. WHEN 검사 단계가 완료 THEN 시스템은 진행률을 업데이트해야 합니다
 4. IF 검사가 예상보다 오래 걸림 THEN 시스템은 예상 완료 시간을 업데이트해야 합니다
+
+### Requirement 7
+
+**User Story:** 시스템 관리자로서, WebSocket 연결의 안정성과 정상적인 종료를 보장하여 시스템 리소스를 효율적으로 관리하고 싶습니다.
+
+#### Acceptance Criteria
+
+1. WHEN WebSocket 연결이 설정 THEN 시스템은 연결 상태를 검증하고 인증을 확인해야 합니다
+2. WHEN 검사가 진행 중 THEN 시스템은 WebSocket을 통해 실시간 업데이트를 안정적으로 전송해야 합니다
+3. WHEN 검사가 완료되거나 중단 THEN 시스템은 WebSocket 구독을 자동으로 정리해야 합니다
+4. WHEN 클라이언트가 연결을 종료 THEN 시스템은 관련된 모든 리소스를 정리해야 합니다
+5. WHEN 서버가 종료 THEN 시스템은 모든 WebSocket 연결을 graceful하게 종료해야 합니다
+6. IF WebSocket 연결이 끊어짐 THEN 시스템은 자동 재연결을 시도하고 실패 시 적절한 오류 처리를 해야 합니다
+7. WHEN 비정상적인 연결 상태 감지 THEN 시스템은 해당 연결을 정리하고 로그를 남겨야 합니다

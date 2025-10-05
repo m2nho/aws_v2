@@ -8,3 +8,4 @@ export { default as ResourceInspectionTab } from './ResourceInspectionTab';
 export { default as InspectionDashboard } from './InspectionDashboard';
 export { default as ProgressIndicator } from './ProgressIndicator';
 export { default as EnhancedProgressMonitor } from './EnhancedProgressMonitor';
+export { default as WebSocketStatus } from './WebSocketStatus';

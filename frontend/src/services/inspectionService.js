@@ -187,6 +187,31 @@ export const inspectionService = {
   },
 
   /**
+   * 항목별 검사 이력 조회
+   * @param {Object} params - 쿼리 파라미터
+   * @param {string} params.serviceType - 서비스 타입 필터 (선택사항)
+   * @param {number} params.limit - 조회할 항목 수 (기본값: 50)
+   * @returns {Promise<Object>} 항목별 검사 이력 목록
+   */
+  getItemInspectionHistory: async (params = {}) => {
+    return withRetry(async () => {
+      const queryParams = new URLSearchParams();
+      
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          queryParams.append(key, value);
+        }
+      });
+      
+      const queryString = queryParams.toString();
+      const url = queryString ? `/inspections/items/history?${queryString}` : '/inspections/items/history';
+      
+      const response = await api.get(url);
+      return response.data;
+    });
+  },
+
+  /**
    * WebSocket 기반 실시간 검사 모니터링
    * Requirements: 6.1, 6.2, 6.3, 6.4 - WebSocket을 통한 실시간 상태 업데이트
    * @param {string} inspectionId - 검사 ID
@@ -201,13 +226,16 @@ export const inspectionService = {
    * @returns {Object} 모니터링 제어 객체
    */
   startWebSocketMonitoring: async (inspectionId, callbacks = {}, options = {}) => {
+    console.log('🔌 Starting WebSocket monitoring for inspection:', inspectionId);
+    
     const {
       onProgress,
       onStepChange,
       onTimeUpdate,
       onComplete,
       onError,
-      onStagnant
+      onStagnant,
+      onDisconnection
     } = callbacks;
 
     let lastStep = null;
@@ -224,42 +252,71 @@ export const inspectionService = {
     try {
       // Ensure WebSocket connection
       const token = webSocketService.getStoredToken();
+      console.log('🔑 Retrieved token for WebSocket:', token ? 'Token available' : 'No token');
+      
       if (!token) {
         throw new Error('No authentication token available for WebSocket connection');
       }
 
-      if (!webSocketService.getConnectionStatus().isConnected) {
+      const connectionStatus = webSocketService.getConnectionStatus();
+      console.log('🔗 Current WebSocket connection status:', connectionStatus);
+
+      if (!connectionStatus.isConnected) {
+        console.log('🔌 WebSocket not connected, attempting to connect...');
         await webSocketService.connect(token);
+        console.log('✅ WebSocket connection established');
+      } else {
+        console.log('✅ WebSocket already connected');
       }
 
       // Subscribe to inspection updates
+      console.log('📋 Subscribing to inspection updates for:', inspectionId);
       unsubscribe = webSocketService.subscribeToInspection(inspectionId, (message) => {
-        if (!isActive) return;
+        if (!isActive) {
+          console.log('⚠️ Received message but monitoring is inactive:', message);
+          return;
+        }
 
+        console.log('📨 Received WebSocket message:', message);
         const { type, data } = message;
         const now = Date.now();
 
         switch (type) {
           case 'progress':
+            console.log('📊 Handling progress update:', data);
             handleProgressUpdate(data, now);
             break;
 
           case 'status_change':
+            console.log('🔄 Handling status change:', data);
             handleStatusChange(data, now);
             break;
 
           case 'complete':
-            console.log('Received completion message:', data);
+            console.log('✅ Handling completion:', data);
             handleCompletion(data, now);
             break;
 
+          case 'subscription_confirmed':
+            console.log('✅ Subscription confirmed for inspection:', data.inspectionId);
+            break;
+
+          case 'disconnected':
+            console.log('🔌 WebSocket disconnected for inspection:', data.inspectionId);
+            if (onDisconnection) {
+              onDisconnection(data);
+            }
+            break;
+
           default:
-            console.log('Unknown WebSocket message type:', type, data);
+            console.log('❓ Unknown WebSocket message type:', type, data);
         }
       });
 
+      console.log('✅ WebSocket monitoring setup completed for inspection:', inspectionId);
+
     } catch (error) {
-      console.error('Failed to start WebSocket monitoring:', error);
+      console.error('❌ Failed to start WebSocket monitoring:', error);
       
       if (onError) {
         onError({
