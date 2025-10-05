@@ -268,7 +268,7 @@ const verify = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Token verification error:', error);
+
         
         res.status(500).json({
             success: false,

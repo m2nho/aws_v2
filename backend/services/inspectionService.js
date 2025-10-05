@@ -55,13 +55,7 @@ class InspectionService {
     const selectedItems = inspectionConfig.selectedItems || [];
     
     try {
-      this.logger.info('Starting batch inspection', {
-        customerId,
-        batchId,
-        serviceType,
-        assumeRoleArn,
-        selectedItemsCount: selectedItems.length
-      });
+
 
       // 임시: 첫 번째 선택된 항목만 검사 (테스트용)
       const inspectionJobs = [];
@@ -113,8 +107,6 @@ class InspectionService {
 
       
       const executionPromises = inspectionJobs.map(job => {
-
-        
         // WebSocket 연결 상태 확인 및 초기 상태 브로드캐스트
         const wsStats = webSocketService.getConnectionStats();
         
@@ -154,7 +146,7 @@ class InspectionService {
 
       // 모든 검사 작업을 병렬로 실행하되 응답은 즉시 반환
       Promise.all(executionPromises).then(() => {
-        this.logger.info('All item inspections completed', { batchId });
+
       });
 
       return {
@@ -294,10 +286,7 @@ class InspectionService {
       try {
         await this.saveInspectionResultWithTransaction(inspectionResult);
         saveSuccessful = true;
-        this.logger.info('Item inspection result saved successfully', {
-          inspectionId: inspectionResult.inspectionId,
-          itemId: inspectionConfig.targetItemId
-        });
+
       } catch (saveError) {
         this.logger.error('Critical: Failed to save item inspection result', {
           inspectionId: inspectionResult.inspectionId,
@@ -326,14 +315,6 @@ class InspectionService {
           results: inspectionResult.results
         });
       }
-
-      this.logger.info('Item inspection completed successfully', {
-        inspectionId,
-        customerId,
-        serviceType,
-        itemId: inspectionConfig.targetItemId,
-        duration: inspectionResult.duration
-      });
 
     } catch (error) {
       this.logger.error('Item inspection execution failed', {
@@ -434,9 +415,7 @@ class InspectionService {
       try {
         await this.saveInspectionResultWithTransaction(inspectionResult);
         saveSuccessful = true;
-        this.logger.info('Inspection result saved successfully', {
-          inspectionId: inspectionResult.inspectionId
-        });
+
       } catch (saveError) {
         this.logger.error('Critical: Failed to save inspection result', {
           inspectionId: inspectionResult.inspectionId,
@@ -464,13 +443,6 @@ class InspectionService {
           results: inspectionResult.results // 결과는 WebSocket으로라도 전달
         });
       }
-
-      this.logger.info('Inspection completed successfully', {
-        inspectionId,
-        customerId,
-        serviceType,
-        duration: inspectionResult.duration
-      });
 
     } catch (error) {
       this.logger.error('Inspection execution failed', {
@@ -521,7 +493,7 @@ class InspectionService {
    */
   async assumeRole(roleArn, inspectionId) {
     try {
-      this.logger.info('Attempting to assume role', { roleArn, inspectionId });
+
 
       // STS 클라이언트 초기화
       this.initializeStsClient();
@@ -547,12 +519,6 @@ class InspectionService {
         roleArn: roleArn,
         region: process.env.AWS_REGION || 'us-east-1'
       };
-
-      this.logger.info('Successfully assumed role', {
-        roleArn,
-        inspectionId,
-        expiration: credentials.expiration
-      });
 
       return credentials;
 
@@ -745,19 +711,6 @@ class InspectionService {
         }
       });
     }
-
-    this.logger.debug('Inspection progress updated with WebSocket broadcast', {
-      inspectionId,
-      currentStep: currentStep.name,
-      percentage,
-      estimatedTimeRemaining,
-      resourcesProcessed: additionalData.resourcesProcessed,
-      stepProgress: additionalData.stepProgress,
-      previousPercentage,
-      progressChange: percentage - previousPercentage,
-      velocity: progressData.progress.velocity,
-      trend: progressData.progress.trend
-    });
   }
 
   /**
@@ -887,8 +840,6 @@ class InspectionService {
   async saveInspectionStart(customerId, inspectionId, serviceType, assumeRoleArn, additionalMetadata = {}) {
     try {
       // 단일 테이블 구조로 전환: InspectionHistory 저장 비활성화
-      console.log(`🔍 [InspectionService] Skipping InspectionHistory save for single-table structure`);
-      console.log(`🔍 [InspectionService] Inspection start: ${inspectionId} (${serviceType})`);
 
 
 
@@ -903,30 +854,12 @@ class InspectionService {
    */
   async saveInspectionResultWithTransaction(inspectionResult) {
     try {
-      this.logger.info('Saving inspection result with transaction', {
-        inspectionId: inspectionResult.inspectionId,
-        customerId: inspectionResult.customerId,
-        serviceType: inspectionResult.serviceType,
-        status: inspectionResult.status,
-        findingsCount: inspectionResult.results?.findings?.length || 0
-      });
-
       // 검사 항목별 결과 준비
       const itemResults = this.prepareItemResults(inspectionResult);
-      
-      console.log('🔍 [InspectionService] Prepared item results:', itemResults.length);
-      console.log('🔍 [InspectionService] Inspection data to save:', {
-        inspectionId: inspectionResult.inspectionId,
-        customerId: inspectionResult.customerId,
-        serviceType: inspectionResult.serviceType,
-        hasResults: !!inspectionResult.results,
-        findingsCount: inspectionResult.results?.findings?.length || 0
-      });
 
       // 트랜잭션 서비스를 통한 일관성 있는 저장
       const transactionService = require('./transactionService');
-      
-      console.log('🔍 [InspectionService] Calling transaction service...');
+
       const saveResult = await transactionService.saveInspectionResultsTransaction({
         inspectionId: inspectionResult.inspectionId,
         customerId: inspectionResult.customerId,
@@ -938,15 +871,8 @@ class InspectionService {
         assumeRoleArn: inspectionResult.assumeRoleArn,
         metadata: inspectionResult.metadata
       }, itemResults);
-      
-      console.log('🔍 [InspectionService] Transaction service result:', saveResult);
 
       if (saveResult.success) {
-        this.logger.info('Inspection result saved successfully with transaction', {
-          inspectionId: saveResult.inspectionId,
-          customerId: inspectionResult.customerId,
-          itemsProcessed: saveResult.itemsProcessed
-        });
       } else {
         this.logger.error('Failed to save inspection result with transaction', {
           inspectionId: inspectionResult.inspectionId,
@@ -998,8 +924,7 @@ class InspectionService {
       const itemMappings = this.getServiceItemMappings(inspectionResult.serviceType);
       const itemMapping = itemMappings[targetItemId];
       
-      console.log(`🔍 [InspectionService] Individual item inspection detected: ${targetItemId}`);
-      console.log(`🔍 [InspectionService] All ${findings.length} findings will be classified as: ${targetItemId}`);
+
       
       // 모든 findings를 해당 항목으로 분류
       itemResults.push({
@@ -1020,7 +945,6 @@ class InspectionService {
     }
 
     // 전체 검사인 경우 기존 로직 사용 (키워드 매칭)
-    console.log(`🔍 [InspectionService] Full inspection detected, using keyword matching`);
     
     const itemMappings = this.getServiceItemMappings(inspectionResult.serviceType);
     const itemGroups = {};
@@ -1184,8 +1108,6 @@ class InspectionService {
       });
 
       // 단일 테이블 구조로 전환: InspectionHistory 저장 비활성화
-      console.log(`🔍 [InspectionService] Skipping fallback InspectionHistory save`);
-      
       const saveResult = { success: true }; // 임시로 성공 처리
       /*
       const historyService = require('./historyService');
@@ -1208,9 +1130,7 @@ class InspectionService {
       */
 
       if (saveResult.success) {
-        this.logger.info('Fallback save successful', {
-          inspectionId: inspectionResult.inspectionId
-        });
+
         return true;
       } else {
         this.logger.error('Fallback save also failed', {
@@ -1284,10 +1204,7 @@ class InspectionService {
 
       await client.send(command);
 
-      this.logger.info('Emergency save successful', {
-        inspectionId: inspectionResult.inspectionId,
-        method: 'direct-dynamodb'
-      });
+
 
       // 성공 시 간단한 아이템 결과도 저장 시도
       try {
@@ -1316,9 +1233,7 @@ class InspectionService {
           });
 
           await client.send(itemCommand);
-          this.logger.info('Emergency item result also saved', {
-            inspectionId: inspectionResult.inspectionId
-          });
+
         }
       } catch (itemError) {
         this.logger.warn('Emergency item save failed, but history was saved', {
@@ -1351,10 +1266,7 @@ class InspectionService {
           emergencySaveReason: 'All database save methods failed'
         }, null, 2));
 
-        this.logger.info('Data saved to emergency file', {
-          inspectionId: inspectionResult.inspectionId,
-          file: emergencyFile
-        });
+
 
       } catch (fileError) {
         this.logger.error('Even emergency file save failed', {
@@ -1375,13 +1287,6 @@ class InspectionService {
    */
   async handlePartialInspectionFailure(customerId, inspectionId, serviceType, error, inspector) {
     try {
-      this.logger.info('Handling partial inspection failure', {
-        inspectionId,
-        customerId,
-        serviceType,
-        error: error.message
-      });
-
       // Inspector에서 부분적 결과 수집
       let partialResults = null;
       if (inspector && typeof inspector.getPartialResults === 'function') {
@@ -1416,7 +1321,6 @@ class InspectionService {
         };
 
         // 단일 테이블 구조로 전환: InspectionHistory 저장 비활성화
-        console.log(`🔍 [InspectionService] Skipping partial failure InspectionHistory save`);
         /*
         const historyService = require('./historyService');
         await historyService.saveInspectionHistory({
@@ -1425,10 +1329,7 @@ class InspectionService {
         });
         */
 
-        this.logger.info('Partial results saved successfully', {
-          inspectionId,
-          findingsCount: partialResults.findings.length
-        });
+
       } else {
         // 부분 결과도 없으면 실패 기록만 저장
         const failureRecord = {
@@ -1461,7 +1362,6 @@ class InspectionService {
         };
 
         // 단일 테이블 구조로 전환: InspectionHistory 저장 비활성화
-        console.log(`🔍 [InspectionService] Skipping emergency failure InspectionHistory save`);
         /*
         const historyService = require('./historyService');
         await historyService.saveInspectionHistory({
@@ -1470,10 +1370,7 @@ class InspectionService {
         });
         */
 
-        this.logger.info('Failure record saved', {
-          inspectionId,
-          failureReason: error.message
-        });
+
       }
 
     } catch (saveError) {
@@ -1521,11 +1418,11 @@ class InspectionService {
 
     toRemove.forEach(inspectionId => {
       this.activeInspections.delete(inspectionId);
-      this.logger.debug('Cleaned up completed inspection', { inspectionId });
+
     });
 
     if (toRemove.length > 0) {
-      this.logger.info('Cleaned up completed inspections', { count: toRemove.length });
+
     }
   }
 
@@ -1559,7 +1456,7 @@ class InspectionService {
 
     inspectionStatus.fail('Inspection cancelled by user');
     
-    this.logger.info('Inspection cancelled', { inspectionId });
+
 
     return {
       success: true,
@@ -1603,10 +1500,10 @@ class InspectionService {
   createLogger() {
     return {
       debug: (message, meta = {}) => {
-        console.log(`[DEBUG] [InspectionService] ${message}`, meta);
+        // DEBUG 로그 완전 비활성화
       },
       info: (message, meta = {}) => {
-        console.log(`[INFO] [InspectionService] ${message}`, meta);
+        // INFO 로그 완전 비활성화 (에러와 경고만 유지)
       },
       warn: (message, meta = {}) => {
         console.warn(`[WARN] [InspectionService] ${message}`, meta);

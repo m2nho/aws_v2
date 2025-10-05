@@ -344,13 +344,7 @@ class WebSocketService {
   broadcastProgressUpdate(inspectionId, progressData) {
     const subscribers = this.clients.get(inspectionId);
     
-    if (process.env.NODE_ENV === 'development') {
-      console.log('📊 Broadcasting progress update:', {
-        inspectionId,
-        subscriberCount: subscribers?.size || 0,
-        progressData: progressData.progress?.percentage
-      });
-    }
+
     
     if (!subscribers || subscribers.size === 0) {
       return;
@@ -553,14 +547,10 @@ class WebSocketService {
   createLogger() {
     return {
       debug: (message, meta = {}) => {
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`[DEBUG] [WebSocketService] ${message}`, meta);
-        }
+        // DEBUG 로그 완전 비활성화
       },
       info: (message, meta = {}) => {
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`[INFO] [WebSocketService] ${message}`, meta);
-        }
+        // INFO 로그 완전 비활성화 (에러와 경고만 유지)
       },
       warn: (message, meta = {}) => {
         console.warn(`[WARN] [WebSocketService] ${message}`, meta);

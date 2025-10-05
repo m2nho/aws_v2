@@ -6,18 +6,22 @@
 const requestLogger = (req, res, next) => {
   const start = Date.now();
   
-  // Log request details
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`, {
-    ip: req.ip,
-    userAgent: req.get('User-Agent'),
-    body: req.method === 'POST' || req.method === 'PUT' ? 
-      JSON.stringify(req.body).substring(0, 200) : undefined
-  });
+  // Log request details (only in development)
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`, {
+      ip: req.ip,
+      userAgent: req.get('User-Agent'),
+      body: req.method === 'POST' || req.method === 'PUT' ? 
+        JSON.stringify(req.body).substring(0, 200) : undefined
+    });
+  }
 
-  // Log response when finished
+  // Log response when finished (only in development)
   res.on('finish', () => {
     const duration = Date.now() - start;
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} - ${res.statusCode} (${duration}ms)`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} - ${res.statusCode} (${duration}ms)`);
+    }
   });
 
   next();

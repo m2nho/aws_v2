@@ -481,14 +481,10 @@ class BaseInspector {
   createLogger() {
     return {
       debug: (message, meta = {}) => {
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`[DEBUG] [${this.serviceType}Inspector] ${message}`, meta);
-        }
+        // DEBUG 로그 완전 비활성화
       },
       info: (message, meta = {}) => {
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`[INFO] [${this.serviceType}Inspector] ${message}`, meta);
-        }
+        // INFO 로그 완전 비활성화 (에러와 경고만 유지)
       },
       warn: (message, meta = {}) => {
         console.warn(`[WARN] [${this.serviceType}Inspector] ${message}`, meta);

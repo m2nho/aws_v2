@@ -48,8 +48,7 @@ class HistoryService {
         throw new Error('inspectionId is required');
       }
       
-      console.log('🔍 [HistoryService] Saving inspection with ID:', inspectionId);
-      console.log('🔍 [HistoryService] Full inspection data:', JSON.stringify(inspectionData, null, 2));
+
       
       const timestamp = Date.now();
       const isoTimestamp = new Date().toISOString();
@@ -86,7 +85,7 @@ class HistoryService {
       const command = new PutCommand(params);
       await this.client.send(command);
 
-      console.log('✅ [HistoryService] Successfully saved inspection with ID:', inspectionId);
+
 
       return {
         success: true,
@@ -108,7 +107,7 @@ class HistoryService {
    */
   async getInspectionHistory(customerId, inspectionId) {
     try {
-      console.log('🔍 [HistoryService] Getting inspection history:', { customerId, inspectionId });
+
       
       // 단일 테이블에서 특정 검사 ID의 모든 항목 조회
       const params = {
@@ -125,7 +124,6 @@ class HistoryService {
       const result = await this.client.send(command);
 
       if (!result.Items || result.Items.length === 0) {
-        console.log('⚠️ [HistoryService] No inspection history found');
         return {
           success: false,
           error: '검사 이력을 찾을 수 없습니다'
@@ -134,12 +132,6 @@ class HistoryService {
 
       // 검사 결과를 집계하여 반환
       const inspectionData = this.aggregateInspectionResults(result.Items, inspectionId);
-      
-      console.log('✅ [HistoryService] Inspection history found:', {
-        inspectionId,
-        itemCount: result.Items.length,
-        hasResults: !!inspectionData.results
-      });
 
       return {
         success: true,
@@ -249,7 +241,7 @@ class HistoryService {
    */
   async getItemInspectionHistory(customerId, options = {}) {
     try {
-      console.log('🔍 [HistoryService] Getting item inspection history:', { customerId, options });
+
       
       const { limit = 50, serviceType, startDate, endDate, status } = options;
 
@@ -303,7 +295,7 @@ class HistoryService {
       const result = await this.client.send(command);
 
       if (!result.Items || result.Items.length === 0) {
-        console.log('⚠️ [HistoryService] No item inspection history found');
+
         return {
           success: true,
           data: {
@@ -319,10 +311,7 @@ class HistoryService {
       // 제한 수만큼 자르기
       const limitedItems = sortedItems.slice(0, limit);
 
-      console.log('✅ [HistoryService] Item inspection history found:', {
-        totalItems: sortedItems.length,
-        returnedItems: limitedItems.length
-      });
+
 
       return {
         success: true,
@@ -349,7 +338,7 @@ class HistoryService {
    */
   async getInspectionHistoryList(customerId, options = {}) {
     try {
-      console.log('🔍 [HistoryService] Getting inspection history list:', { customerId, options });
+
       
       const { limit = 20, serviceType } = options;
 
@@ -376,7 +365,7 @@ class HistoryService {
       const result = await this.client.send(command);
 
       if (!result.Items || result.Items.length === 0) {
-        console.log('⚠️ [HistoryService] No inspection history found');
+
         return {
           success: true,
           data: {
@@ -409,10 +398,7 @@ class HistoryService {
       // 제한 수만큼 자르기
       const limitedInspections = inspections.slice(0, limit);
 
-      console.log('✅ [HistoryService] Inspection history list found:', {
-        totalInspections: inspections.length,
-        returnedInspections: limitedInspections.length
-      });
+
 
       return {
         success: true,
@@ -436,7 +422,7 @@ class HistoryService {
    */
   async getLatestInspectionResults(customerId, serviceType = null) {
     try {
-      console.log('🔍 [HistoryService] Getting latest inspection results:', { customerId, serviceType });
+
       
       let filterExpression = 'customerId = :customerId AND recordType = :recordType';
       const expressionAttributeValues = {
@@ -459,9 +445,7 @@ class HistoryService {
       const command = new ScanCommand(params);
       const result = await this.client.send(command);
 
-      console.log('✅ [HistoryService] Latest inspection results found:', {
-        itemCount: result.Items?.length || 0
-      });
+
 
       return {
         success: true,
@@ -502,14 +486,6 @@ class HistoryService {
         itemId = keyParts[keyParts.length - 1];
       }
       
-      console.log('🔍 [HistoryService] Processing item:', {
-        itemKey: item.itemKey,
-        serviceType,
-        itemId,
-        status: item.status,
-        findingsCount: item.findings?.length || 0
-      });
-      
       services[serviceType][itemId] = {
         status: item.status,
         lastInspectionTime: item.lastInspectionTime,
@@ -519,15 +495,6 @@ class HistoryService {
         findings: item.findings || []
       };
     });
-    
-    console.log('✅ [HistoryService] Grouped services:', Object.keys(services));
-    Object.entries(services).forEach(([serviceType, items]) => {
-      console.log(`  ${serviceType}: ${Object.keys(items).length}개 항목`);
-      Object.entries(items).forEach(([itemId, itemData]) => {
-        console.log(`    - ${itemId}: ${itemData.status} (문제: ${itemData.issuesFound}개)`);
-      });
-    });
-    
     return services;
   }
 

@@ -16,9 +16,7 @@ const { ApiResponse, ApiError } = require('../models/ApiResponse');
  */
 const startInspection = async (req, res) => {
     try {
-        console.log('Received request body:', req.body);
-        console.log('Request body type:', typeof req.body);
-        console.log('Request headers:', req.headers);
+
         
         const { serviceType, assumeRoleArn, inspectionConfig = {} } = req.body;
         const customerId = req.user.userId; // JWT 토큰에서 추출
@@ -123,16 +121,7 @@ const getInspectionDetails = async (req, res) => {
             }));
         }
 
-        console.log('=== SENDING INSPECTION DETAILS ===');
-        console.log('Inspection data keys:', Object.keys(result.inspection));
-        console.log('Has results in inspection:', 'results' in result.inspection);
-        if (result.inspection.results) {
-            console.log('Results structure:', Object.keys(result.inspection.results));
-            console.log('Results findings count:', result.inspection.results.findings?.length || 0);
-            console.log('Results summary:', result.inspection.results.summary);
-        } else {
-            console.log('No results field found in inspection data!');
-        }
+
         
         // 명시적으로 응답 구조 생성
         const responseData = {
@@ -146,14 +135,8 @@ const getInspectionDetails = async (req, res) => {
             results: result.inspection.results
         };
         
-        console.log('Final response data keys:', Object.keys(responseData));
-        console.log('Final response has results:', 'results' in responseData);
-        console.log('Response data results type:', typeof responseData.results);
-        console.log('Response data results value:', responseData.results);
-        
         // ApiResponse 생성 전 확인
         const apiResponse = ApiResponse.success(responseData);
-        console.log('ApiResponse created:', JSON.stringify(apiResponse, null, 2));
         
         res.status(200).json(apiResponse);
 
@@ -437,9 +420,7 @@ const getItemHistory = async (req, res) => {
             endDate 
         } = req.query;
 
-        console.log('=== GET ITEM HISTORY ===');
-        console.log('Customer ID:', customerId);
-        console.log('Service Type:', serviceType);
+
 
         // 검사 항목 히스토리 조회
         const result = await inspectionItemService.getItemHistory(customerId, {
@@ -490,17 +471,13 @@ const getAllItemStatus = async (req, res) => {
     try {
         const customerId = req.user.userId;
         
-        console.log('=== GET ALL ITEM STATUS ===');
-        console.log('Customer ID:', customerId);
+
 
         // 단일 테이블 구조에서 최신 검사 결과 조회
         const historyService = require('../services/historyService');
         const result = await historyService.getLatestInspectionResults(customerId);
         
-        console.log('=== getAllItemStatus Debug ===');
-        console.log('Query result success:', result.success);
-        console.log('Query result data keys:', result.data ? Object.keys(result.data) : 'no data');
-        console.log('Query result data:', JSON.stringify(result.data, null, 2));
+
 
         if (!result.success) {
             return res.status(500).json(ApiResponse.error({
@@ -510,8 +487,7 @@ const getAllItemStatus = async (req, res) => {
             }));
         }
 
-        console.log('=== Response Debug ===');
-        console.log('About to send response with data:', result.data);
+
         
         res.status(200).json(ApiResponse.success(result.data));
 
@@ -540,13 +516,7 @@ const getItemInspectionHistory = async (req, res) => {
             status
         } = req.query;
 
-        console.log('=== GET ITEM INSPECTION HISTORY ===');
-        console.log('Customer ID:', customerId);
-        console.log('Service Type:', serviceType);
-        console.log('Limit:', limit);
-        console.log('Start Date:', startDate);
-        console.log('End Date:', endDate);
-        console.log('Status:', status);
+
 
         // 쿼리 파라미터 검증
         const queryLimit = Math.min(parseInt(limit) || 50, 100); // 최대 100개로 제한

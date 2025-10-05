@@ -125,10 +125,6 @@ class TransactionService {
       };
 
     } catch (error) {
-        errorCode: error.name,
-        stack: error.stack
-      });
-      
       this.logger.error('Transaction failed', {
         inspectionId: inspectionData.inspectionId,
         error: error.message,
@@ -519,14 +515,10 @@ class TransactionService {
   createLogger() {
     return {
       debug: (message, meta = {}) => {
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`[DEBUG] [TransactionService] ${message}`, meta);
-        }
+        // DEBUG 로그 완전 비활성화
       },
       info: (message, meta = {}) => {
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`[INFO] [TransactionService] ${message}`, meta);
-        }
+        // INFO 로그 완전 비활성화 (에러와 경고만 유지)
       },
       warn: (message, meta = {}) => {
         console.warn(`[WARN] [TransactionService] ${message}`, meta);
