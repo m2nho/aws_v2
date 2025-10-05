@@ -251,7 +251,7 @@ class HistoryService {
     try {
       console.log('🔍 [HistoryService] Getting item inspection history:', { customerId, options });
       
-      const { limit = 50, serviceType } = options;
+      const { limit = 50, serviceType, startDate, endDate, status } = options;
 
       // 단일 테이블에서 HISTORY 레코드만 조회
       let filterExpression = 'customerId = :customerId AND recordType = :recordType';
@@ -266,11 +266,38 @@ class HistoryService {
         expressionAttributeValues[':serviceType'] = serviceType;
       }
 
+      // 날짜 필터 추가
+      if (startDate) {
+        const startTimestamp = new Date(startDate).getTime();
+        filterExpression += ' AND lastInspectionTime >= :startTime';
+        expressionAttributeValues[':startTime'] = startTimestamp;
+      }
+
+      if (endDate) {
+        const endTimestamp = new Date(endDate).getTime();
+        filterExpression += ' AND lastInspectionTime <= :endTime';
+        expressionAttributeValues[':endTime'] = endTimestamp;
+      }
+
       const params = {
         TableName: this.tableName,
         FilterExpression: filterExpression,
         ExpressionAttributeValues: expressionAttributeValues
       };
+
+      // 상태 필터 추가 (COMPLETED -> PASS, FAILED -> FAIL로 매핑)
+      if (status && status !== 'all') {
+        const mappedStatus = status === 'COMPLETED' ? 'PASS' : 
+                           status === 'FAILED' ? 'FAIL' : 
+                           status;
+        params.FilterExpression += ' AND #status = :status';
+        params.ExpressionAttributeValues[':status'] = mappedStatus;
+        
+        // status는 DynamoDB 예약어이므로 ExpressionAttributeNames 사용
+        params.ExpressionAttributeNames = {
+          '#status': 'status'
+        };
+      }
 
       const command = new ScanCommand(params);
       const result = await this.client.send(command);

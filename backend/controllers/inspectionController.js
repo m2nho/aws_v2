@@ -534,13 +534,19 @@ const getItemInspectionHistory = async (req, res) => {
         const customerId = req.user.userId;
         const { 
             serviceType, 
-            limit = 50
+            limit = 50,
+            startDate,
+            endDate,
+            status
         } = req.query;
 
         console.log('=== GET ITEM INSPECTION HISTORY ===');
         console.log('Customer ID:', customerId);
         console.log('Service Type:', serviceType);
         console.log('Limit:', limit);
+        console.log('Start Date:', startDate);
+        console.log('End Date:', endDate);
+        console.log('Status:', status);
 
         // 쿼리 파라미터 검증
         const queryLimit = Math.min(parseInt(limit) || 50, 100); // 최대 100개로 제한
@@ -550,7 +556,10 @@ const getItemInspectionHistory = async (req, res) => {
             customerId,
             {
                 limit: queryLimit,
-                serviceType
+                serviceType,
+                startDate,
+                endDate,
+                status
             }
         );
 

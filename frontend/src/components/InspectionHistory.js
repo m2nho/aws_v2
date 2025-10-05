@@ -8,7 +8,7 @@ const InspectionHistory = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selectedInspection, setSelectedInspection] = useState(null);
-  const [viewMode, setViewMode] = useState('items'); // 'items' 또는 'inspections'
+  // 항목별 보기로 고정
   const [filters, setFilters] = useState({
     serviceType: 'all',
     status: 'all',
@@ -20,153 +20,50 @@ const InspectionHistory = () => {
     lastEvaluatedKey: null
   });
 
+  // 클라이언트 사이드 필터링 (백엔드에서 처리되지 않은 추가 필터링)
+  const applyClientSideFilters = (data) => {
+    return data.filter(item => {
+      // 상태 필터 (백엔드에서 PASS/FAIL로 처리되므로 프론트엔드에서 추가 매핑)
+      if (filters.status !== 'all') {
+        const mappedStatus = filters.status === 'COMPLETED' ? 'PASS' :
+          filters.status === 'FAILED' ? 'FAIL' :
+            filters.status;
+        if (item.status !== mappedStatus) {
+          return false;
+        }
+      }
+
+      // 날짜 필터 (백엔드에서 처리되지만 클라이언트에서 추가 검증)
+      if (filters.startDate || filters.endDate) {
+        const itemDate = new Date(item.timestamp);
+
+        if (filters.startDate) {
+          const startDate = new Date(filters.startDate);
+          startDate.setHours(0, 0, 0, 0);
+          if (itemDate < startDate) {
+            return false;
+          }
+        }
+
+        if (filters.endDate) {
+          const endDate = new Date(filters.endDate);
+          endDate.setHours(23, 59, 59, 999);
+          if (itemDate > endDate) {
+            return false;
+          }
+        }
+      }
+
+      return true;
+    });
+  };
+
   // 컴포넌트 마운트 시 히스토리 로드
   useEffect(() => {
     loadInspectionHistory();
-  }, [filters, viewMode]);
+  }, [filters]);
 
-  // 미리보기 데이터 생성
-  const generatePreviewData = () => {
-    if (viewMode === 'items') {
-      return [
-        {
-          resourceId: 'i-0123456789abcdef0',
-          resourceType: 'EC2 Instance',
-          serviceType: 'EC2',
-          riskLevel: 'HIGH',
-          riskScore: 85,
-          inspectionTitle: 'SSH 포트 보안 검사',
-          issue: '보안 그룹에서 SSH(22번 포트)가 모든 IP(0.0.0.0/0)에 대해 열려있습니다',
-          recommendation: 'SSH 접근을 특정 IP 범위로 제한하거나 VPN을 통해서만 접근하도록 설정하세요',
-          category: '네트워크 보안',
-          checkName: 'EC2-SSH-UNRESTRICTED-ACCESS',
-          timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-          inspectionId: 'insp-001'
-        },
-        {
-          resourceId: 'sg-0987654321fedcba0',
-          resourceType: 'Security Group',
-          serviceType: 'EC2',
-          riskLevel: 'CRITICAL',
-          riskScore: 95,
-          inspectionTitle: '보안 그룹 포트 개방 검사',
-          issue: '보안 그룹에서 모든 포트(0-65535)가 인터넷에 개방되어 있습니다',
-          recommendation: '필요한 포트만 열고 소스 IP를 제한하세요',
-          category: '네트워크 보안',
-          checkName: 'EC2-SG-ALL-PORTS-OPEN',
-          timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-          inspectionId: 'insp-001'
-        },
-        {
-          resourceId: 'bucket-example-logs',
-          resourceType: 'S3 Bucket',
-          serviceType: 'S3',
-          riskLevel: 'MEDIUM',
-          riskScore: 65,
-          inspectionTitle: 'S3 버킷 퍼블릭 액세스 검사',
-          issue: 'S3 버킷의 퍼블릭 읽기 권한이 활성화되어 있습니다',
-          recommendation: '버킷 정책을 검토하고 불필요한 퍼블릭 액세스를 제거하세요',
-          category: '데이터 보안',
-          checkName: 'S3-BUCKET-PUBLIC-READ',
-          timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
-          inspectionId: 'insp-002'
-        },
-        {
-          resourceId: 'user-admin-temp',
-          resourceType: 'IAM User',
-          serviceType: 'IAM',
-          riskLevel: 'HIGH',
-          riskScore: 80,
-          inspectionTitle: 'IAM 사용자 권한 검사',
-          issue: 'IAM 사용자에게 AdministratorAccess 정책이 직접 연결되어 있습니다',
-          recommendation: 'IAM 그룹을 사용하여 권한을 관리하고 최소 권한 원칙을 적용하세요',
-          category: '접근 제어',
-          checkName: 'IAM-USER-ADMIN-ACCESS',
-          timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(),
-          inspectionId: 'insp-003'
-        },
-        {
-          resourceId: 'db-prod-mysql',
-          resourceType: 'RDS Instance',
-          serviceType: 'RDS',
-          riskLevel: 'LOW',
-          riskScore: 30,
-          inspectionTitle: 'RDS 백업 설정 검사',
-          issue: 'RDS 인스턴스의 자동 백업 보존 기간이 7일로 설정되어 있습니다',
-          recommendation: '중요한 데이터베이스의 경우 백업 보존 기간을 30일 이상으로 설정하는 것을 권장합니다',
-          category: '데이터 백업',
-          checkName: 'RDS-BACKUP-RETENTION-PERIOD',
-          timestamp: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
-          inspectionId: 'insp-004'
-        },
-        {
-          resourceId: 'vol-0abcdef1234567890',
-          resourceType: 'EBS Volume',
-          serviceType: 'EC2',
-          riskLevel: 'MEDIUM',
-          riskScore: 70,
-          inspectionTitle: 'EBS 볼륨 암호화 검사',
-          issue: 'EBS 볼륨이 암호화되지 않은 상태입니다',
-          recommendation: 'EBS 볼륨 암호화를 활성화하여 데이터를 보호하세요',
-          category: '데이터 암호화',
-          checkName: 'EBS-VOLUME-ENCRYPTION',
-          timestamp: new Date(Date.now() - 14 * 60 * 60 * 1000).toISOString(),
-          inspectionId: 'insp-005'
-        },
-        {
-          resourceId: 'role-lambda-execution',
-          resourceType: 'IAM Role',
-          serviceType: 'IAM',
-          riskLevel: 'MEDIUM',
-          riskScore: 55,
-          inspectionTitle: 'IAM 역할 신뢰 정책 검사',
-          issue: 'IAM 역할의 신뢰 정책에서 와일드카드(*)를 사용하고 있습니다',
-          recommendation: '신뢰 정책을 구체적인 서비스나 계정으로 제한하세요',
-          category: '접근 제어',
-          checkName: 'IAM-ROLE-TRUST-POLICY-WILDCARD',
-          timestamp: new Date(Date.now() - 16 * 60 * 60 * 1000).toISOString(),
-          inspectionId: 'insp-006'
-        }
-      ];
-    } else {
-      return [
-        {
-          inspectionId: 'insp-001',
-          serviceType: 'EC2',
-          status: 'COMPLETED',
-          startTime: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-          endTime: new Date(Date.now() - 2 * 60 * 60 * 1000 + 45000).toISOString(),
-          duration: 45000,
-          results: {
-            summary: {
-              totalResources: 15,
-              criticalIssues: 2,
-              highRiskIssues: 3,
-              mediumRiskIssues: 5,
-              lowRiskIssues: 2
-            }
-          }
-        },
-        {
-          inspectionId: 'insp-002',
-          serviceType: 'S3',
-          status: 'COMPLETED',
-          startTime: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
-          endTime: new Date(Date.now() - 6 * 60 * 60 * 1000 + 32000).toISOString(),
-          duration: 32000,
-          results: {
-            summary: {
-              totalResources: 8,
-              criticalIssues: 0,
-              highRiskIssues: 1,
-              mediumRiskIssues: 2,
-              lowRiskIssues: 1
-            }
-          }
-        }
-      ];
-    }
-  };
+
 
   // 실제 데이터를 검사 항목 단위로 그룹화
   const enrichItemData = (items) => {
@@ -174,7 +71,7 @@ const InspectionHistory = () => {
       // 위험도 계산 (가장 높은 위험도 사용)
       let highestRiskLevel = item.riskLevel || 'LOW';
       let highestRiskScore = item.score || 0;
-      
+
       if (item.findings && item.findings.length > 0) {
         const riskLevels = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
         item.findings.forEach(finding => {
@@ -191,7 +88,7 @@ const InspectionHistory = () => {
 
       // 검사 요약 생성
       const findingsCount = item.findings ? item.findings.length : 0;
-      const resourcesAffected = item.findings ? 
+      const resourcesAffected = item.findings ?
         [...new Set(item.findings.map(f => f.resourceId))].length : 0;
 
       return {
@@ -199,24 +96,24 @@ const InspectionHistory = () => {
         inspectionId: item.lastInspectionId,
         serviceType: item.serviceType,
         itemId: item.itemId,
-        
+
         // 검사 항목 정보
         inspectionTitle: item.itemName || `${item.serviceType} 보안 검사`,
         checkName: item.itemId?.toUpperCase().replace(/_/g, '-') || `${item.serviceType}-CHECK`,
         category: item.category === 'security' ? '보안 검사' : (item.category || '보안 검사'),
-        
+
         // 위험도 정보
         riskLevel: highestRiskLevel,
         riskScore: highestRiskScore,
-        
+
         // 검사 요약
         findingsCount: findingsCount,
         resourcesAffected: resourcesAffected,
         status: item.status,
-        
+
         // 시간 정보
         timestamp: new Date(item.lastInspectionTime || Date.now()).toISOString(),
-        
+
         // 원본 데이터 보존 (상세보기에서 사용)
         originalItem: item,
         findings: item.findings || [],
@@ -232,8 +129,9 @@ const InspectionHistory = () => {
       setError(null);
 
       const params = {
-        limit: viewMode === 'items' ? 50 : 20,
-        ...(filters.serviceType !== 'all' && { serviceType: filters.serviceType })
+        limit: 50,
+        ...(filters.serviceType !== 'all' && { serviceType: filters.serviceType }),
+        ...(filters.status !== 'all' && { status: filters.status })
       };
 
       // 날짜 필터 적용
@@ -244,29 +142,18 @@ const InspectionHistory = () => {
         params.endDate = new Date(filters.endDate).toISOString();
       }
 
-      let result;
-      if (viewMode === 'items') {
-        // 항목별 검사 이력 조회
-        result = await inspectionService.getItemInspectionHistory(params);
-        console.log('📋 Item inspection history loaded:', result);
-        console.log('📋 Raw data structure:', JSON.stringify(result.data, null, 2));
-      } else {
-        // 기존 검사별 이력 조회
-        result = await inspectionService.getInspectionHistory(params);
-      }
+      // 항목별 검사 이력 조회
+      const result = await inspectionService.getItemInspectionHistory(params);
+      console.log('📋 Item inspection history loaded:', result);
+      console.log('📋 Raw data structure:', JSON.stringify(result.data, null, 2));
 
       if (result.success) {
-        let newData;
-        if (viewMode === 'items') {
-          newData = result.data.items || [];
-          // 실제 데이터를 표시용으로 변환
-          newData = enrichItemData(newData);
-          console.log('📋 Enriched item data:', newData);
-        } else {
-          newData = result.data.inspections || [];
-          // 클라이언트 사이드 필터링
-          newData = applyClientSideFilters(newData);
-        }
+        let newData = result.data.items || [];
+        // 실제 데이터를 표시용으로 변환
+        newData = enrichItemData(newData);
+        // 클라이언트 사이드 필터링 적용
+        newData = applyClientSideFilters(newData);
+        console.log('📋 Enriched item data:', newData);
 
         setHistoryData(prev => loadMore ? [...prev, ...newData] : newData);
         setPagination({
@@ -293,45 +180,7 @@ const InspectionHistory = () => {
     }
   };
 
-  // 클라이언트 사이드 필터링
-  const applyClientSideFilters = (data) => {
-    return data.filter(inspection => {
-      const inspectionDate = new Date(inspection.startTime);
 
-      // 상태 필터
-      if (filters.status !== 'all' && inspection.status !== filters.status) {
-        return false;
-      }
-
-      // 날짜 범위 필터
-      if (filters.startDate || filters.endDate) {
-        const inspectionDateOnly = new Date(inspectionDate);
-        inspectionDateOnly.setHours(0, 0, 0, 0);
-
-        if (filters.startDate) {
-          const startDate = new Date(filters.startDate);
-          startDate.setHours(0, 0, 0, 0);
-
-          if (inspectionDateOnly < startDate) {
-            return false;
-          }
-        }
-
-        if (filters.endDate) {
-          const endDate = new Date(filters.endDate);
-          endDate.setHours(23, 59, 59, 999);
-
-          if (inspectionDateOnly > endDate) {
-            return false;
-          }
-        }
-      }
-
-
-
-      return true;
-    });
-  };
 
   // 필터 변경 핸들러
   const handleFilterChange = (filterType, value) => {
@@ -351,39 +200,7 @@ const InspectionHistory = () => {
     setPagination({ hasMore: false, lastEvaluatedKey: null });
   };
 
-  // 검사 상세 보기
-  const handleViewDetails = async (inspectionId) => {
-    try {
-      setLoading(true);
-      const result = await inspectionService.getInspectionDetails(inspectionId);
 
-      if (result.success) {
-        console.log('=== INSPECTION DETAILS RECEIVED ===');
-        console.log('Full result:', result);
-        console.log('Result data:', result.data);
-        console.log('Has results field in result.data:', 'results' in result.data);
-        console.log('Has results field in result.data.data:', result.data && result.data.data && 'results' in result.data.data);
-
-        // 실제 검사 데이터는 result.data.data에 있음
-        const inspectionData = result.data.data || result.data;
-        console.log('Inspection data keys:', Object.keys(inspectionData));
-        console.log('Has results field in inspection data:', 'results' in inspectionData);
-
-        if (inspectionData.results) {
-          console.log('Results structure:', Object.keys(inspectionData.results));
-          console.log('Findings count:', inspectionData.results.findings?.length || 0);
-        }
-        setSelectedInspection(inspectionData);
-      } else {
-        throw new Error(result.error?.message || '상세 정보를 불러오는데 실패했습니다.');
-      }
-    } catch (error) {
-      console.error('Failed to load inspection details:', error);
-      setError(error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // 항목 상세 보기 (항목별 보기용)
   const handleViewItemDetails = (item) => {
@@ -407,7 +224,7 @@ const InspectionHistory = () => {
         recommendations: item.recommendations || []
       }
     };
-    
+
     setSelectedInspection(inspectionData);
   };
 
@@ -422,31 +239,7 @@ const InspectionHistory = () => {
     });
   };
 
-  // 검사 상태 표시
-  const getStatusDisplay = (status) => {
-    const statusMap = {
-      'COMPLETED': { text: '완료', color: '#10b981', icon: '✅' },
-      'FAILED': { text: '실패', color: '#ef4444', icon: '❌' },
-      'PENDING': { text: '진행중', color: '#f59e0b', icon: '⏳' },
-      'CANCELLED': { text: '취소됨', color: '#6b7280', icon: '⏹️' }
-    };
-    return statusMap[status] || { text: status, color: '#6b7280', icon: '❓' };
-  };
 
-  // 위험도 요약 표시
-  const getRiskSummary = (results) => {
-    if (!results || !results.summary) return null;
-
-    const { criticalIssues = 0, highRiskIssues = 0, mediumRiskIssues = 0, lowRiskIssues = 0 } = results.summary;
-    const total = criticalIssues + highRiskIssues + mediumRiskIssues + lowRiskIssues;
-
-    if (total === 0) return { text: '문제 없음', color: '#10b981' };
-
-    if (criticalIssues > 0) return { text: `심각 ${criticalIssues}개`, color: '#dc2626' };
-    if (highRiskIssues > 0) return { text: `높음 ${highRiskIssues}개`, color: '#ea580c' };
-    if (mediumRiskIssues > 0) return { text: `중간 ${mediumRiskIssues}개`, color: '#d97706' };
-    return { text: `낮음 ${lowRiskIssues}개`, color: '#65a30d' };
-  };
 
   return (
     <div className="inspection-history">
@@ -454,23 +247,7 @@ const InspectionHistory = () => {
       <div className="history-header">
         <div className="header-content">
           <h1>검사 히스토리</h1>
-          <p>이전에 수행된 모든 AWS 리소스 검사 기록을 확인할 수 있습니다</p>
-        </div>
-
-        {/* 보기 모드 전환 */}
-        <div className="view-mode-toggle">
-          <button
-            className={`toggle-button ${viewMode === 'inspections' ? 'active' : ''}`}
-            onClick={() => setViewMode('inspections')}
-          >
-            📋 검사별 보기
-          </button>
-          <button
-            className={`toggle-button ${viewMode === 'items' ? 'active' : ''}`}
-            onClick={() => setViewMode('items')}
-          >
-            🔍 항목별 보기
-          </button>
+          <p>AWS 리소스 검사 항목별 결과를 확인할 수 있습니다</p>
         </div>
       </div>
 
@@ -501,8 +278,8 @@ const InspectionHistory = () => {
               className="status-select"
             >
               <option value="all">전체 상태</option>
-              <option value="COMPLETED">✅ 완료</option>
-              <option value="FAILED">❌ 실패</option>
+              <option value="PASS">✅ 정상</option>
+              <option value="FAIL">❌ 문제 발견</option>
               <option value="PENDING">⏳ 진행중</option>
               <option value="CANCELLED">⏹️ 취소됨</option>
             </select>
@@ -546,12 +323,13 @@ const InspectionHistory = () => {
             <button
               className="reset-filters-button"
               onClick={() => {
-                setFilters({
+                const resetFilters = {
                   serviceType: 'all',
                   status: 'all',
                   startDate: '',
                   endDate: ''
-                });
+                };
+                setFilters(resetFilters);
                 setPagination({ hasMore: false, lastEvaluatedKey: null });
               }}
               disabled={loading}
@@ -565,13 +343,17 @@ const InspectionHistory = () => {
         {/* 결과 통계 */}
         <div className="filter-stats-row">
           <div className="filter-stats">
-            📊 총 <strong>{historyData.length}</strong>개
-            {viewMode === 'items' ? '검사 항목' : '검사 기록'}
+            📊 총 <strong>{historyData.length}</strong>개 검사 항목
             {filters.serviceType !== 'all' && (
               <span className="active-filter">• {filters.serviceType}</span>
             )}
             {filters.status !== 'all' && (
-              <span className="active-filter">• {filters.status}</span>
+              <span className="active-filter">
+                • {filters.status === 'PASS' ? '정상' :
+                  filters.status === 'FAIL' ? '문제 발견' :
+                    filters.status === 'PENDING' ? '진행중' :
+                      filters.status}
+              </span>
             )}
             {(filters.startDate || filters.endDate) && (
               <span className="active-filter">
@@ -597,20 +379,12 @@ const InspectionHistory = () => {
       <div className={`history-list ${loading ? 'loading' : ''}`}>
         {historyData.length === 0 && !loading ? (
           <div className="no-history">
-            <p>
-              {viewMode === 'items'
-                ? '검사 항목 히스토리가 없습니다.'
-                : '검사 히스토리가 없습니다.'
-              }
-            </p>
+            <p>검사 항목 히스토리가 없습니다.</p>
             <p style={{ fontSize: '14px', opacity: 0.7 }}>
-              {viewMode === 'items'
-                ? '리소스별 검사 결과를 확인할 수 있습니다.'
-                : '완료된 검사 기록을 확인할 수 있습니다.'
-              }
+              AWS 리소스 검사 결과를 확인할 수 있습니다.
             </p>
           </div>
-        ) : viewMode === 'items' ? (
+        ) : (
           // 항목별 보기
           historyData.map((item, index) => {
             const riskLevel = item.riskLevel || 'LOW';
@@ -634,7 +408,10 @@ const InspectionHistory = () => {
                         <span className="resource-type">{item.inspectionTitle}</span>
                       </div>
                       <span className="resource-id">
-                        {item.status === 'FAIL' ? '❌ 문제 발견' : '✅ 정상'}
+                        {item.status === 'FAIL' ? '❌ 문제 발견' :
+                          item.status === 'PASS' ? '✅ 정상' :
+                            item.status === 'PENDING' ? '⏳ 진행중' :
+                              '❓ 알 수 없음'}
                       </span>
                     </div>
                   </div>
@@ -686,73 +463,6 @@ const InspectionHistory = () => {
                       onClick={() => handleViewItemDetails(item)}
                     >
                       항목 상세보기
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })
-        ) : (
-          // 검사별 보기 (기존 코드)
-          historyData.map((inspection) => {
-            const statusDisplay = getStatusDisplay(inspection.status);
-            const riskSummary = getRiskSummary(inspection.results);
-
-            return (
-              <div key={inspection.inspectionId} className="history-item inspection-view">
-                <div className="history-item-header">
-                  <div className="inspection-info">
-                    <div className="service-badge">
-                      {inspection.serviceType}
-                    </div>
-                    <div className="inspection-id">
-                      ID: {inspection.inspectionId}
-                    </div>
-                  </div>
-
-                  <div className="inspection-meta">
-                    <div className="inspection-date">
-                      {formatDateTime(inspection.startTime)}
-                    </div>
-                    <div
-                      className="inspection-status"
-                      style={{ color: statusDisplay.color }}
-                    >
-                      {statusDisplay.icon} {statusDisplay.text}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="history-item-content">
-                  <div className="inspection-summary">
-                    {inspection.duration && (
-                      <div className="duration">
-                        소요시간: {Math.round(inspection.duration / 1000)}초
-                      </div>
-                    )}
-
-                    {riskSummary && (
-                      <div
-                        className="risk-summary"
-                        style={{ color: riskSummary.color }}
-                      >
-                        {riskSummary.text}
-                      </div>
-                    )}
-
-                    {inspection.results?.summary?.totalResources && (
-                      <div className="resources-count">
-                        검사된 리소스: {inspection.results.summary.totalResources}개
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="history-item-actions">
-                    <button
-                      className="view-details-button"
-                      onClick={() => handleViewDetails(inspection.inspectionId)}
-                    >
-                      상세 보기
                     </button>
                   </div>
                 </div>
