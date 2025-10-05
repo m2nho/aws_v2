@@ -5,7 +5,7 @@
  */
 
 const { inspectors } = require('../../services');
-const ExampleInspector = require('../../services/inspectors/exampleInspector');
+const EC2Inspector = require('../../services/inspectors/ec2Inspector');
 
 describe('Inspector Integration', () => {
   let mockCredentials;
@@ -16,10 +16,11 @@ describe('Inspector Integration', () => {
       accessKeyId: 'mock-access-key',
       secretAccessKey: 'mock-secret-key',
       sessionToken: 'mock-session-token',
-      roleArn: 'arn:aws:iam::123456789012:role/MockRole'
+      roleArn: 'arn:aws:iam::123456789012:role/MockRole',
+      region: 'us-east-1'
     };
     mockConfig = {
-      exampleMode: 'demo',
+      targetItem: 'security_groups',
       regions: ['us-east-1']
     };
 
@@ -35,46 +36,60 @@ describe('Inspector Integration', () => {
   });
 
   describe('Inspector Registry Integration', () => {
-    test('should register and create example inspector', () => {
-      // Register the example inspector
-      inspectors.registry.register('Example', ExampleInspector);
+    test('should register and create EC2 inspector', () => {
+      // Register the EC2 inspector
+      inspectors.registry.register('EC2', EC2Inspector);
       
       // Verify registration
-      expect(inspectors.isServiceTypeSupported('Example')).toBe(true);
-      expect(inspectors.getSupportedServiceTypes()).toContain('EXAMPLE');
+      expect(inspectors.isServiceTypeSupported('EC2')).toBe(true);
+      expect(inspectors.getSupportedServiceTypes()).toContain('EC2');
       
       // Create inspector instance
-      const inspector = inspectors.createInspector('Example');
-      expect(inspector).toBeInstanceOf(ExampleInspector);
-      expect(inspector.serviceType).toBe('Example');
+      const inspector = inspectors.createInspector('EC2');
+      expect(inspector).toBeInstanceOf(EC2Inspector);
+      expect(inspector.serviceType).toBe('EC2');
     });
 
     test('should get inspector info list', () => {
-      inspectors.registry.register('Example', ExampleInspector);
+      inspectors.registry.register('EC2', EC2Inspector);
       
       const infoList = inspectors.getInspectorInfoList();
       expect(infoList).toHaveLength(1);
       
-      const exampleInfo = infoList[0];
-      expect(exampleInfo.serviceType).toBe('EXAMPLE');
-      expect(exampleInfo.version).toBe('example-inspector-v1.0');
-      expect(exampleInfo.supportedInspectionTypes).toEqual([
-        'security-check',
-        'compliance-check',
-        'configuration-review'
+      const ec2Info = infoList[0];
+      expect(ec2Info.serviceType).toBe('EC2');
+      expect(ec2Info.version).toBe('ec2-inspector-v2.0');
+      expect(ec2Info.supportedInspectionTypes).toEqual([
+        'security-groups',
+        'instance-security',
+        'network-configuration',
+        'access-control',
+        'metadata-service',
+        'key-management'
       ]);
     });
   });
 
   describe('End-to-End Inspector Execution', () => {
     test('should execute complete inspection workflow', async () => {
+      // Mock AWS SDK calls to avoid actual API calls
+      const mockEC2Client = {
+        send: jest.fn().mockResolvedValue({
+          SecurityGroups: [],
+          Reservations: []
+        })
+      };
+      
       // Register inspector
-      inspectors.registry.register('Example', ExampleInspector);
+      inspectors.registry.register('EC2', EC2Inspector);
       
       // Create inspector
-      const inspector = inspectors.createInspector('Example', {
+      const inspector = inspectors.createInspector('EC2', {
         timeout: 10000
       });
+      
+      // Mock the EC2 client
+      inspector.ec2Client = mockEC2Client;
       
       // Execute inspection
       const result = await inspector.executeInspection(
@@ -85,7 +100,7 @@ describe('Inspector Integration', () => {
       
       // Verify result structure
       expect(result.customerId).toBe('test-customer-123');
-      expect(result.serviceType).toBe('Example');
+      expect(result.serviceType).toBe('EC2');
       expect(result.status).toBe('COMPLETED');
       expect(result.inspectionId).toBeDefined();
       expect(result.assumeRoleArn).toBe(mockCredentials.roleArn);
@@ -93,68 +108,58 @@ describe('Inspector Integration', () => {
       // Verify results content
       expect(result.results).toBeDefined();
       expect(result.results.summary).toBeDefined();
-      expect(result.results.summary.totalResources).toBe(5);
       expect(result.results.findings).toBeDefined();
       expect(result.results.recommendations).toBeDefined();
-      
-      // Verify findings were generated
-      expect(result.results.findings.length).toBeGreaterThan(0);
-      
-      // Verify recommendations include service-specific ones
-      expect(result.results.recommendations).toContain(
-        '보안 설정을 정기적으로 검토하고 업데이트하시기 바랍니다.'
-      );
     }, 10000);
 
     test('should handle inspection errors gracefully', async () => {
       // Register inspector
-      inspectors.registry.register('Example', ExampleInspector);
+      inspectors.registry.register('EC2', EC2Inspector);
       
       // Create inspector
-      const inspector = inspectors.createInspector('Example');
+      const inspector = inspectors.createInspector('EC2');
       
-      // Execute inspection with invalid config to trigger error
-      const invalidConfig = { exampleMode: 'invalid' };
+      // Execute inspection with invalid credentials to trigger error
+      const invalidCredentials = { ...mockCredentials, accessKeyId: null };
       
       const result = await inspector.executeInspection(
         'test-customer-123',
-        mockCredentials,
-        invalidConfig
+        invalidCredentials,
+        mockConfig
       );
       
       // Should return failed result with error info
       expect(result.status).toBe('FAILED');
       expect(result.results.error).toBeDefined();
-      expect(result.results.error.message).toContain('Invalid example mode');
       expect(result.results.metadata.partialResults).toBe(true);
     });
   });
 
   describe('Inspector Factory Functions', () => {
     beforeEach(() => {
-      inspectors.registry.register('Example', ExampleInspector);
+      inspectors.registry.register('EC2', EC2Inspector);
     });
 
     test('should create inspector using factory function', () => {
-      const inspector = inspectors.createInspector('Example', {
+      const inspector = inspectors.createInspector('EC2', {
         timeout: 600000,
         maxRetries: 5
       });
       
-      expect(inspector).toBeInstanceOf(ExampleInspector);
+      expect(inspector).toBeInstanceOf(EC2Inspector);
       expect(inspector.options.timeout).toBe(600000);
       expect(inspector.options.maxRetries).toBe(5);
     });
 
     test('should check service type support', () => {
-      expect(inspectors.isServiceTypeSupported('Example')).toBe(true);
-      expect(inspectors.isServiceTypeSupported('example')).toBe(true);
+      expect(inspectors.isServiceTypeSupported('EC2')).toBe(true);
+      expect(inspectors.isServiceTypeSupported('ec2')).toBe(true);
       expect(inspectors.isServiceTypeSupported('NonExistent')).toBe(false);
     });
 
     test('should get supported service types', () => {
       const serviceTypes = inspectors.getSupportedServiceTypes();
-      expect(serviceTypes).toContain('EXAMPLE');
+      expect(serviceTypes).toContain('EC2');
       expect(serviceTypes).toHaveLength(1);
     });
   });

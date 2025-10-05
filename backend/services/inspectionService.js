@@ -57,8 +57,22 @@ class InspectionService {
     try {
 
 
-      // 임시: 첫 번째 선택된 항목만 검사 (테스트용)
+      // 선택된 모든 항목에 대해 검사 작업 생성
       const inspectionJobs = [];
+      
+      console.log('🔍 [INSPECTION] Processing inspection request', {
+        customerId,
+        serviceType,
+        selectedItemsCount: selectedItems.length,
+        selectedItems: selectedItems
+      });
+      
+      this.logger.info('Processing inspection request', {
+        customerId,
+        serviceType,
+        selectedItemsCount: selectedItems.length,
+        selectedItems: selectedItems
+      });
       
       if (selectedItems.length === 0) {
         // 항목이 선택되지 않은 경우 전체 검사로 처리 (기존 방식)
@@ -68,18 +82,32 @@ class InspectionService {
           itemId: 'all',
           itemName: `${serviceType} 전체 검사`
         });
+        console.log('🔍 [INSPECTION] Created full inspection job', { inspectionId, itemId: 'all' });
+        this.logger.info('Created full inspection job', { inspectionId, itemId: 'all' });
       } else {
-        // 임시: 첫 번째 항목만 검사
-        const firstItemId = selectedItems[0];
-        const inspectionId = uuidv4();
-        inspectionJobs.push({
-          inspectionId,
-          itemId: firstItemId,
-          itemName: this.getItemName(serviceType, firstItemId)
-        });
-        
+        // 선택된 모든 항목에 대해 개별 검사 작업 생성
+        for (const itemId of selectedItems) {
+          const inspectionId = uuidv4();
+          inspectionJobs.push({
+            inspectionId,
+            itemId: itemId,
+            itemName: this.getItemName(serviceType, itemId)
+          });
+          console.log('🔍 [INSPECTION] Created item inspection job', { inspectionId, itemId, itemName: this.getItemName(serviceType, itemId) });
+          this.logger.info('Created item inspection job', { inspectionId, itemId, itemName: this.getItemName(serviceType, itemId) });
+        }
 
       }
+      
+      console.log('🔍 [INSPECTION] Total inspection jobs created', { 
+        jobCount: inspectionJobs.length,
+        jobs: inspectionJobs.map(job => ({ id: job.inspectionId, item: job.itemId }))
+      });
+      
+      this.logger.info('Total inspection jobs created', { 
+        jobCount: inspectionJobs.length,
+        jobs: inspectionJobs.map(job => ({ id: job.inspectionId, item: job.itemId }))
+      });
 
       // 각 검사 작업의 상태 초기화
       const inspectionStatuses = new Map();
@@ -107,6 +135,12 @@ class InspectionService {
 
       
       const executionPromises = inspectionJobs.map(job => {
+        console.log('🚀 [INSPECTION] Starting execution for job', { 
+          inspectionId: job.inspectionId, 
+          itemId: job.itemId, 
+          itemName: job.itemName 
+        });
+        
         // WebSocket 연결 상태 확인 및 초기 상태 브로드캐스트
         const wsStats = webSocketService.getConnectionStats();
         
@@ -914,7 +948,22 @@ class InspectionService {
     const itemResults = [];
     const findings = inspectionResult.results?.findings || [];
     
-    if (findings.length === 0) {
+    // 개별 항목 검사인 경우 findings가 없어도 결과를 생성해야 함
+    const isItemInspection = inspectionResult.metadata && 
+                            inspectionResult.metadata.targetItem && 
+                            inspectionResult.metadata.targetItem !== 'all';
+    
+    this.logger.info('Preparing item results', {
+      inspectionId: inspectionResult.inspectionId,
+      findingsCount: findings.length,
+      isItemInspection,
+      targetItem: inspectionResult.metadata?.targetItem
+    });
+    
+    if (findings.length === 0 && !isItemInspection) {
+      this.logger.warn('No findings and not item inspection, returning empty results', {
+        inspectionId: inspectionResult.inspectionId
+      });
       return itemResults;
     }
 
@@ -926,16 +975,16 @@ class InspectionService {
       
 
       
-      // 모든 findings를 해당 항목으로 분류
+      // 모든 findings를 해당 항목으로 분류 (findings가 없어도 결과 생성)
       itemResults.push({
         serviceType: inspectionResult.serviceType,
         itemId: targetItemId,
         itemName: itemMapping?.name || inspectionResult.metadata.itemName || targetItemId,
         category: itemMapping?.category || 'other',
-        totalResources: findings.length,
+        totalResources: inspectionResult.results?.summary?.totalResources || 0,
         issuesFound: findings.length,
-        riskLevel: this.calculateMaxRiskLevel(findings),
-        score: this.calculateScore(findings),
+        riskLevel: findings.length > 0 ? this.calculateMaxRiskLevel(findings) : 'LOW',
+        score: findings.length > 0 ? this.calculateScore(findings) : 100,
         findings: findings,
         recommendations: inspectionResult.results?.recommendations || [],
         createdAt: Date.now()

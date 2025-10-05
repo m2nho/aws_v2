@@ -513,7 +513,8 @@ const getItemInspectionHistory = async (req, res) => {
             limit = 50,
             startDate,
             endDate,
-            status
+            status,
+            historyMode
         } = req.query;
 
 
@@ -529,7 +530,8 @@ const getItemInspectionHistory = async (req, res) => {
                 serviceType,
                 startDate,
                 endDate,
-                status
+                status,
+                historyMode
             }
         );
 

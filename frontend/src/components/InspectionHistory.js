@@ -13,7 +13,8 @@ const InspectionHistory = () => {
     serviceType: 'all',
     status: 'all',
     startDate: '',
-    endDate: ''
+    endDate: '',
+    historyMode: 'history' // 'latest' 또는 'history'
   });
   const [pagination, setPagination] = useState({
     hasMore: false,
@@ -22,7 +23,7 @@ const InspectionHistory = () => {
 
   // 클라이언트 사이드 필터링 (백엔드에서 처리되지 않은 추가 필터링)
   const applyClientSideFilters = (data) => {
-    return data.filter(item => {
+    const filtered = data.filter(item => {
       // 상태 필터 (백엔드에서 PASS/FAIL로 처리되므로 프론트엔드에서 추가 매핑)
       if (filters.status !== 'all') {
         const mappedStatus = filters.status === 'COMPLETED' ? 'PASS' :
@@ -56,6 +57,8 @@ const InspectionHistory = () => {
 
       return true;
     });
+    
+    return filtered;
   };
 
   // 컴포넌트 마운트 시 히스토리 로드
@@ -131,7 +134,8 @@ const InspectionHistory = () => {
       const params = {
         limit: 50,
         ...(filters.serviceType !== 'all' && { serviceType: filters.serviceType }),
-        ...(filters.status !== 'all' && { status: filters.status })
+        ...(filters.status !== 'all' && { status: filters.status }),
+        historyMode: filters.historyMode
       };
 
       // 날짜 필터 적용
@@ -147,12 +151,15 @@ const InspectionHistory = () => {
 
       if (result.success) {
         let newData = result.data.items || [];
+        
         // 실제 데이터를 표시용으로 변환
         newData = enrichItemData(newData);
+        
         // 클라이언트 사이드 필터링 적용
         newData = applyClientSideFilters(newData);
 
-        setHistoryData(prev => loadMore ? [...prev, ...newData] : newData);
+        const finalData = loadMore ? [...prev, ...newData] : newData;
+        setHistoryData(finalData);
         setPagination({
           hasMore: result.data.hasMore || false,
           lastEvaluatedKey: result.data.lastEvaluatedKey
@@ -200,6 +207,9 @@ const InspectionHistory = () => {
 
   // 항목 상세 보기 (항목별 보기용)
   const handleViewItemDetails = (item) => {
+    console.log('🔍 [Frontend] Original item from backend:', item.originalItem);
+    console.log('🔍 [Frontend] Original findings:', item.originalItem?.findings);
+    
     // 검사 항목의 모든 findings를 포함한 상세 데이터 생성
     const inspectionData = {
       inspectionId: item.inspectionId,
@@ -221,6 +231,7 @@ const InspectionHistory = () => {
       }
     };
 
+    console.log('🔍 [Frontend] Created inspectionData:', inspectionData);
     setSelectedInspection(inspectionData);
   };
 
@@ -278,6 +289,18 @@ const InspectionHistory = () => {
               <option value="FAIL">❌ 문제 발견</option>
               <option value="PENDING">⏳ 진행중</option>
               <option value="CANCELLED">⏹️ 취소됨</option>
+            </select>
+          </div>
+
+          <div className="filter-group">
+            <label>보기 모드</label>
+            <select
+              value={filters.historyMode}
+              onChange={(e) => handleFilterChange('historyMode', e.target.value)}
+              className="history-mode-select"
+            >
+              <option value="history">📋 전체 히스토리</option>
+              <option value="latest">🔄 최신 상태만</option>
             </select>
           </div>
 
@@ -382,12 +405,26 @@ const InspectionHistory = () => {
           </div>
         ) : (
           // 항목별 보기
-          historyData.map((item, index) => {
+          <>
+            {historyData.map((item, index) => {
             const riskLevel = item.riskLevel || 'LOW';
             const riskColor = severityColors[riskLevel] || '#65a30d';
 
             return (
-              <div key={`${item.itemId}-${index}`} className="history-item item-view" data-risk={riskLevel}>
+              <div 
+                key={`${item.itemId}-${index}`} 
+                className="history-item item-view" 
+                data-risk={riskLevel}
+                style={{ 
+                  display: 'block', 
+                  visibility: 'visible', 
+                  opacity: 1,
+                  minHeight: '100px',
+                  backgroundColor: '#f0f0f0',
+                  border: '2px solid red',
+                  margin: '10px 0'
+                }}
+              >
                 <div className="history-item-header">
                   <div className="item-info">
                     <div className="service-badge">
@@ -407,7 +444,8 @@ const InspectionHistory = () => {
                         {item.status === 'FAIL' ? '❌ 문제 발견' :
                           item.status === 'PASS' ? '✅ 정상' :
                             item.status === 'PENDING' ? '⏳ 진행중' :
-                              '❓ 알 수 없음'}
+                              item.status === 'NOT_CHECKED' ? '📋 검사 대상 없음' :
+                                '❓ 알 수 없음'}
                       </span>
                     </div>
                   </div>
@@ -464,7 +502,8 @@ const InspectionHistory = () => {
                 </div>
               </div>
             );
-          })
+          })}
+          </>
         )}
 
         {/* 더 보기 버튼 */}
@@ -483,6 +522,7 @@ const InspectionHistory = () => {
 
       {/* 상세 모달 */}
       {selectedInspection && (
+
         <div className="detail-modal-overlay" onClick={() => setSelectedInspection(null)}>
           <div className="detail-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
@@ -546,7 +586,7 @@ const InspectionHistory = () => {
                 </div>
               )}
 
-              {selectedInspection.results?.findings && selectedInspection.results.findings.length > 0 && (
+              {selectedInspection.results?.findings && selectedInspection.results.findings.length > 0 ? (
                 <div className="findings-section">
                   <h3>발견된 문제들</h3>
                   <div className="findings-list">
@@ -591,6 +631,30 @@ const InspectionHistory = () => {
                       </div>
                     ))}
 
+                  </div>
+                </div>
+              ) : (
+                <div className="no-findings-section">
+                  <h3>검사 결과</h3>
+                  <div className="no-findings-message">
+                    {selectedInspection.itemName?.includes('키 페어') || selectedInspection.itemName?.includes('메타데이터') ? (
+                      <div className="info-message">
+                        <div className="info-icon">📋</div>
+                        <div className="info-content">
+                          <p><strong>검사 대상이 없습니다</strong></p>
+                          <p>현재 AWS 계정에 활성 상태의 EC2 인스턴스가 없어 이 항목을 검사할 수 없습니다.</p>
+                          <p>EC2 인스턴스를 생성한 후 다시 검사해보세요.</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="success-message">
+                        <div className="success-icon">✅</div>
+                        <div className="success-content">
+                          <p><strong>문제가 발견되지 않았습니다</strong></p>
+                          <p>이 검사 항목에서는 보안 문제나 개선이 필요한 사항이 발견되지 않았습니다.</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

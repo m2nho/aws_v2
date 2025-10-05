@@ -241,61 +241,105 @@ class HistoryService {
    */
   async getItemInspectionHistory(customerId, options = {}) {
     try {
-
+      console.log('🔍 [HistoryService] Getting item inspection history', { 
+        customerId, 
+        options,
+        historyMode: options.historyMode 
+      });
       
-      const { limit = 50, serviceType, startDate, endDate, status } = options;
+      const { limit = 50, serviceType, startDate, endDate, status, historyMode = 'history' } = options;
 
-      // 단일 테이블에서 HISTORY 레코드만 조회
-      let filterExpression = 'customerId = :customerId AND recordType = :recordType';
+      // Query를 사용하여 효율적으로 조회 (customerId를 파티션 키로 사용)
+      let keyConditionExpression = 'customerId = :customerId';
       const expressionAttributeValues = {
-        ':customerId': customerId,
-        ':recordType': 'HISTORY'
+        ':customerId': customerId
       };
 
-      // 서비스 타입 필터 추가
+      // 서비스 타입 필터가 있으면 정렬 키에 추가
       if (serviceType && serviceType !== 'all') {
-        filterExpression += ' AND serviceType = :serviceType';
-        expressionAttributeValues[':serviceType'] = serviceType;
+        keyConditionExpression += ' AND begins_with(sortKey, :servicePrefix)';
+        expressionAttributeValues[':servicePrefix'] = `${serviceType}#`;
       }
+
+      let filterExpression = '';
+      const filterConditions = [];
 
       // 날짜 필터 추가
       if (startDate) {
         const startTimestamp = new Date(startDate).getTime();
-        filterExpression += ' AND lastInspectionTime >= :startTime';
+        filterConditions.push('lastInspectionTime >= :startTime');
         expressionAttributeValues[':startTime'] = startTimestamp;
       }
 
       if (endDate) {
         const endTimestamp = new Date(endDate).getTime();
-        filterExpression += ' AND lastInspectionTime <= :endTime';
+        filterConditions.push('lastInspectionTime <= :endTime');
         expressionAttributeValues[':endTime'] = endTimestamp;
       }
-
-      const params = {
-        TableName: this.tableName,
-        FilterExpression: filterExpression,
-        ExpressionAttributeValues: expressionAttributeValues
-      };
 
       // 상태 필터 추가 (COMPLETED -> PASS, FAILED -> FAIL로 매핑)
       if (status && status !== 'all') {
         const mappedStatus = status === 'COMPLETED' ? 'PASS' : 
                            status === 'FAILED' ? 'FAIL' : 
                            status;
-        params.FilterExpression += ' AND #status = :status';
-        params.ExpressionAttributeValues[':status'] = mappedStatus;
-        
-        // status는 DynamoDB 예약어이므로 ExpressionAttributeNames 사용
+        filterConditions.push('#status = :status');
+        expressionAttributeValues[':status'] = mappedStatus;
+      }
+
+      // 히스토리 모드에 따라 레코드 타입 결정
+      const recordType = historyMode === 'latest' ? 'LATEST' : 'HISTORY';
+      filterConditions.push('recordType = :recordType');
+      expressionAttributeValues[':recordType'] = recordType;
+
+      if (filterConditions.length > 0) {
+        filterExpression = filterConditions.join(' AND ');
+      }
+
+      const params = {
+        TableName: this.tableName,
+        KeyConditionExpression: keyConditionExpression,
+        ExpressionAttributeValues: expressionAttributeValues,
+        ScanIndexForward: false, // 최신순 정렬
+        Limit: limit
+      };
+
+      if (filterExpression) {
+        params.FilterExpression = filterExpression;
+      }
+
+      // status는 DynamoDB 예약어이므로 ExpressionAttributeNames 사용
+      if (status && status !== 'all') {
         params.ExpressionAttributeNames = {
           '#status': 'status'
         };
       }
 
-      const command = new ScanCommand(params);
+      console.log('🔍 [HistoryService] Query params', JSON.stringify(params, null, 2));
+
+      const command = new QueryCommand(params);
       const result = await this.client.send(command);
 
-      if (!result.Items || result.Items.length === 0) {
+      console.log('🔍 [HistoryService] Query result', { 
+        itemCount: result.Items?.length || 0,
+        scannedCount: result.ScannedCount,
+        items: result.Items?.slice(0, 3) // 처음 3개만 로그
+      });
 
+      // 보안 그룹 항목의 findings 상세 확인
+      const securityGroupItem = result.Items?.find(item => item.itemId === 'security_groups');
+      if (securityGroupItem) {
+        console.log('🔍 [HistoryService] Security group item findings:', {
+          findingsType: typeof securityGroupItem.findings,
+          findingsLength: securityGroupItem.findings?.length,
+          findingsContent: securityGroupItem.findings,
+          recommendationsType: typeof securityGroupItem.recommendations,
+          recommendationsLength: securityGroupItem.recommendations?.length,
+          recommendationsContent: securityGroupItem.recommendations
+        });
+      }
+
+      if (!result.Items || result.Items.length === 0) {
+        console.log('⚠️ [HistoryService] No items found');
         return {
           success: true,
           data: {
@@ -305,19 +349,18 @@ class HistoryService {
         };
       }
 
-      // 최신순으로 정렬
-      const sortedItems = result.Items.sort((a, b) => (b.lastInspectionTime || 0) - (a.lastInspectionTime || 0));
+      // 이미 최신순으로 정렬되어 있음 (ScanIndexForward: false)
+      const items = result.Items;
 
-      // 제한 수만큼 자르기
-      const limitedItems = sortedItems.slice(0, limit);
-
-
+      console.log('✅ [HistoryService] Returning items', { count: items.length });
 
       return {
         success: true,
         data: {
-          items: limitedItems,
-          count: limitedItems.length
+          items: items,
+          count: items.length,
+          hasMore: !!result.LastEvaluatedKey,
+          lastEvaluatedKey: result.LastEvaluatedKey
         }
       };
     } catch (error) {
