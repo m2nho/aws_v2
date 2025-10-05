@@ -17,7 +17,11 @@ const awsConfig = {
 // AWS 클라이언트 인스턴스 생성
 const cognitoClient = new CognitoIdentityProviderClient(awsConfig);
 const dynamoDBClient = new DynamoDBClient(awsConfig);
-const dynamoDBDocClient = DynamoDBDocumentClient.from(dynamoDBClient);
+const dynamoDBDocClient = DynamoDBDocumentClient.from(dynamoDBClient, {
+  marshallOptions: {
+    removeUndefinedValues: true
+  }
+});
 const stsClient = new STSClient(awsConfig);
 
 module.exports = {

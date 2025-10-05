@@ -241,11 +241,7 @@ class HistoryService {
    */
   async getItemInspectionHistory(customerId, options = {}) {
     try {
-      console.log('🔍 [HistoryService] Getting item inspection history', { 
-        customerId, 
-        options,
-        historyMode: options.historyMode 
-      });
+
       
       const { limit = 50, serviceType, startDate, endDate, status, historyMode = 'history' } = options;
 
@@ -314,32 +310,14 @@ class HistoryService {
         };
       }
 
-      console.log('🔍 [HistoryService] Query params', JSON.stringify(params, null, 2));
+
 
       const command = new QueryCommand(params);
       const result = await this.client.send(command);
 
-      console.log('🔍 [HistoryService] Query result', { 
-        itemCount: result.Items?.length || 0,
-        scannedCount: result.ScannedCount,
-        items: result.Items?.slice(0, 3) // 처음 3개만 로그
-      });
 
-      // 보안 그룹 항목의 findings 상세 확인
-      const securityGroupItem = result.Items?.find(item => item.itemId === 'security_groups');
-      if (securityGroupItem) {
-        console.log('🔍 [HistoryService] Security group item findings:', {
-          findingsType: typeof securityGroupItem.findings,
-          findingsLength: securityGroupItem.findings?.length,
-          findingsContent: securityGroupItem.findings,
-          recommendationsType: typeof securityGroupItem.recommendations,
-          recommendationsLength: securityGroupItem.recommendations?.length,
-          recommendationsContent: securityGroupItem.recommendations
-        });
-      }
 
       if (!result.Items || result.Items.length === 0) {
-        console.log('⚠️ [HistoryService] No items found');
         return {
           success: true,
           data: {
@@ -352,7 +330,7 @@ class HistoryService {
       // 이미 최신순으로 정렬되어 있음 (ScanIndexForward: false)
       const items = result.Items;
 
-      console.log('✅ [HistoryService] Returning items', { count: items.length });
+
 
       return {
         success: true,

@@ -60,13 +60,6 @@ class InspectionService {
       // 선택된 모든 항목에 대해 검사 작업 생성
       const inspectionJobs = [];
       
-      console.log('🔍 [INSPECTION] Processing inspection request', {
-        customerId,
-        serviceType,
-        selectedItemsCount: selectedItems.length,
-        selectedItems: selectedItems
-      });
-      
       this.logger.info('Processing inspection request', {
         customerId,
         serviceType,
@@ -82,7 +75,6 @@ class InspectionService {
           itemId: 'all',
           itemName: `${serviceType} 전체 검사`
         });
-        console.log('🔍 [INSPECTION] Created full inspection job', { inspectionId, itemId: 'all' });
         this.logger.info('Created full inspection job', { inspectionId, itemId: 'all' });
       } else {
         // 선택된 모든 항목에 대해 개별 검사 작업 생성
@@ -93,16 +85,10 @@ class InspectionService {
             itemId: itemId,
             itemName: this.getItemName(serviceType, itemId)
           });
-          console.log('🔍 [INSPECTION] Created item inspection job', { inspectionId, itemId, itemName: this.getItemName(serviceType, itemId) });
           this.logger.info('Created item inspection job', { inspectionId, itemId, itemName: this.getItemName(serviceType, itemId) });
         }
 
       }
-      
-      console.log('🔍 [INSPECTION] Total inspection jobs created', { 
-        jobCount: inspectionJobs.length,
-        jobs: inspectionJobs.map(job => ({ id: job.inspectionId, item: job.itemId }))
-      });
       
       this.logger.info('Total inspection jobs created', { 
         jobCount: inspectionJobs.length,
@@ -135,11 +121,7 @@ class InspectionService {
 
       
       const executionPromises = inspectionJobs.map(job => {
-        console.log('🚀 [INSPECTION] Starting execution for job', { 
-          inspectionId: job.inspectionId, 
-          itemId: job.itemId, 
-          itemName: job.itemName 
-        });
+
         
         // WebSocket 연결 상태 확인 및 초기 상태 브로드캐스트
         const wsStats = webSocketService.getConnectionStats();
@@ -224,11 +206,13 @@ class InspectionService {
     const itemMappings = {
       EC2: {
         'security_groups': '보안 그룹 규칙',
-        'key_pairs': '키 페어 관리',
         'instance_metadata': '인스턴스 메타데이터',
-        'instance_types': '인스턴스 타입 최적화',
-        'ebs_optimization': 'EBS 최적화',
-        'public_access': '퍼블릭 접근 관리',
+        'ebs_encryption': 'EBS 볼륨 암호화',
+        'public_access': '퍼블릭 접근 검사',
+        'iam_roles': 'IAM 역할 및 권한',
+        'network_acls': '네트워크 ACL',
+        'monitoring_logging': '모니터링 및 로깅',
+        'backup_recovery': '백업 및 복구',
         'network_access': '네트워크 접근 제어'
       },
       RDS: {
@@ -953,17 +937,9 @@ class InspectionService {
                             inspectionResult.metadata.targetItem && 
                             inspectionResult.metadata.targetItem !== 'all';
     
-    this.logger.info('Preparing item results', {
-      inspectionId: inspectionResult.inspectionId,
-      findingsCount: findings.length,
-      isItemInspection,
-      targetItem: inspectionResult.metadata?.targetItem
-    });
+
     
     if (findings.length === 0 && !isItemInspection) {
-      this.logger.warn('No findings and not item inspection, returning empty results', {
-        inspectionId: inspectionResult.inspectionId
-      });
       return itemResults;
     }
 

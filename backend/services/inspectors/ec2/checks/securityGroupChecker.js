@@ -1,6 +1,6 @@
 /**
  * Security Group Checker
- * 보안 그룹 관련 검사를 담당하는 모듈
+ * 보안 그룹 기본 설정 검사를 담당하는 모듈 (위험한 포트는 별도 모듈에서 처리)
  */
 
 const InspectionFinding = require('../../../../models/InspectionFinding');
@@ -14,31 +14,52 @@ class SecurityGroupChecker {
    * 모든 보안 그룹 검사 실행
    */
   async runAllChecks(securityGroups) {
-    await this.checkSecurityRules(securityGroups);
+    // 검사 대상이 없는 경우 정보성 finding 추가
+    if (!securityGroups || securityGroups.length === 0) {
+      const finding = new InspectionFinding({
+        resourceId: 'no-security-groups',
+        resourceType: 'SecurityGroup',
+        riskLevel: 'LOW',
+        issue: '보안 그룹이 없습니다',
+        recommendation: '보안 그룹을 생성할 때는 최소 권한 원칙을 적용하세요',
+        details: {
+          totalSecurityGroups: 0,
+          status: '현재 보안 그룹이 없어 관련 보안 위험이 없습니다',
+          nextSteps: [
+            '보안 그룹 생성 시 필요한 포트만 개방',
+            '0.0.0.0/0 접근 지양',
+            '정기적인 보안 그룹 검토'
+          ]
+        },
+        category: 'COMPLIANCE'
+      });
+      
+      this.inspector.addFinding(finding);
+      return;
+    }
+
+    await this.checkBasicSecurityRules(securityGroups);
     await this.checkManagementStatus(securityGroups);
   }
 
   /**
-   * 보안 규칙 검사 (보안 중심)
+   * 기본 보안 규칙 검사 (위험한 포트는 별도 모듈에서 처리)
    */
-  async checkSecurityRules(securityGroups) {
+  async checkBasicSecurityRules(securityGroups) {
     for (const sg of securityGroups) {
       try {
-        // 1. 과도하게 열린 포트 검사
-        this.checkOverlyPermissiveRules(sg);
-
-        // 2. SSH/RDP 접근 검사
-        this.checkSSHRDPAccess(sg);
-
-        // 3. 기본 보안 그룹 사용 검사
+        // 1. 기본 보안 그룹 사용 검사
         this.checkDefaultSecurityGroup(sg);
 
-        // 4. 위험한 포트 조합 검사
-        this.checkDangerousPorts(sg);
+        // 2. 보안 그룹 설명 검사
+        this.checkSecurityGroupDescription(sg);
+
+        // 3. 아웃바운드 규칙 검사
+        this.checkOutboundRules(sg);
 
       } catch (error) {
         this.inspector.recordError(error, {
-          operation: 'checkSecurityRules',
+          operation: 'checkBasicSecurityRules',
           securityGroupId: sg.GroupId
         });
       }
@@ -76,6 +97,10 @@ class SecurityGroupChecker {
     if (!securityGroup.IpPermissions) return;
 
     securityGroup.IpPermissions.forEach(rule => {
+      // SSH 포트 22번은 별도 모듈에서 처리하므로 제외
+      const isSSHPort = (rule.FromPort <= 22 && rule.ToPort >= 22);
+      if (isSSHPort) return;
+
       // 0.0.0.0/0으로 열린 규칙 검사
       const hasOpenAccess = rule.IpRanges?.some(range => range.CidrIp === '0.0.0.0/0') ||
         rule.Ipv6Ranges?.some(range => range.CidrIpv6 === '::/0');
@@ -112,39 +137,33 @@ class SecurityGroupChecker {
   }
 
   /**
-   * SSH/RDP 접근 검사
+   * RDP 접근 검사 (SSH는 별도 모듈에서 처리)
    */
-  checkSSHRDPAccess(securityGroup) {
+  checkRDPAccess(securityGroup) {
     if (!securityGroup.IpPermissions) return;
-
-    const criticalPorts = [
-      { port: 22, service: 'SSH' },
-      { port: 3389, service: 'RDP' }
-    ];
 
     securityGroup.IpPermissions.forEach(rule => {
       const ruleCoversPort = (port) => {
         return rule.FromPort <= port && rule.ToPort >= port;
       };
 
-      criticalPorts.forEach(({ port, service }) => {
-        if (ruleCoversPort(port)) {
-          const hasOpenAccess = rule.IpRanges?.some(range => range.CidrIp === '0.0.0.0/0');
+      // RDP 포트 3389만 검사
+      if (ruleCoversPort(3389)) {
+        const hasOpenAccess = rule.IpRanges?.some(range => range.CidrIp === '0.0.0.0/0');
 
-          if (hasOpenAccess) {
-            const finding = InspectionFinding.createSecurityGroupFinding(
-              securityGroup,
-              `${service} 접근(포트 ${port})이 인터넷(0.0.0.0/0)에 개방되어 있습니다`,
-              `${service} 접근을 특정 IP 주소로 제한하거나 VPN/배스천 호스트를 사용하세요`
-            );
-            finding.riskLevel = 'CRITICAL';
-            finding.details.affectedPort = port;
-            finding.details.service = service;
+        if (hasOpenAccess) {
+          const finding = InspectionFinding.createSecurityGroupFinding(
+            securityGroup,
+            'RDP 접근(포트 3389)이 인터넷(0.0.0.0/0)에 개방되어 있습니다',
+            'RDP 접근을 특정 IP 주소로 제한하거나 VPN을 사용하세요'
+          );
+          finding.riskLevel = 'CRITICAL';
+          finding.details.affectedPort = 3389;
+          finding.details.service = 'RDP';
 
-            this.inspector.addFinding(finding);
-          }
+          this.inspector.addFinding(finding);
         }
-      });
+      }
     });
   }
 

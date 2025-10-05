@@ -9,10 +9,15 @@ const { EC2Client } = require('@aws-sdk/client-ec2');
 
 // 검사 항목별 모듈 import
 const SecurityGroupChecker = require('./checks/securityGroupChecker');
-const InstanceSecurityChecker = require('./checks/instanceSecurityChecker');
-const NetworkAccessChecker = require('./checks/networkAccessChecker');
-const MetadataChecker = require('./checks/metadataChecker');
-const KeyPairChecker = require('./checks/keyPairChecker');
+const DangerousPortsChecker = require('./checks/dangerousPortsChecker');
+const EBSEncryptionChecker = require('./checks/ebsEncryptionChecker');
+const PublicIpChecker = require('./checks/publicIpChecker');
+const UnusedSecurityGroupsChecker = require('./checks/unusedSecurityGroupsChecker');
+const UnusedElasticIpChecker = require('./checks/unusedElasticIpChecker');
+const OldSnapshotsChecker = require('./checks/oldSnapshotsChecker');
+const EBSVolumeVersionChecker = require('./checks/ebsVolumeVersionChecker');
+const TerminationProtectionChecker = require('./checks/terminationProtectionChecker');
+const StoppedInstancesChecker = require('./checks/stoppedInstancesChecker');
 
 // 데이터 수집 모듈
 const EC2DataCollector = require('./collectors/ec2DataCollector');
@@ -26,10 +31,15 @@ class EC2Inspector extends BaseInspector {
     // 검사 모듈들 초기화
     this.checkers = {
       securityGroup: new SecurityGroupChecker(this),
-      instanceSecurity: new InstanceSecurityChecker(this),
-      networkAccess: new NetworkAccessChecker(this),
-      metadata: new MetadataChecker(this),
-      keyPair: new KeyPairChecker(this)
+      dangerousPorts: new DangerousPortsChecker(this),
+      ebsEncryption: new EBSEncryptionChecker(this),
+      publicIp: new PublicIpChecker(this),
+      unusedSecurityGroups: new UnusedSecurityGroupsChecker(this),
+      unusedElasticIp: new UnusedElasticIpChecker(this),
+      oldSnapshots: new OldSnapshotsChecker(this),
+      ebsVolumeVersion: new EBSVolumeVersionChecker(this),
+      terminationProtection: new TerminationProtectionChecker(this),
+      stoppedInstances: new StoppedInstancesChecker(this)
     };
   }
 
@@ -45,12 +55,15 @@ class EC2Inspector extends BaseInspector {
    */
   getSupportedInspectionTypes() {
     return [
-      'security-groups',
-      'instance-security',
-      'network-configuration',
-      'access-control',
-      'metadata-service',
-      'key-management'
+      'dangerous-ports',
+      'ebs-encryption',
+      'public-ip-exposure',
+      'unused-security-groups',
+      'unused-elastic-ip',
+      'old-snapshots',
+      'ebs-volume-version',
+      'termination-protection',
+      'stopped-instances'
     ];
   }
 
@@ -89,28 +102,40 @@ class EC2Inspector extends BaseInspector {
 
     try {
       switch (targetItem) {
-        case 'security_groups':
-          await this._inspectSecurityGroups(results);
+        case 'dangerous_ports':
+          await this._inspectDangerousPorts(results);
           break;
 
-        case 'security_group_management':
-          await this._inspectSecurityGroupManagement(results);
+        case 'ebs_encryption':
+          await this._inspectEBSEncryption(results);
           break;
 
-        case 'key_pairs':
-          await this._inspectKeyPairs(results);
+        case 'public_ip_exposure':
+          await this._inspectPublicIpExposure(results);
           break;
 
-        case 'instance_metadata':
-          await this._inspectInstanceMetadata(results);
+        case 'unused_security_groups':
+          await this._inspectUnusedSecurityGroups(results);
           break;
 
-        case 'public_access':
-          await this._inspectPublicAccess(results);
+        case 'unused_elastic_ip':
+          await this._inspectUnusedElasticIp(results);
           break;
 
-        case 'network_access':
-          await this._inspectNetworkAccess(results);
+        case 'old_snapshots':
+          await this._inspectOldSnapshots(results);
+          break;
+
+        case 'ebs_volume_version':
+          await this._inspectEBSVolumeVersion(results);
+          break;
+
+        case 'termination-protection':
+          await this._inspectTerminationProtection(results);
+          break;
+
+        case 'stopped-instances':
+          await this._inspectStoppedInstances(results);
           break;
 
         default:
@@ -147,25 +172,41 @@ class EC2Inspector extends BaseInspector {
       results.instances = data.instances;
       this.incrementResourceCount(data.securityGroups.length + data.instances.length);
 
-      // 2. 보안 그룹 검사
-      this.updateProgress('보안 그룹 분석 중', 25);
-      await this.checkers.securityGroup.runAllChecks(data.securityGroups);
+      // 2. 위험한 포트 검사 (SSH, RDP, DB 포트 등)
+      this.updateProgress('위험한 포트 분석 중', 20);
+      await this.checkers.dangerousPorts.runAllChecks(data.securityGroups);
 
-      // 3. 인스턴스 보안 검사
-      this.updateProgress('인스턴스 보안 분석 중', 45);
-      await this.checkers.instanceSecurity.runAllChecks(data.instances);
+      // 3. EBS 암호화 검사
+      this.updateProgress('EBS 암호화 분석 중', 30);
+      await this.checkers.ebsEncryption.runAllChecks(data.instances);
 
-      // 4. 메타데이터 서비스 검사
-      this.updateProgress('메타데이터 서비스 분석 중', 65);
-      await this.checkers.metadata.runAllChecks(data.instances);
+      // 4. 퍼블릭 IP 노출 검사
+      this.updateProgress('퍼블릭 IP 노출 분석 중', 40);
+      await this.checkers.publicIp.runAllChecks(data.instances);
 
-      // 5. 네트워크 접근성 검사
-      this.updateProgress('네트워크 접근성 분석 중', 80);
-      await this.checkers.networkAccess.runAllChecks(data.instances, data.securityGroups);
+      // 5. 미사용 보안 그룹 검사
+      this.updateProgress('미사용 보안 그룹 분석 중', 55);
+      await this.checkers.unusedSecurityGroups.runAllChecks(data.securityGroups, data.instances);
 
-      // 6. 키 페어 검사
-      this.updateProgress('키 페어 분석 중', 90);
-      await this.checkers.keyPair.runAllChecks(data.instances);
+      // 6. 미사용 Elastic IP 검사
+      this.updateProgress('미사용 Elastic IP 분석 중', 70);
+      await this.checkers.unusedElasticIp.runAllChecks(data.instances);
+
+      // 7. 오래된 스냅샷 검사
+      this.updateProgress('오래된 스냅샷 분석 중', 80);
+      await this.checkers.oldSnapshots.runAllChecks(data.instances);
+
+      // 8. EBS 볼륨 버전 검사
+      this.updateProgress('EBS 볼륨 버전 분석 중', 80);
+      await this.checkers.ebsVolumeVersion.runAllChecks(data.instances);
+
+      // 9. 종료 보호 검사
+      this.updateProgress('종료 보호 설정 분석 중', 90);
+      await this.checkers.terminationProtection.runAllChecks(data.instances);
+
+      // 10. 중지된 인스턴스 검사
+      this.updateProgress('중지된 인스턴스 분석 중', 95);
+      await this.checkers.stoppedInstances.runAllChecks(data.instances);
 
       this.updateProgress('검사 완료', 100);
       results.findings = this.findings;
@@ -179,55 +220,43 @@ class EC2Inspector extends BaseInspector {
   }
 
   // 개별 검사 메서드들
-  async _inspectSecurityGroups(results) {
+  async _inspectDangerousPorts(results) {
     this.updateProgress('보안 그룹 조회 중', 20);
     const securityGroups = await this.dataCollector.getSecurityGroups();
     results.securityGroups = securityGroups;
     this.incrementResourceCount(securityGroups.length);
 
-    this.updateProgress('보안 그룹 규칙 분석 중', 60);
-    await this.checkers.securityGroup.checkSecurityRules(securityGroups);
+    this.updateProgress('위험한 포트 분석 중', 70);
+    await this.checkers.dangerousPorts.runAllChecks(securityGroups);
+    
+    results.findings = this.findings;
   }
 
-  async _inspectSecurityGroupManagement(results) {
-    this.updateProgress('보안 그룹 조회 중', 20);
-    const securityGroups = await this.dataCollector.getSecurityGroups();
-    results.securityGroups = securityGroups;
-    this.incrementResourceCount(securityGroups.length);
-
-    this.updateProgress('보안 그룹 관리 상태 분석 중', 60);
-    await this.checkers.securityGroup.checkManagementStatus(securityGroups);
-  }
-
-  async _inspectKeyPairs(results) {
-    console.log('🔍 [EC2Inspector] Starting key pairs inspection');
-    this.updateProgress('인스턴스 조회 중', 30);
-    const instances = await this.dataCollector.getEC2Instances();
-    results.instances = instances;
-    this.incrementResourceCount(instances.length);
-    console.log('🔍 [EC2Inspector] Found instances:', instances.length);
-
-    this.updateProgress('키 페어 분석 중', 70);
-    console.log('🔍 [EC2Inspector] Before keyPair check, findings count:', this.findings.length);
-    await this.checkers.keyPair.runAllChecks(instances);
-    console.log('🔍 [EC2Inspector] After keyPair check, findings count:', this.findings.length);
-  }
-
-  async _inspectInstanceMetadata(results) {
-    console.log('🔍 [EC2Inspector] Starting instance metadata inspection');
+  async _inspectEBSEncryption(results) {
     this.updateProgress('EC2 인스턴스 조회 중', 30);
     const instances = await this.dataCollector.getEC2Instances();
     results.instances = instances;
     this.incrementResourceCount(instances.length);
-    console.log('🔍 [EC2Inspector] Found instances:', instances.length);
 
-    this.updateProgress('인스턴스 메타데이터 분석 중', 70);
-    console.log('🔍 [EC2Inspector] Before metadata check, findings count:', this.findings.length);
-    await this.checkers.metadata.runAllChecks(instances);
-    console.log('🔍 [EC2Inspector] After metadata check, findings count:', this.findings.length);
+    this.updateProgress('EBS 암호화 분석 중', 70);
+    await this.checkers.ebsEncryption.runAllChecks(instances);
+    
+    results.findings = this.findings;
   }
 
-  async _inspectPublicAccess(results) {
+  async _inspectPublicIpExposure(results) {
+    this.updateProgress('EC2 인스턴스 조회 중', 30);
+    const instances = await this.dataCollector.getEC2Instances();
+    results.instances = instances;
+    this.incrementResourceCount(instances.length);
+
+    this.updateProgress('퍼블릭 IP 노출 분석 중', 70);
+    await this.checkers.publicIp.runAllChecks(instances);
+    
+    results.findings = this.findings;
+  }
+
+  async _inspectUnusedSecurityGroups(results) {
     this.updateProgress('리소스 조회 중', 25);
     const [securityGroups, instances] = await Promise.all([
       this.dataCollector.getSecurityGroups(),
@@ -238,24 +267,73 @@ class EC2Inspector extends BaseInspector {
     results.instances = instances;
     this.incrementResourceCount(securityGroups.length + instances.length);
 
-    this.updateProgress('퍼블릭 접근 분석 중', 75);
-    await this.checkers.networkAccess.checkPublicAccess(instances, securityGroups);
+    this.updateProgress('미사용 보안 그룹 분석 중', 70);
+    await this.checkers.unusedSecurityGroups.runAllChecks(securityGroups, instances);
+    
+    results.findings = this.findings;
   }
 
-  async _inspectNetworkAccess(results) {
-    this.updateProgress('네트워크 구성 조회 중', 30);
-    const [securityGroups, instances] = await Promise.all([
-      this.dataCollector.getSecurityGroups(),
-      this.dataCollector.getEC2Instances()
-    ]);
-
-    results.securityGroups = securityGroups;
+  async _inspectUnusedElasticIp(results) {
+    this.updateProgress('EC2 인스턴스 조회 중', 30);
+    const instances = await this.dataCollector.getEC2Instances();
     results.instances = instances;
-    this.incrementResourceCount(securityGroups.length + instances.length);
+    this.incrementResourceCount(instances.length);
 
-    this.updateProgress('네트워크 접근 분석 중', 80);
-    await this.checkers.networkAccess.runAllChecks(instances, securityGroups);
+    this.updateProgress('미사용 Elastic IP 분석 중', 70);
+    await this.checkers.unusedElasticIp.runAllChecks(instances);
+    
+    results.findings = this.findings;
   }
+
+  async _inspectOldSnapshots(results) {
+    this.updateProgress('EC2 인스턴스 조회 중', 30);
+    const instances = await this.dataCollector.getEC2Instances();
+    results.instances = instances;
+    this.incrementResourceCount(instances.length);
+
+    this.updateProgress('오래된 스냅샷 분석 중', 70);
+    await this.checkers.oldSnapshots.runAllChecks(instances);
+    
+    results.findings = this.findings;
+  }
+
+  async _inspectEBSVolumeVersion(results) {
+    this.updateProgress('EC2 인스턴스 조회 중', 30);
+    const instances = await this.dataCollector.getEC2Instances();
+    results.instances = instances;
+    this.incrementResourceCount(instances.length);
+
+    this.updateProgress('EBS 볼륨 버전 분석 중', 70);
+    await this.checkers.ebsVolumeVersion.runAllChecks(instances);
+    
+    results.findings = this.findings;
+  }
+
+  async _inspectTerminationProtection(results) {
+    this.updateProgress('EC2 인스턴스 조회 중', 30);
+    const instances = await this.dataCollector.getEC2Instances();
+    results.instances = instances;
+    this.incrementResourceCount(instances.length);
+
+    this.updateProgress('종료 보호 설정 분석 중', 70);
+    await this.checkers.terminationProtection.runAllChecks(instances);
+    
+    results.findings = this.findings;
+  }
+
+  async _inspectStoppedInstances(results) {
+    this.updateProgress('EC2 인스턴스 조회 중', 30);
+    const instances = await this.dataCollector.getEC2Instances();
+    results.instances = instances;
+    this.incrementResourceCount(instances.length);
+
+    this.updateProgress('중지된 인스턴스 분석 중', 70);
+    await this.checkers.stoppedInstances.runAllChecks(instances);
+    
+    results.findings = this.findings;
+  }
+
+
 
   /**
    * 서비스별 특화 권장사항

@@ -207,8 +207,6 @@ const InspectionHistory = () => {
 
   // 항목 상세 보기 (항목별 보기용)
   const handleViewItemDetails = (item) => {
-    console.log('🔍 [Frontend] Original item from backend:', item.originalItem);
-    console.log('🔍 [Frontend] Original findings:', item.originalItem?.findings);
     
     // 검사 항목의 모든 findings를 포함한 상세 데이터 생성
     const inspectionData = {
@@ -231,7 +229,6 @@ const InspectionHistory = () => {
       }
     };
 
-    console.log('🔍 [Frontend] Created inspectionData:', inspectionData);
     setSelectedInspection(inspectionData);
   };
 
@@ -411,20 +408,7 @@ const InspectionHistory = () => {
             const riskColor = severityColors[riskLevel] || '#65a30d';
 
             return (
-              <div 
-                key={`${item.itemId}-${index}`} 
-                className="history-item item-view" 
-                data-risk={riskLevel}
-                style={{ 
-                  display: 'block', 
-                  visibility: 'visible', 
-                  opacity: 1,
-                  minHeight: '100px',
-                  backgroundColor: '#f0f0f0',
-                  border: '2px solid red',
-                  margin: '10px 0'
-                }}
-              >
+              <div key={`${item.itemId}-${index}`} className="history-item item-view" data-risk={riskLevel}>
                 <div className="history-item-header">
                   <div className="item-info">
                     <div className="service-badge">

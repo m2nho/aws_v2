@@ -3,7 +3,7 @@ export const inspectionItems = {
   EC2: {
     id: 'EC2',
     name: 'Amazon EC2',
-    description: 'EC2 인스턴스, 보안 그룹, 네트워킹 구성을 검사합니다',
+    description: 'EC2 인스턴스 보안, 구성, 비용 최적화를 검사합니다',
     icon: '🖥️',
     color: '#FF9900',
     categories: [
@@ -13,76 +13,77 @@ export const inspectionItems = {
         description: 'EC2 보안 설정 및 접근 제어 검사',
         items: [
           {
-            id: 'security_groups',
-            name: '보안 그룹 규칙',
-            description: '과도한 권한이나 불필요한 포트 개방을 검사합니다',
+            id: 'dangerous_ports',
+            name: '위험한 포트 보안',
+            description: 'SSH, RDP, 데이터베이스 포트 등의 인터넷 노출을 검사합니다',
+            severity: 'CRITICAL',
+            enabled: true
+          },
+          {
+            id: 'ebs_encryption',
+            name: 'EBS 볼륨 암호화',
+            description: '암호화되지 않은 EBS 볼륨과 스냅샷을 검사합니다',
             severity: 'HIGH',
             enabled: true
           },
           {
-            id: 'security_group_management',
-            name: '보안 그룹 관리',
-            description: '보안 그룹 설명, 명명 규칙, 관리 상태를 검사합니다',
-            severity: 'LOW',
-            enabled: false
-          },
-          {
-            id: 'key_pairs',
-            name: '키 페어 관리',
-            description: '사용되지 않는 키 페어나 보안 위험을 검사합니다',
+            id: 'public_ip_exposure',
+            name: '퍼블릭 IP 노출',
+            description: '인스턴스의 불필요한 퍼블릭 IP 할당을 검사합니다',
             severity: 'MEDIUM',
             enabled: true
           },
           {
-            id: 'instance_metadata',
-            name: '인스턴스 메타데이터 서비스',
-            description: 'IMDSv2 사용 여부 및 메타데이터 보안 설정을 검사합니다',
-            severity: 'HIGH',
+            id: 'ebs_volume_version',
+            name: 'EBS 볼륨 버전',
+            description: '2년 이상 된 인스턴스의 구형 볼륨 타입 및 GP3 업그레이드를 검사합니다',
+            severity: 'MEDIUM',
+            enabled: true
+          },
+          {
+            id: 'termination-protection',
+            name: '종료 보호 설정',
+            description: '중요한 인스턴스의 실수 삭제 방지를 위한 종료 보호 설정을 검사합니다',
+            severity: 'MEDIUM',
             enabled: true
           }
         ]
       },
       {
-        id: 'performance',
-        name: '성능',
-        description: 'EC2 인스턴스 성능 및 최적화 검사',
-        items: [
-          {
-            id: 'instance_types',
-            name: '인스턴스 타입 최적화',
-            description: '워크로드에 적합한 인스턴스 타입 사용 여부를 검사합니다',
-            severity: 'MEDIUM',
-            enabled: false
-          },
-          {
-            id: 'ebs_optimization',
-            name: 'EBS 최적화',
-            description: 'EBS 볼륨 타입 및 성능 설정을 검사합니다',
-            severity: 'LOW',
-            enabled: false
-          }
-        ]
-      },
-      {
-        id: 'cost',
+        id: 'cost_optimization',
         name: '비용 최적화',
-        description: 'EC2 비용 최적화 기회 검사',
+        description: '미사용 리소스 및 비용 절감 기회 검사',
         items: [
           {
-            id: 'unused_instances',
-            name: '미사용 인스턴스',
-            description: '장기간 사용되지 않는 인스턴스를 검사합니다',
+            id: 'unused_security_groups',
+            name: '미사용 보안 그룹',
+            description: 'EC2 인스턴스에 연결되지 않은 보안 그룹을 검사합니다',
             severity: 'MEDIUM',
-            enabled: false
+            enabled: true
           },
           {
-            id: 'reserved_instances',
-            name: '예약 인스턴스 기회',
-            description: '예약 인스턴스로 비용 절약 가능한 인스턴스를 검사합니다',
+            id: 'unused_elastic_ip',
+            name: '미사용 Elastic IP',
+            description: '중지된 인스턴스에 연결된 Elastic IP를 검사합니다',
+            severity: 'MEDIUM',
+            enabled: true
+          },
+          {
+            id: 'old_snapshots',
+            name: '오래된 스냅샷',
+            description: '종료된 인스턴스 및 90일 이상 된 스냅샷 정리를 권장합니다',
             severity: 'LOW',
-            enabled: false
+            enabled: true
+          },
+          {
+            id: 'stopped-instances',
+            name: '중지된 인스턴스',
+            description: '30일 이상 중지된 인스턴스의 비용 절감 기회를 검사합니다',
+            severity: 'MEDIUM',
+            enabled: true
           }
         ]
+
       }
     ]
   },
@@ -146,64 +147,6 @@ export const inspectionItems = {
     ]
   },
 
-  S3: {
-    id: 'S3',
-    name: 'Amazon S3',
-    description: 'S3 버킷 보안, 정책, 비용 최적화를 검사합니다',
-    icon: '🪣',
-    color: '#569A31',
-    categories: [
-      {
-        id: 'security',
-        name: '보안',
-        description: 'S3 버킷 보안 설정 및 접근 제어 검사',
-        items: [
-          {
-            id: 'bucket_policy',
-            name: '버킷 정책',
-            description: '버킷 정책의 보안 위험 요소를 검사합니다',
-            severity: 'HIGH',
-            enabled: true
-          },
-          {
-            id: 'public_access',
-            name: '퍼블릭 접근 차단',
-            description: '의도하지 않은 퍼블릭 접근을 검사합니다',
-            severity: 'CRITICAL',
-            enabled: true
-          },
-          {
-            id: 'encryption',
-            name: '서버 측 암호화',
-            description: 'S3 객체 암호화 설정을 검사합니다',
-            severity: 'HIGH',
-            enabled: true
-          }
-        ]
-      },
-      {
-        id: 'compliance',
-        name: '규정 준수',
-        description: 'S3 규정 준수 및 거버넌스 검사',
-        items: [
-          {
-            id: 'versioning',
-            name: '버전 관리',
-            description: '버킷 버전 관리 활성화 여부를 검사합니다',
-            severity: 'MEDIUM',
-            enabled: false
-          },
-          {
-            id: 'mfa_delete',
-            name: 'MFA 삭제',
-            description: 'MFA 삭제 보호 설정을 검사합니다',
-            severity: 'MEDIUM',
-            enabled: false
-          }
-        ]
-      }
-    ]
-  },
 
   IAM: {
     id: 'IAM',
