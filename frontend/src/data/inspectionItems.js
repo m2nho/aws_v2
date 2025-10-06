@@ -161,21 +161,21 @@ export const inspectionItems = {
         description: 'IAM 보안 설정 및 접근 제어 검사',
         items: [
           {
-            id: 'root_access_key',
+            id: 'root-access-key',
             name: '루트 계정 액세스 키',
             description: '루트 계정의 액세스 키 사용 여부를 검사합니다',
             severity: 'CRITICAL',
             enabled: true
           },
           {
-            id: 'mfa_enabled',
+            id: 'mfa-enabled',
             name: 'MFA 활성화',
             description: '사용자 계정의 MFA 활성화 여부를 검사합니다',
             severity: 'HIGH',
             enabled: true
           },
           {
-            id: 'unused_credentials',
+            id: 'unused-credentials',
             name: '미사용 자격 증명',
             description: '장기간 사용되지 않는 액세스 키를 검사합니다',
             severity: 'MEDIUM',
@@ -189,18 +189,105 @@ export const inspectionItems = {
         description: 'IAM 정책 및 권한 검사',
         items: [
           {
-            id: 'overprivileged_policies',
+            id: 'overprivileged-policies',
             name: '과도한 권한',
             description: '필요 이상의 권한을 가진 정책을 검사합니다',
             severity: 'HIGH',
-            enabled: false
+            enabled: true
           },
           {
-            id: 'inline_policies',
+            id: 'inline-policies',
             name: '인라인 정책',
             description: '관리되지 않는 인라인 정책 사용을 검사합니다',
             severity: 'MEDIUM',
-            enabled: false
+            enabled: true
+          }
+        ]
+      }
+    ]
+  },
+
+  S3: {
+    id: 'S3',
+    name: 'Amazon S3',
+    description: 'S3 버킷 보안, 암호화, 접근 제어를 검사합니다',
+    icon: '🪣',
+    color: '#569A31',
+    categories: [
+      {
+        id: 'security',
+        name: '보안',
+        description: 'S3 보안 설정 및 접근 제어 검사',
+        items: [
+          {
+            id: 'bucket-encryption',
+            name: '버킷 암호화',
+            description: '서버 측 암호화 설정 및 KMS 키 사용을 검사합니다',
+            severity: 'HIGH',
+            enabled: true
+          },
+          {
+            id: 'bucket-public-access',
+            name: '퍼블릭 액세스 차단',
+            description: '버킷의 퍼블릭 액세스 차단 설정을 검사합니다',
+            severity: 'CRITICAL',
+            enabled: true
+          },
+          {
+            id: 'bucket-policy',
+            name: '버킷 정책',
+            description: '위험한 버킷 정책 및 과도한 권한을 검사합니다',
+            severity: 'HIGH',
+            enabled: true
+          },
+          {
+            id: 'bucket-cors',
+            name: 'CORS 설정',
+            description: '위험한 CORS 설정 및 와일드카드 사용을 검사합니다',
+            severity: 'MEDIUM',
+            enabled: true
+          }
+        ]
+      },
+      {
+        id: 'data_protection',
+        name: '데이터 보호',
+        description: 'S3 데이터 보호 및 백업 설정 검사',
+        items: [
+          {
+            id: 'bucket-versioning',
+            name: '버전 관리',
+            description: '버킷의 버전 관리 활성화 여부를 검사합니다',
+            severity: 'MEDIUM',
+            enabled: true
+          },
+          {
+            id: 'bucket-mfa-delete',
+            name: 'MFA Delete',
+            description: '중요한 버킷의 MFA Delete 설정을 검사합니다',
+            severity: 'MEDIUM',
+            enabled: true
+          },
+          {
+            id: 'bucket-logging',
+            name: '액세스 로깅',
+            description: '버킷의 액세스 로깅 활성화 여부를 검사합니다',
+            severity: 'MEDIUM',
+            enabled: true
+          }
+        ]
+      },
+      {
+        id: 'cost_optimization',
+        name: '비용 최적화',
+        description: 'S3 스토리지 비용 최적화 검사',
+        items: [
+          {
+            id: 'bucket-lifecycle',
+            name: '라이프사이클 정책',
+            description: '스토리지 클래스 전환 및 객체 만료 정책을 검사합니다',
+            severity: 'MEDIUM',
+            enabled: true
           }
         ]
       }
