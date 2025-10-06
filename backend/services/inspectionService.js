@@ -952,7 +952,7 @@ class InspectionService {
 
       
       // 모든 findings를 해당 항목으로 분류 (findings가 없어도 결과 생성)
-      itemResults.push({
+      const itemResult = {
         serviceType: inspectionResult.serviceType,
         itemId: targetItemId,
         itemName: itemMapping?.name || inspectionResult.metadata.itemName || targetItemId,
@@ -964,7 +964,11 @@ class InspectionService {
         findings: findings,
         recommendations: inspectionResult.results?.recommendations || [],
         createdAt: Date.now()
-      });
+      };
+      
+
+      
+      itemResults.push(itemResult);
       
       return itemResults;
     }
@@ -1032,13 +1036,15 @@ class InspectionService {
   getServiceItemMappings(serviceType) {
     const mappings = {
       EC2: {
-        'security_groups': { name: '보안 그룹 규칙', category: 'security' },
-        'key_pairs': { name: '키 페어 관리', category: 'security' },
-        'instance_metadata': { name: '인스턴스 메타데이터', category: 'security' },
-        'instance_types': { name: '인스턴스 타입 최적화', category: 'performance' },
-        'ebs_optimization': { name: 'EBS 최적화', category: 'performance' },
-        'public_access': { name: '퍼블릭 접근 관리', category: 'security' },
-        'network_access': { name: '네트워크 접근 제어', category: 'security' }
+        'dangerous_ports': { name: '위험한 포트 보안', category: 'security' },
+        'ebs_encryption': { name: 'EBS 볼륨 암호화', category: 'security' },
+        'public_ip_exposure': { name: '퍼블릭 IP 노출', category: 'security' },
+        'ebs_volume_version': { name: 'EBS 볼륨 버전', category: 'security' },
+        'termination-protection': { name: '종료 보호 설정', category: 'security' },
+        'unused_security_groups': { name: '미사용 보안 그룹', category: 'cost_optimization' },
+        'unused_elastic_ip': { name: '미사용 Elastic IP', category: 'cost_optimization' },
+        'old_snapshots': { name: '오래된 스냅샷', category: 'cost_optimization' },
+        'stopped-instances': { name: '중지된 인스턴스', category: 'cost_optimization' }
       },
       RDS: {
         'encryption': { name: '암호화 설정', category: 'security' },
@@ -1047,10 +1053,21 @@ class InspectionService {
         'automated_backup': { name: '자동 백업', category: 'backup' }
       },
       S3: {
-        'bucket_policy': { name: '버킷 정책', category: 'security' },
-        'public_access': { name: '퍼블릭 접근 차단', category: 'security' },
-        'encryption': { name: '서버 측 암호화', category: 'security' },
-        'versioning': { name: '버전 관리', category: 'compliance' }
+        'bucket-policy': { name: '버킷 정책', category: 'security' },
+        'bucket-public-access': { name: '퍼블릭 액세스 차단', category: 'security' },
+        'bucket-encryption': { name: '버킷 암호화', category: 'security' },
+        'bucket-versioning': { name: '버전 관리', category: 'data_protection' },
+        'bucket-logging': { name: '액세스 로깅', category: 'data_protection' },
+        'bucket-mfa-delete': { name: 'MFA Delete', category: 'data_protection' },
+        'bucket-lifecycle': { name: '라이프사이클 정책', category: 'cost_optimization' },
+        'bucket-cors': { name: 'CORS 설정', category: 'security' }
+      },
+      IAM: {
+        'root-access-key': { name: '루트 계정 액세스 키', category: 'security' },
+        'mfa-enabled': { name: 'MFA 활성화', category: 'security' },
+        'unused-credentials': { name: '미사용 자격 증명', category: 'security' },
+        'overprivileged-policies': { name: '과도한 권한', category: 'policies' },
+        'inline-policies': { name: '인라인 정책', category: 'policies' }
       }
     };
 

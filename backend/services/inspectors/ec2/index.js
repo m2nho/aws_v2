@@ -221,6 +221,9 @@ class EC2Inspector extends BaseInspector {
 
   // 개별 검사 메서드들
   async _inspectDangerousPorts(results) {
+    // 개별 검사를 위해 findings 초기화
+    this.findings = [];
+    
     this.updateProgress('보안 그룹 조회 중', 20);
     const securityGroups = await this.dataCollector.getSecurityGroups();
     results.securityGroups = securityGroups;
@@ -233,6 +236,9 @@ class EC2Inspector extends BaseInspector {
   }
 
   async _inspectEBSEncryption(results) {
+    // 개별 검사를 위해 findings 초기화
+    this.findings = [];
+    
     this.updateProgress('EC2 인스턴스 조회 중', 30);
     const instances = await this.dataCollector.getEC2Instances();
     results.instances = instances;
@@ -245,6 +251,9 @@ class EC2Inspector extends BaseInspector {
   }
 
   async _inspectPublicIpExposure(results) {
+    // 개별 검사를 위해 findings 초기화
+    this.findings = [];
+    
     this.updateProgress('EC2 인스턴스 조회 중', 30);
     const instances = await this.dataCollector.getEC2Instances();
     results.instances = instances;
@@ -257,6 +266,9 @@ class EC2Inspector extends BaseInspector {
   }
 
   async _inspectUnusedSecurityGroups(results) {
+    // 개별 검사를 위해 findings 초기화
+    this.findings = [];
+    
     this.updateProgress('리소스 조회 중', 25);
     const [securityGroups, instances] = await Promise.all([
       this.dataCollector.getSecurityGroups(),
@@ -274,6 +286,9 @@ class EC2Inspector extends BaseInspector {
   }
 
   async _inspectUnusedElasticIp(results) {
+    // 개별 검사를 위해 findings 초기화
+    this.findings = [];
+    
     this.updateProgress('EC2 인스턴스 조회 중', 30);
     const instances = await this.dataCollector.getEC2Instances();
     results.instances = instances;
@@ -286,6 +301,9 @@ class EC2Inspector extends BaseInspector {
   }
 
   async _inspectOldSnapshots(results) {
+    // 개별 검사를 위해 findings 초기화
+    this.findings = [];
+    
     this.updateProgress('EC2 인스턴스 조회 중', 30);
     const instances = await this.dataCollector.getEC2Instances();
     results.instances = instances;
@@ -298,6 +316,9 @@ class EC2Inspector extends BaseInspector {
   }
 
   async _inspectEBSVolumeVersion(results) {
+    // 개별 검사를 위해 findings 초기화
+    this.findings = [];
+    
     this.updateProgress('EC2 인스턴스 조회 중', 30);
     const instances = await this.dataCollector.getEC2Instances();
     results.instances = instances;
@@ -310,6 +331,9 @@ class EC2Inspector extends BaseInspector {
   }
 
   async _inspectTerminationProtection(results) {
+    // 개별 검사를 위해 findings 초기화
+    this.findings = [];
+    
     this.updateProgress('EC2 인스턴스 조회 중', 30);
     const instances = await this.dataCollector.getEC2Instances();
     results.instances = instances;
@@ -322,6 +346,9 @@ class EC2Inspector extends BaseInspector {
   }
 
   async _inspectStoppedInstances(results) {
+    // 개별 검사를 위해 findings 초기화
+    this.findings = [];
+    
     this.updateProgress('EC2 인스턴스 조회 중', 30);
     const instances = await this.dataCollector.getEC2Instances();
     results.instances = instances;

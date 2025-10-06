@@ -466,12 +466,12 @@ class HistoryService {
       const command = new ScanCommand(params);
       const result = await this.client.send(command);
 
-
+      const groupedServices = this.groupItemsByService(result.Items || []);
 
       return {
         success: true,
         data: {
-          services: this.groupItemsByService(result.Items || [])
+          services: groupedServices
         }
       };
     } catch (error) {

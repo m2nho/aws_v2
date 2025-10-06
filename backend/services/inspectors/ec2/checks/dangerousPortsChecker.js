@@ -33,8 +33,13 @@ class DangerousPortsChecker {
       return;
     }
 
+    let dangerousPortsFound = 0;
+    const initialFindingsCount = this.inspector.findings.length;
+
     for (const sg of securityGroups) {
       try {
+        const beforeCount = this.inspector.findings.length;
+
         // 1. SSH 포트 22번 검사
         this.checkSSHPort(sg);
 
@@ -50,12 +55,43 @@ class DangerousPortsChecker {
         // 5. 과도한 포트 범위 검사
         this.checkExcessivePortRanges(sg);
 
+        const afterCount = this.inspector.findings.length;
+        if (afterCount > beforeCount) {
+          dangerousPortsFound++;
+        }
+
       } catch (error) {
         this.inspector.recordError(error, {
           operation: 'runAllChecks',
           securityGroupId: sg.GroupId
         });
       }
+    }
+
+    // 전체 요약 결과 추가
+    const totalNewFindings = this.inspector.findings.length - initialFindingsCount;
+    if (totalNewFindings === 0) {
+      const finding = new InspectionFinding({
+        resourceId: 'all-ports-secure',
+        resourceType: 'SecurityGroup',
+        riskLevel: 'LOW',
+        issue: '모든 보안 그룹의 포트 설정이 안전합니다',
+        recommendation: '현재 보안 설정을 유지하고 새로운 보안 그룹 생성 시에도 주의하세요',
+        details: {
+          totalSecurityGroups: securityGroups.length,
+          status: '위험한 포트 노출이 발견되지 않았습니다',
+          checkedPorts: this.getDangerousPortsList(),
+          bestPractices: [
+            '특정 IP 주소로만 접근 제한',
+            '필요한 포트만 개방',
+            '정기적인 보안 그룹 검토',
+            'VPN 또는 Bastion Host 사용'
+          ]
+        },
+        category: 'SECURITY'
+      });
+      
+      this.inspector.addFinding(finding);
     }
   }
 

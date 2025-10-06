@@ -33,6 +33,8 @@ class UnusedSecurityGroupsChecker {
     }
 
     try {
+      const initialFindingsCount = this.inspector.findings.length;
+
       // 1. 미사용 보안 그룹 검사
       this.checkUnusedSecurityGroups(securityGroups, instances);
 
@@ -41,6 +43,32 @@ class UnusedSecurityGroupsChecker {
 
       // 3. 빈 보안 그룹 검사
       this.checkEmptySecurityGroups(securityGroups);
+
+      // 전체 요약 결과 추가
+      const totalNewFindings = this.inspector.findings.length - initialFindingsCount;
+      if (totalNewFindings === 0) {
+        const finding = new InspectionFinding({
+          resourceId: 'all-security-groups-optimized',
+          resourceType: 'SecurityGroup',
+          riskLevel: 'LOW',
+          issue: '모든 보안 그룹이 효율적으로 사용되고 있습니다',
+          recommendation: '현재 상태를 유지하고 정기적으로 보안 그룹 사용 현황을 검토하세요',
+          details: {
+            totalSecurityGroups: securityGroups.length,
+            totalInstances: instances.length,
+            status: '미사용, 중복, 빈 보안 그룹이 발견되지 않았습니다',
+            bestPractices: [
+              '보안 그룹 명명 규칙 준수',
+              '정기적인 사용 현황 검토',
+              '불필요한 보안 그룹 정리',
+              '보안 그룹 태그 활용'
+            ]
+          },
+          category: 'COST_OPTIMIZATION'
+        });
+        
+        this.inspector.addFinding(finding);
+      }
 
     } catch (error) {
       this.inspector.recordError(error, {

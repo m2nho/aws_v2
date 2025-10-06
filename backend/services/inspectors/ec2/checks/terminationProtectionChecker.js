@@ -166,7 +166,7 @@ class TerminationProtectionChecker {
       resourceType: 'EC2Instance',
       riskLevel: riskLevel,
       issue: issue,
-      recommendation: '실수로 인한 종료를 방지하기 위해 종료 보호를 활성화하세요. 이는 추가 비용 없이 중요한 인스턴스를 보호할 수 있는 효과적인 방법입니다.',
+      recommendation: 'EC2 콘솔에서 인스턴스 선택 → Actions → Instance Settings → Change termination protection을 클릭하여 활성화하세요.',
       details: {
         instanceId: instance.InstanceId,
         instanceName: instanceName,

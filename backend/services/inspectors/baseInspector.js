@@ -70,6 +70,9 @@ class BaseInspector {
         targetItem: inspectionConfig.targetItem
       });
 
+      // 개별 검사 시작 시 findings 배열 초기화
+      this.findings = [];
+      this.errors = [];
       this.metadata.startTime = Date.now();
 
       // 사전 검증
@@ -143,6 +146,9 @@ class BaseInspector {
         serviceType: this.serviceType
       });
 
+      // 전체 검사 시작 시 findings 배열 초기화
+      this.findings = [];
+      this.errors = [];
       this.metadata.startTime = Date.now();
 
       // 사전 검증

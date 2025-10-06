@@ -5,7 +5,9 @@
  */
 
 const BaseInspector = require('./baseInspector');
-const EC2Inspector = require('./ec2Inspector');
+const EC2Inspector = require('./ec2/index');
+const IAMInspector = require('./iam/index');
+const S3Inspector = require('./s3/index');
 
 /**
  * Inspector Registry
@@ -23,7 +25,9 @@ class InspectorRegistry {
   initializeRegistry() {
     // 기본 Inspector들을 여기에 등록
     this.register('EC2', EC2Inspector);
-    // 향후 RDSInspector, S3Inspector 등이 추가될 예정
+    this.register('IAM', IAMInspector);
+    this.register('S3', S3Inspector);
+    // 향후 RDSInspector 등이 추가될 예정
   }
 
   /**
@@ -43,7 +47,7 @@ class InspectorRegistry {
     // Check if the class extends BaseInspector by checking prototype chain
     let currentProto = inspectorClass.prototype;
     let extendsBaseInspector = false;
-    
+
     while (currentProto) {
       if (currentProto.constructor === BaseInspector) {
         extendsBaseInspector = true;
@@ -76,12 +80,12 @@ class InspectorRegistry {
    */
   createInspector(serviceType, options = {}) {
     const InspectorClass = this.get(serviceType);
-    
+
     if (!InspectorClass) {
       throw new Error(`No inspector found for service type: ${serviceType}`);
     }
 
-    return new InspectorClass(serviceType, options);
+    return new InspectorClass(options);
   }
 
   /**
@@ -98,10 +102,10 @@ class InspectorRegistry {
    */
   getInspectorInfoList() {
     const infoList = [];
-    
+
     for (const [serviceType, InspectorClass] of this.inspectors) {
       try {
-        const tempInstance = new InspectorClass(serviceType);
+        const tempInstance = new InspectorClass();
         infoList.push(tempInstance.getInspectorInfo());
       } catch (error) {
 
@@ -195,9 +199,9 @@ function getInspectorInfo(serviceType) {
   if (!InspectorClass) {
     return null;
   }
-  
+
   try {
-    const tempInstance = new InspectorClass(serviceType);
+    const tempInstance = new InspectorClass();
     return tempInstance.getInspectorInfo();
   } catch (error) {
 

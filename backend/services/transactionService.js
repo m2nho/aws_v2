@@ -385,12 +385,14 @@ class TransactionService {
    * @returns {string} 상태
    */
   determineItemStatus(itemResult) {
-    if (!itemResult.totalResources || itemResult.totalResources === 0) {
-      return 'NOT_CHECKED';
-    }
-
     const issuesFound = itemResult.issuesFound || 0;
     const riskLevel = itemResult.riskLevel || 'LOW';
+    const hasFindings = itemResult.findings && itemResult.findings.length > 0;
+
+    // findings가 있으면 검사가 수행된 것으로 판단
+    if (!hasFindings && (!itemResult.totalResources || itemResult.totalResources === 0)) {
+      return 'NOT_CHECKED';
+    }
 
     if (issuesFound === 0) {
       return 'PASS';

@@ -181,7 +181,7 @@ class StoppedInstancesChecker {
                 resourceType: 'EC2Instance',
                 riskLevel: 'LOW',
                 issue: `인스턴스가 중지된 상태입니다 (${stoppedDuration}일)`,
-                recommendation: '사용 계획을 검토하고 불필요한 경우 종료를 고려하세요',
+                recommendation: '필요한 데이터를 백업한 후 EC2 콘솔에서 인스턴스를 종료하여 비용을 절약하세요',
                 details: {
                     instanceId: instance.InstanceId,
                     instanceName: instanceName,
