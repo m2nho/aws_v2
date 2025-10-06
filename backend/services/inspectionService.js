@@ -958,7 +958,7 @@ class InspectionService {
         itemName: itemMapping?.name || inspectionResult.metadata.itemName || targetItemId,
         category: itemMapping?.category || 'other',
         totalResources: inspectionResult.results?.summary?.totalResources || 0,
-        issuesFound: findings.length,
+        issuesFound: findings.filter(f => f.riskLevel !== 'PASS').length,
         riskLevel: findings.length > 0 ? this.calculateMaxRiskLevel(findings) : 'LOW',
         score: findings.length > 0 ? this.calculateScore(findings) : 100,
         findings: findings,
@@ -1016,7 +1016,7 @@ class InspectionService {
         itemName: group.itemName,
         category: group.category,
         totalResources: group.totalResources,
-        issuesFound: group.findings.length,
+        issuesFound: group.findings.filter(f => f.riskLevel !== 'PASS').length,
         riskLevel: group.maxRiskLevel,
         score: group.score,
         findings: group.findings,
@@ -1101,7 +1101,7 @@ class InspectionService {
    * @returns {string} 최대 위험도
    */
   calculateMaxRiskLevel(findings) {
-    let maxRiskLevel = 'LOW';
+    let maxRiskLevel = 'PASS';
     findings.forEach(finding => {
       if (this.getRiskPriority(finding.riskLevel) > this.getRiskPriority(maxRiskLevel)) {
         maxRiskLevel = finding.riskLevel;
@@ -1130,6 +1130,7 @@ class InspectionService {
    */
   getRiskPriority(riskLevel) {
     const priorities = {
+      'PASS': 0,
       'LOW': 1,
       'MEDIUM': 2,
       'HIGH': 3,
@@ -1264,7 +1265,7 @@ class InspectionService {
               lastInspectionTime: timestamp,
               status: 'WARNING',
               totalResources: inspectionResult.results.findings.length,
-              issuesFound: inspectionResult.results.findings.length,
+              issuesFound: inspectionResult.results.findings.filter(f => f.riskLevel !== 'PASS').length,
               riskLevel: 'MEDIUM',
               score: 50,
               findings: inspectionResult.results.findings,

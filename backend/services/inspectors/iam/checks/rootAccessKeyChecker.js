@@ -107,8 +107,8 @@ class RootAccessKeyChecker {
                 const finding = new InspectionFinding({
                     resourceId: 'root-account-no-access-keys',
                     resourceType: 'IAMRoot',
-                    riskLevel: 'LOW',
-                    issue: '루트 계정에 액세스 키가 없어 보안 상태가 양호합니다',
+                    riskLevel: 'PASS',
+                    issue: '루트 액세스 키 검사 - 통과',
                     recommendation: '현재 상태를 유지하고 루트 계정 보안을 지속적으로 관리하세요',
                     details: {
                         rootAccessKeysCount: 0,

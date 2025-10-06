@@ -4,10 +4,44 @@ class BucketPublicAccessChecker {
   async check(s3Client, buckets) {
     const results = { findings: [] };
 
+    if (buckets.length === 0) {
+      results.findings.push({
+        id: 's3-no-buckets-public-access-check',
+        title: '퍼블릭 액세스 차단 검사 - 통과 (버킷 없음)',
+        description: '현재 계정에 S3 버킷이 없어 퍼블릭 액세스 관련 보안 위험이 없습니다.',
+        severity: 'pass',
+        riskLevel: 'PASS',
+        resource: 'N/A',
+        recommendation: 'S3 버킷 생성 시 퍼블릭 액세스 차단을 기본으로 활성화하세요.'
+      });
+      return results;
+    }
+
+    let securelyBlockedCount = 0;
+    let partiallyBlockedCount = 0;
+    let unprotectedCount = 0;
+
     for (const bucket of buckets) {
+      const initialFindingsCount = results.findings.length;
+      
       await this.checkPublicAccessBlock(s3Client, bucket, results);
       await this.checkBucketAcl(s3Client, bucket, results);
+      
+      // 이 버킷에 대한 결과 분석
+      const bucketFindings = results.findings.slice(initialFindingsCount);
+      const hasPassFindings = bucketFindings.some(f => f.severity === 'pass');
+      const hasHighSeverityFindings = bucketFindings.some(f => f.severity === 'high');
+      
+      if (hasPassFindings && !hasHighSeverityFindings) {
+        securelyBlockedCount++;
+      } else if (hasHighSeverityFindings) {
+        unprotectedCount++;
+      } else {
+        partiallyBlockedCount++;
+      }
     }
+
+    // 전체 요약 결과는 제거 - 개별 버킷 결과만 표시
 
     return results;
   }
@@ -57,9 +91,10 @@ class BucketPublicAccessChecker {
       } else {
         results.findings.push({
           id: `s3-public-access-blocked-${bucket.Name}`,
-          title: '퍼블릭 액세스 완전 차단',
-          description: `S3 버킷 '${bucket.Name}'의 모든 퍼블릭 액세스가 차단되어 있습니다.`,
-          severity: 'info',
+          title: '퍼블릭 액세스 차단 검사 - 통과',
+          description: `S3 버킷 '${bucket.Name}'의 모든 퍼블릭 액세스가 안전하게 차단되어 있습니다.`,
+          severity: 'pass',
+          riskLevel: 'PASS',
           resource: bucket.Name,
           recommendation: '퍼블릭 액세스 차단이 올바르게 설정되어 있습니다. 정기적으로 설정을 검토하여 의도하지 않은 변경이 없는지 확인하세요.'
         });

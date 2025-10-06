@@ -42,9 +42,10 @@ class BucketPolicyChecker {
             hasSecurePolicies++;
             results.findings.push({
               id: `s3-secure-bucket-policy-${bucket.Name}`,
-              title: '안전한 버킷 정책',
+              title: '버킷 정책 보안 - 통과',
               description: `S3 버킷 '${bucket.Name}'의 정책이 안전하게 구성되어 있습니다.`,
-              severity: 'info',
+              severity: 'pass',
+              riskLevel: 'PASS',
               resource: bucket.Name,
               recommendation: '현재 정책이 적절히 설정되어 있습니다. 정기적으로 정책을 검토하여 보안을 유지하세요.'
             });
@@ -68,17 +69,7 @@ class BucketPolicyChecker {
       }
     }
 
-    // 전체 요약 결과 추가
-    if (hasDangerousPolicies === 0 && hasSecurePolicies > 0) {
-      results.findings.push({
-        id: 's3-all-policies-secure',
-        title: '모든 버킷 정책이 안전함',
-        description: `총 ${buckets.length}개 버킷 중 위험한 정책이 발견되지 않았습니다. (안전한 정책: ${hasSecurePolicies}개, 정책 없음: ${hasNoPolicies}개)`,
-        severity: 'info',
-        resource: 'All Buckets',
-        recommendation: '현재 상태를 유지하고 새로운 버킷 생성 시에도 보안 정책을 적용하세요.'
-      });
-    }
+    // 전체 요약 결과는 제거 - 개별 버킷 결과만 표시
 
     return results;
   }

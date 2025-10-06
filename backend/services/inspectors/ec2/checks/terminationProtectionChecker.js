@@ -24,8 +24,8 @@ class TerminationProtectionChecker {
       const finding = new InspectionFinding({
         resourceId: 'no-instances',
         resourceType: 'EC2Instance',
-        riskLevel: 'LOW',
-        issue: '인스턴스가 없어 종료 보호 검사가 불필요합니다',
+        riskLevel: 'PASS',
+        issue: '종료 보호 검사 - 통과 (인스턴스 없음)',
         recommendation: '중요한 인스턴스 생성 시 종료 보호를 활성화하세요',
         details: {
           totalInstances: instances.length,
@@ -59,10 +59,15 @@ class TerminationProtectionChecker {
           
           if (isProtected) {
             protectedInstances++;
+            // 보호된 중요 인스턴스에 대한 긍정적 결과 생성
+            this.addProtectedInstanceFinding(instance);
           } else {
             // 보호되지 않은 중요 인스턴스에 대한 권고사항 생성
             this.addTerminationProtectionFinding(instance);
           }
+        } else {
+          // 중요하지 않은 인스턴스도 PASS 결과 생성
+          this.addNonCriticalInstanceFinding(instance);
         }
 
       } catch (error) {
@@ -73,55 +78,7 @@ class TerminationProtectionChecker {
       }
     }
 
-    // 중요한 인스턴스가 없는 경우
-    if (criticalInstances === 0) {
-      const finding = new InspectionFinding({
-        resourceId: 'no-critical-instances',
-        resourceType: 'EC2Instance',
-        riskLevel: 'LOW',
-        issue: `${activeInstances.length}개의 인스턴스가 있지만 종료 보호가 필요한 중요 인스턴스는 없습니다`,
-        recommendation: '중요한 인스턴스 생성 시 종료 보호를 활성화하세요',
-        details: {
-          totalInstances: activeInstances.length,
-          criticalInstances: 0,
-          status: '현재 중요한 인스턴스가 없어 종료 보호 위험이 낮습니다',
-          criticalInstanceCriteria: [
-            '이름에 prod, production, critical, important 포함',
-            '데이터베이스 관련 키워드 포함',
-            'Environment 태그가 production',
-            '고비용 인스턴스 (xlarge 이상)'
-          ]
-        },
-        category: 'COMPLIANCE'
-      });
-      
-      this.inspector.addFinding(finding);
-    }
-    // 모든 중요 인스턴스가 보호되고 있는 경우
-    else if (criticalInstances === protectedInstances) {
-      const finding = new InspectionFinding({
-        resourceId: 'all-critical-protected',
-        resourceType: 'EC2Instance',
-        riskLevel: 'LOW',
-        issue: `${criticalInstances}개의 중요 인스턴스가 모두 종료 보호로 안전하게 보호되고 있습니다`,
-        recommendation: '현재 보안 상태가 우수합니다. 새로운 중요 인스턴스 생성 시에도 종료 보호를 유지하세요',
-        details: {
-          totalInstances: activeInstances.length,
-          criticalInstances: criticalInstances,
-          protectedInstances: protectedInstances,
-          status: '모든 중요 인스턴스가 종료 보호로 보호되어 보안 상태가 우수합니다',
-          protectionBenefits: [
-            '실수로 인한 인스턴스 삭제 방지',
-            '중요한 데이터 및 서비스 보호',
-            '비즈니스 연속성 보장',
-            '복구 시간 및 비용 절약'
-          ]
-        },
-        category: 'COMPLIANCE'
-      });
-      
-      this.inspector.addFinding(finding);
-    }
+    // 전체 요약 결과는 제거 - 개별 인스턴스 결과만 표시
   }
 
   /**
@@ -194,6 +151,63 @@ class TerminationProtectionChecker {
   }
 
 
+
+  /**
+   * 보호된 중요 인스턴스에 대한 긍정적 결과 생성
+   */
+  addProtectedInstanceFinding(instance) {
+    const instanceName = this.getInstanceName(instance);
+    const environment = this.getInstanceEnvironment(instance);
+    
+    const finding = new InspectionFinding({
+      resourceId: instance.InstanceId,
+      resourceType: 'EC2Instance',
+      riskLevel: 'PASS',
+      issue: '종료 보호 검사 - 통과',
+      recommendation: '중요한 인스턴스가 종료 보호로 안전하게 보호되고 있습니다. 현재 설정을 유지하세요.',
+      details: {
+        instanceId: instance.InstanceId,
+        instanceName: instanceName,
+        instanceType: instance.InstanceType,
+        environment: environment,
+        currentProtectionStatus: 'ENABLED',
+        protectionBenefits: [
+          '실수로 인한 인스턴스 삭제 방지',
+          '중요한 데이터 및 서비스 보호',
+          '비즈니스 연속성 보장',
+          '복구 시간 및 비용 절약'
+        ]
+      },
+      category: 'RELIABILITY'
+    });
+
+    this.inspector.addFinding(finding);
+  }
+
+  /**
+   * 중요하지 않은 인스턴스에 대한 결과 생성
+   */
+  addNonCriticalInstanceFinding(instance) {
+    const instanceName = this.getInstanceName(instance);
+    
+    const finding = new InspectionFinding({
+      resourceId: instance.InstanceId,
+      resourceType: 'EC2Instance',
+      riskLevel: 'PASS',
+      issue: '종료 보호 검사 - 통과 (중요 인스턴스 아님)',
+      recommendation: '현재 인스턴스는 중요도가 낮아 종료 보호가 필수적이지 않습니다.',
+      details: {
+        instanceId: instance.InstanceId,
+        instanceName: instanceName,
+        instanceType: instance.InstanceType,
+        criticalityLevel: 'LOW',
+        status: '종료 보호가 필수적이지 않은 인스턴스'
+      },
+      category: 'COMPLIANCE'
+    });
+
+    this.inspector.addFinding(finding);
+  }
 
   /**
    * 중요한 인스턴스 여부 확인

@@ -23,8 +23,8 @@ class EBSVolumeVersionChecker {
       const finding = new InspectionFinding({
         resourceId: 'no-instances',
         resourceType: 'EC2Instance',
-        riskLevel: 'LOW',
-        issue: '인스턴스가 없어 EBS 볼륨 버전 검사가 불필요합니다',
+        riskLevel: 'PASS',
+        issue: 'EBS 볼륨 버전 검사 - 통과 (인스턴스 없음)',
         recommendation: '인스턴스 생성 시 최신 EBS 볼륨 타입을 사용하세요',
         details: {
           totalInstances: instances.length,
@@ -128,6 +128,52 @@ class EBSVolumeVersionChecker {
         category: 'PERFORMANCE'
       });
 
+      this.inspector.addFinding(finding);
+    } else if (instance.BlockDeviceMappings && instance.BlockDeviceMappings.length > 0) {
+      // 최신 볼륨 타입을 사용하는 것으로 추정되는 경우
+      const finding = new InspectionFinding({
+        resourceId: instance.InstanceId,
+        resourceType: 'EC2Instance',
+        riskLevel: 'PASS',
+        issue: 'EBS 볼륨 버전 검사 - 통과',
+        recommendation: '인스턴스가 비교적 최근에 생성되어 최신 EBS 볼륨 타입을 사용할 가능성이 높습니다.',
+        details: {
+          instanceId: instance.InstanceId,
+          instanceName: this.getInstanceName(instance),
+          volumeCount: instance.BlockDeviceMappings.length,
+          detectionCriteria: {
+            method: '인스턴스 생성 시간 기반 추정',
+            condition: '인스턴스 생성일이 2년 미만',
+            status: '최신 볼륨 타입 사용 가능성 높음'
+          },
+          benefits: [
+            '최신 EBS 볼륨 타입의 성능 혜택',
+            '비용 효율성',
+            '향상된 내구성',
+            '독립적인 성능 설정'
+          ]
+        },
+        category: 'PERFORMANCE'
+      });
+      
+      this.inspector.addFinding(finding);
+    } else {
+      // 볼륨이 없는 인스턴스
+      const finding = new InspectionFinding({
+        resourceId: instance.InstanceId,
+        resourceType: 'EC2Instance',
+        riskLevel: 'PASS',
+        issue: 'EBS 볼륨 버전 검사 - 통과 (볼륨 없음)',
+        recommendation: '현재 인스턴스에 EBS 볼륨이 없어 볼륨 버전 관련 문제가 없습니다.',
+        details: {
+          instanceId: instance.InstanceId,
+          instanceName: this.getInstanceName(instance),
+          volumeCount: 0,
+          status: 'EBS 볼륨이 없어 버전 관련 위험 없음'
+        },
+        category: 'COMPLIANCE'
+      });
+      
       this.inspector.addFinding(finding);
     }
   }

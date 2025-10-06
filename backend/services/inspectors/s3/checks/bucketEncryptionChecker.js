@@ -50,17 +50,7 @@ class BucketEncryptionChecker {
       }
     }
 
-    // 전체 요약 결과 추가
-    if (unencryptedBuckets === 0) {
-      results.findings.push({
-        id: 's3-all-buckets-encrypted',
-        title: '모든 S3 버킷이 암호화됨',
-        description: `총 ${buckets.length}개의 모든 S3 버킷에 암호화가 설정되어 있습니다.`,
-        severity: 'info',
-        resource: 'All Buckets',
-        recommendation: '훌륭합니다! 모든 버킷이 암호화되어 있습니다. 새로운 버킷 생성 시에도 암호화를 활성화하세요.'
-      });
-    }
+
 
     return results;
   }
@@ -69,7 +59,7 @@ class BucketEncryptionChecker {
     if (!config.Rules || config.Rules.length === 0) {
       results.findings.push({
         id: `s3-no-encryption-rules-${bucketName}`,
-        title: '암호화 규칙 없음',
+        title: '버킷 암호화 상태 - 규칙 없음',
         description: `S3 버킷 '${bucketName}'에 암호화 규칙이 설정되지 않았습니다.`,
         severity: 'high',
         resource: bucketName,
@@ -78,68 +68,107 @@ class BucketEncryptionChecker {
       return;
     }
 
+    // 통합된 암호화 분석
+    this.analyzeBucketEncryptionComprehensive(config, bucketName, results);
+  }
+
+  analyzeBucketEncryptionComprehensive(config, bucketName, results) {
+    const issues = [];
+    const recommendations = [];
+    let encryptionScore = 0;
+    let maxSeverity = 'pass';
+    let encryptionType = 'none';
+    let hasCustomKMS = false;
+    let hasBucketKey = false;
+
     for (const rule of config.Rules) {
       if (!rule.ApplyServerSideEncryptionByDefault) {
-        results.findings.push({
-          id: `s3-no-default-encryption-${bucketName}`,
-          title: '기본 암호화 미설정',
-          description: `S3 버킷 '${bucketName}'에 기본 암호화가 설정되지 않았습니다.`,
-          severity: 'high',
-          resource: bucketName,
-          recommendation: '모든 객체에 대해 기본 암호화를 활성화하세요.'
-        });
+        issues.push('기본 암호화 미설정');
+        maxSeverity = 'high';
         continue;
       }
 
       const encryption = rule.ApplyServerSideEncryptionByDefault;
       
-      // AES256 사용 시 권장사항
+      // 암호화 타입 분석
       if (encryption.SSEAlgorithm === 'AES256') {
-        results.findings.push({
-          id: `s3-aes256-encryption-${bucketName}`,
-          title: 'AES-256 암호화 사용',
-          description: `S3 버킷 '${bucketName}'이 AES-256 암호화를 사용하고 있습니다.`,
-          severity: 'info',
-          resource: bucketName,
-          recommendation: '보안 강화를 위해 AWS KMS 키를 사용한 암호화(SSE-KMS)로 업그레이드를 고려하세요. KMS를 사용하면 키 관리, 액세스 로깅, 키 회전 등의 추가 기능을 활용할 수 있습니다.'
-        });
-      }
-
-      // KMS 키 사용 시 분석
-      if (encryption.SSEAlgorithm === 'aws:kms') {
+        encryptionType = 'AES256';
+        encryptionScore = 70; // 기본 암호화
+        issues.push('AES-256 암호화 사용 중 (KMS 업그레이드 권장)');
+        recommendations.push('보안 강화를 위해 AWS KMS 키 사용 고려');
+      } else if (encryption.SSEAlgorithm === 'aws:kms') {
+        encryptionType = 'KMS';
+        encryptionScore = 90; // KMS 암호화
+        
         if (!encryption.KMSMasterKeyID) {
-          results.findings.push({
-            id: `s3-default-kms-key-${bucketName}`,
-            title: '기본 KMS 키 사용',
-            description: `S3 버킷 '${bucketName}'이 AWS 관리형 기본 KMS 키를 사용하고 있습니다.`,
-            severity: 'low',
-            resource: bucketName,
-            recommendation: '더 세밀한 액세스 제어를 위해 고객 관리형 KMS 키 사용을 고려하세요. 고객 관리형 키를 사용하면 키 정책을 통해 더 정교한 권한 관리가 가능합니다.'
-          });
+          issues.push('AWS 관리형 기본 KMS 키 사용');
+          recommendations.push('고객 관리형 KMS 키 사용 고려');
+          encryptionScore = 80;
         } else {
-          results.findings.push({
-            id: `s3-custom-kms-key-${bucketName}`,
-            title: '고객 관리형 KMS 키 사용',
-            description: `S3 버킷 '${bucketName}'이 고객 관리형 KMS 키를 사용하고 있습니다.`,
-            severity: 'info',
-            resource: bucketName,
-            recommendation: 'KMS 키 정책이 적절히 설정되어 있는지 확인하고, 정기적인 키 회전을 활성화하세요.'
-          });
+          hasCustomKMS = true;
+          encryptionScore = 95;
         }
       }
 
-      // Bucket Key 사용 여부 확인
-      if (!rule.BucketKeyEnabled) {
-        results.findings.push({
-          id: `s3-bucket-key-disabled-${bucketName}`,
-          title: 'S3 Bucket Key 미사용',
-          description: `S3 버킷 '${bucketName}'에서 Bucket Key가 비활성화되어 있습니다.`,
-          severity: 'low',
-          resource: bucketName,
-          recommendation: 'KMS 비용 절감을 위해 S3 Bucket Key를 활성화하세요. Bucket Key를 사용하면 KMS 요청 수를 줄여 암호화 비용을 최대 99%까지 절감할 수 있습니다.'
-        });
+      // Bucket Key 확인
+      if (rule.BucketKeyEnabled) {
+        hasBucketKey = true;
+        encryptionScore += 5;
+      } else if (encryptionType === 'KMS') {
+        issues.push('S3 Bucket Key 미사용 (비용 최적화 기회)');
+        recommendations.push('KMS 비용 절감을 위해 S3 Bucket Key 활성화');
       }
     }
+
+    // 전체 상태 결정
+    let status = '';
+    let overallRecommendation = '';
+
+    if (encryptionScore >= 95) {
+      status = '최적의 암호화 설정';
+      maxSeverity = 'pass';
+      overallRecommendation = '현재 암호화 설정이 최적입니다. 정기적인 키 회전을 확인하세요.';
+    } else if (encryptionScore >= 80) {
+      status = '양호한 암호화 설정';
+      maxSeverity = 'pass';
+      overallRecommendation = '암호화가 잘 설정되어 있습니다. 추가 보안 강화를 고려하세요.';
+    } else if (encryptionScore >= 60) {
+      status = '기본 암호화 설정';
+      maxSeverity = 'low';
+      overallRecommendation = '기본 암호화가 설정되어 있지만 보안 강화가 필요합니다.';
+    } else {
+      status = '암호화 설정 부족';
+      maxSeverity = 'high';
+      overallRecommendation = '즉시 적절한 암호화를 설정하세요.';
+    }
+
+    // 통합된 결과 생성
+    results.findings.push({
+      id: `s3-encryption-comprehensive-${bucketName}`,
+      title: `버킷 암호화 상태 - ${status}`,
+      description: issues.length > 0 ? 
+        `S3 버킷 '${bucketName}' 암호화 분석: ${issues.join(', ')}` :
+        `S3 버킷 '${bucketName}'의 암호화 설정이 우수합니다.`,
+      severity: maxSeverity,
+      riskLevel: maxSeverity === 'pass' ? 'PASS' : maxSeverity.toUpperCase(),
+      resource: bucketName,
+      recommendation: overallRecommendation,
+      details: {
+        encryptionType: encryptionType,
+        encryptionScore: encryptionScore,
+        hasCustomKMS: hasCustomKMS,
+        hasBucketKey: hasBucketKey,
+        issues: issues,
+        recommendations: recommendations,
+        securityLevel: encryptionScore >= 90 ? '높음' : encryptionScore >= 70 ? '중간' : '낮음',
+        costOptimization: hasBucketKey ? '최적화됨' : '개선 가능',
+        actionItems: [
+          encryptionType === 'AES256' ? 'KMS 암호화로 업그레이드' : null,
+          !hasCustomKMS && encryptionType === 'KMS' ? '고객 관리형 KMS 키 사용' : null,
+          !hasBucketKey && encryptionType === 'KMS' ? 'S3 Bucket Key 활성화' : null
+        ].filter(Boolean)
+      }
+    });
   }
 }
 

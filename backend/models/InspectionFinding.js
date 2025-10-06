@@ -32,6 +32,7 @@ class InspectionFinding {
    */
   getRiskScore() {
     const riskScores = {
+      'PASS': 0,
       'LOW': 25,
       'MEDIUM': 50,
       'HIGH': 75,
@@ -100,7 +101,7 @@ class InspectionFinding {
       errors.push('recommendation is required');
     }
 
-    const validRiskLevels = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+    const validRiskLevels = ['PASS', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
     if (!validRiskLevels.includes(this.riskLevel)) {
       errors.push(`riskLevel must be one of: ${validRiskLevels.join(', ')}`);
     }
@@ -199,6 +200,7 @@ class InspectionFinding {
   static generateSummary(findings) {
     const summary = {
       totalFindings: findings.length,
+      passedChecks: 0,
       criticalIssues: 0,
       highRiskIssues: 0,
       mediumRiskIssues: 0,
@@ -212,6 +214,9 @@ class InspectionFinding {
     findings.forEach(finding => {
       // 위험도별 카운트
       switch (finding.riskLevel) {
+        case 'PASS':
+          summary.passedChecks++;
+          break;
         case 'CRITICAL':
           summary.criticalIssues++;
           break;

@@ -28,10 +28,10 @@ class InlinePoliciesChecker {
             const finding = new InspectionFinding({
                 resourceId: 'no-iam-resources',
                 resourceType: 'IAMGeneral',
-                riskLevel: 'LOW',
-                issue: 'IAM 사용자 및 역할이 없습니다',
-                description: '검사할 IAM 사용자나 역할이 없어 인라인 정책 검사를 수행할 수 없습니다.',
-                recommendation: 'IAM 사용자나 역할이 생성된 후 다시 검사를 실행하세요.',
+                riskLevel: 'PASS',
+                issue: '인라인 정책 검사 - 통과 (리소스 없음)',
+                description: '검사할 IAM 사용자나 역할이 없어 인라인 정책 관련 위험이 없습니다.',
+                recommendation: 'IAM 사용자나 역할 생성 시 관리형 정책 사용을 권장합니다.',
                 category: 'COMPLIANCE'
             });
             this.inspector.addFinding(finding);
@@ -91,6 +91,28 @@ class InlinePoliciesChecker {
                         category: 'COMPLIANCE'
                     });
                     this.inspector.addFinding(finding);
+                } else {
+                    // 인라인 정책이 없는 경우 - 좋은 상태
+                    const finding = new InspectionFinding({
+                        resourceId: user.UserName,
+                        resourceType: 'IAMUser',
+                        riskLevel: 'PASS',
+                        issue: '인라인 정책 검사 - 통과',
+                        description: `IAM 사용자 '${user.UserName}'이 인라인 정책을 사용하지 않아 관리 모범 사례를 준수하고 있습니다.`,
+                        recommendation: '현재 상태를 유지하고 향후에도 관리형 정책 사용을 권장합니다.',
+                        details: {
+                            userName: user.UserName,
+                            inlinePolicyCount: 0,
+                            benefits: [
+                                '정책 재사용 가능',
+                                '버전 관리 지원',
+                                '중앙 집중식 관리',
+                                '정책 변경 추적 용이'
+                            ]
+                        },
+                        category: 'COMPLIANCE'
+                    });
+                    this.inspector.addFinding(finding);
                 }
 
             } catch (error) {
@@ -140,6 +162,28 @@ class InlinePoliciesChecker {
                                 '역할별 표준 정책 세트 정의',
                                 '정책 템플릿 활용',
                                 '자동화된 정책 배포 고려'
+                            ]
+                        },
+                        category: 'COMPLIANCE'
+                    });
+                    this.inspector.addFinding(finding);
+                } else {
+                    // 인라인 정책이 없는 경우 - 좋은 상태
+                    const finding = new InspectionFinding({
+                        resourceId: role.RoleName,
+                        resourceType: 'IAMRole',
+                        riskLevel: 'PASS',
+                        issue: '인라인 정책 검사 - 통과',
+                        description: `IAM 역할 '${role.RoleName}'이 인라인 정책을 사용하지 않아 관리 모범 사례를 준수하고 있습니다.`,
+                        recommendation: '현재 상태를 유지하고 향후에도 관리형 정책 사용을 권장합니다.',
+                        details: {
+                            roleName: role.RoleName,
+                            inlinePolicyCount: 0,
+                            benefits: [
+                                '정책 재사용 가능',
+                                '역할 간 일관성 유지',
+                                '정책 변경 영향 범위 명확',
+                                '감사 및 컴플라이언스 검토 용이'
                             ]
                         },
                         category: 'COMPLIANCE'

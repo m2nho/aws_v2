@@ -13,15 +13,15 @@ class BucketLifecycleChecker {
         );
 
         if (lifecycleResponse.Rules && lifecycleResponse.Rules.length > 0) {
-          this.analyzeLifecycleRules(lifecycleResponse.Rules, bucket.Name, results);
+          this.analyzeLifecycleRulesComprehensive(lifecycleResponse.Rules, bucket.Name, results);
         } else {
           results.findings.push({
-            id: `s3-no-lifecycle-rules-${bucket.Name}`,
-            title: '라이프사이클 정책 없음',
+            id: `s3-no-lifecycle-config-${bucket.Name}`,
+            title: '라이프사이클 상태 - 설정 없음',
             description: `S3 버킷 '${bucket.Name}'에 라이프사이클 정책이 설정되지 않았습니다.`,
             severity: 'medium',
             resource: bucket.Name,
-            recommendation: '스토리지 비용 최적화를 위해 라이프사이클 정책을 설정하세요. 오래된 객체를 IA, Glacier, Deep Archive로 이동시키거나 삭제하는 규칙을 만들어 비용을 절감할 수 있습니다.'
+            recommendation: '비용 최적화를 위해 라이프사이클 정책을 설정하세요. 30일 후 IA로, 90일 후 Glacier로, 365일 후 Deep Archive로 이동하는 정책을 고려하세요.'
           });
         }
 
@@ -44,7 +44,117 @@ class BucketLifecycleChecker {
     return results;
   }
 
-  analyzeLifecycleRules(rules, bucketName, results) {
+  analyzeLifecycleRulesComprehensive(rules, bucketName, results) {
+    let hasTransitionRules = false;
+    let hasExpirationRules = false;
+    let hasIncompleteMultipartRule = false;
+    let hasNoncurrentVersionRule = false;
+    let disabledRulesCount = 0;
+    const issues = [];
+    const recommendations = [];
+    let optimizationScore = 60; // 기본 점수 (라이프사이클 정책 존재)
+
+    for (const rule of rules) {
+      if (rule.Status !== 'Enabled') {
+        disabledRulesCount++;
+        issues.push(`비활성화된 규칙: ${rule.ID || '이름 없음'}`);
+        optimizationScore -= 10;
+        continue;
+      }
+
+      // 전환 규칙 검사
+      if (rule.Transitions && rule.Transitions.length > 0) {
+        hasTransitionRules = true;
+        optimizationScore += 20;
+      }
+
+      // 만료 규칙 검사
+      if (rule.Expiration) {
+        hasExpirationRules = true;
+        optimizationScore += 10;
+      }
+
+      // 불완전한 멀티파트 업로드 정리 규칙 검사
+      if (rule.AbortIncompleteMultipartUpload) {
+        hasIncompleteMultipartRule = true;
+        optimizationScore += 5;
+      }
+
+      // 비현재 버전 관리 규칙 검사
+      if (rule.NoncurrentVersionTransitions || rule.NoncurrentVersionExpiration) {
+        hasNoncurrentVersionRule = true;
+        optimizationScore += 10;
+      }
+    }
+
+    // 문제점 식별
+    if (!hasTransitionRules) {
+      issues.push('스토리지 클래스 전환 규칙 없음');
+      recommendations.push('오래된 객체를 저렴한 스토리지 클래스로 이동');
+    }
+
+    if (!hasIncompleteMultipartRule) {
+      issues.push('불완전한 멀티파트 업로드 정리 규칙 없음');
+      recommendations.push('불완전한 멀티파트 업로드 자동 정리 설정');
+    }
+
+    if (!hasNoncurrentVersionRule) {
+      issues.push('이전 버전 관리 규칙 없음');
+      recommendations.push('이전 버전 객체 자동 정리 설정');
+    }
+
+    // 전체 상태 결정
+    let status = '';
+    let severity = 'low';
+    let overallRecommendation = '';
+
+    if (optimizationScore >= 90) {
+      status = '최적화됨';
+      severity = 'pass';
+      overallRecommendation = '라이프사이클 정책이 최적으로 설정되어 있습니다. 정기적으로 규칙을 검토하세요.';
+    } else if (optimizationScore >= 70) {
+      status = '양호함';
+      severity = 'low';
+      overallRecommendation = '라이프사이클 정책이 설정되어 있습니다. 추가 최적화를 고려하세요.';
+    } else {
+      status = '개선 필요';
+      severity = 'medium';
+      overallRecommendation = '라이프사이클 정책을 개선하여 비용을 더 절감할 수 있습니다.';
+    }
+
+    // 통합된 결과 생성
+    results.findings.push({
+      id: `s3-lifecycle-comprehensive-${bucketName}`,
+      title: issues.length > 0 ? 
+        `라이프사이클 상태 - ${status}: ${issues.join(', ')}` : 
+        `라이프사이클 상태 - ${status}`,
+      description: `S3 버킷 '${bucketName}'의 라이프사이클 정책 분석 완료`,
+      severity: severity,
+      riskLevel: severity === 'pass' ? 'PASS' : severity.toUpperCase(),
+      resource: bucketName,
+      recommendation: overallRecommendation,
+      details: {
+        optimizationScore: optimizationScore,
+        totalRules: rules.length,
+        activeRules: rules.length - disabledRulesCount,
+        disabledRules: disabledRulesCount,
+        hasTransitionRules: hasTransitionRules,
+        hasExpirationRules: hasExpirationRules,
+        hasIncompleteMultipartRule: hasIncompleteMultipartRule,
+        hasNoncurrentVersionRule: hasNoncurrentVersionRule,
+        issues: issues,
+        recommendations: recommendations,
+        actionItems: [
+          !hasTransitionRules ? '스토리지 클래스 전환 규칙 추가' : null,
+          !hasIncompleteMultipartRule ? '불완전한 멀티파트 업로드 정리 규칙 추가' : null,
+          !hasNoncurrentVersionRule ? '이전 버전 관리 규칙 추가' : null,
+          disabledRulesCount > 0 ? '비활성화된 규칙 정리' : null
+        ].filter(Boolean)
+      }
+    });
+  }
+
+  analyzeLifecycleRules_deprecated(rules, bucketName, results) {
     let hasTransitionRules = false;
     let hasExpirationRules = false;
     let hasIncompleteMultipartRule = false;

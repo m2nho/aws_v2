@@ -48,7 +48,8 @@ class IAMInspector extends BaseInspector {
       'root-access-key',
       'mfa-enabled',
       'unused-credentials',
-      'overprivileged-policies',
+      'overprivileged-user-policies',
+      'overprivileged-role-policies',
       'inline-policies'
     ];
   }
@@ -124,8 +125,12 @@ class IAMInspector extends BaseInspector {
           await this._inspectUnusedCredentials(results);
           break;
 
-        case 'overprivileged-policies':
-          await this._inspectOverprivilegedPolicies(results);
+        case 'overprivileged-user-policies':
+          await this._inspectOverprivilegedUserPolicies(results);
+          break;
+
+        case 'overprivileged-role-policies':
+          await this._inspectOverprivilegedRolePolicies(results);
           break;
 
         case 'inline-policies':
@@ -281,8 +286,8 @@ class IAMInspector extends BaseInspector {
     results.findings = this.findings;
   }
 
-  async _inspectOverprivilegedPolicies(results) {
-    this.updateProgress('IAM 데이터 수집 중', 30);
+  async _inspectOverprivilegedUserPolicies(results) {
+    this.updateProgress('IAM 사용자 데이터 수집 중', 30);
     
     // IAM 클라이언트와 데이터 수집기가 초기화되지 않은 경우 초기화
     if (!this.iamClient || !this.dataCollector) {
@@ -292,15 +297,37 @@ class IAMInspector extends BaseInspector {
     const data = await this.dataCollector.collectAllData();
     
     results.users = data.users;
+    results.policies = data.policies;
+    this.incrementResourceCount(data.users.length + data.policies.length);
+
+    this.updateProgress('사용자 과도한 권한 정책 검사 중', 70);
+    
+    // 새로운 검사 인스턴스 생성 - 사용자만 검사
+    const checker = new this.checkerClasses.overprivilegedPolicies(this);
+    await checker.runUserChecks(data.users, data.policies);
+    
+    results.findings = this.findings;
+  }
+
+  async _inspectOverprivilegedRolePolicies(results) {
+    this.updateProgress('IAM 역할 데이터 수집 중', 30);
+    
+    // IAM 클라이언트와 데이터 수집기가 초기화되지 않은 경우 초기화
+    if (!this.iamClient || !this.dataCollector) {
+      await this.initializeIAMResources();
+    }
+    
+    const data = await this.dataCollector.collectAllData();
+    
     results.roles = data.roles;
     results.policies = data.policies;
-    this.incrementResourceCount(data.users.length + data.roles.length + data.policies.length);
+    this.incrementResourceCount(data.roles.length + data.policies.length);
 
-    this.updateProgress('과도한 권한 정책 검사 중', 70);
+    this.updateProgress('역할 과도한 권한 정책 검사 중', 70);
     
-    // 새로운 검사 인스턴스 생성
+    // 새로운 검사 인스턴스 생성 - 역할만 검사
     const checker = new this.checkerClasses.overprivilegedPolicies(this);
-    await checker.runAllChecks(data.users, data.roles, data.policies);
+    await checker.runRoleChecks(data.roles, data.policies);
     
     results.findings = this.findings;
   }
@@ -343,7 +370,8 @@ class IAMInspector extends BaseInspector {
           'root-access-key',
           'mfa-enabled', 
           'unused-credentials',
-          'overprivileged-policies',
+          'overprivileged-user-policies',
+          'overprivileged-role-policies',
           'inline-policies'
         ],
         troubleshooting: [

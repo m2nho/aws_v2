@@ -19,9 +19,99 @@ class OverprivilegedPoliciesChecker {
     }
 
     /**
-     * 과도한 권한 정책 검사 실행
+     * 사용자 과도한 권한 검사만 실행
      */
-    async runAllChecks(users, roles, policies) {
+    async runUserChecks(users, policies) {
+        const allUsers = users || [];
+
+        if (allUsers.length === 0) {
+            const finding = new InspectionFinding({
+                resourceId: 'no-iam-users-policies',
+                resourceType: 'IAMUser',
+                riskLevel: 'PASS',
+                issue: '사용자 과도한 권한 검사 - 통과 (사용자 없음)',
+                recommendation: 'IAM 사용자 생성 시 최소 권한 원칙을 적용하세요',
+                details: {
+                    totalUsers: 0,
+                    status: '현재 사용자 과도한 권한 관련 위험이 없습니다'
+                },
+                category: 'COMPLIANCE'
+            });
+
+            this.inspector.addFinding(finding);
+            return;
+        }
+
+        // 각 사용자별 정책 검사
+        for (const user of allUsers) {
+            try {
+                // 1. 사용자 연결된 관리형 정책 검사
+                await this.checkUserAttachedPolicies(user);
+
+                // 2. 사용자 인라인 정책 검사
+                await this.checkUserInlinePolicies(user);
+
+                // 3. 관리자 권한 사용자 검사
+                await this.checkAdminPrivileges(user);
+
+            } catch (error) {
+                this.inspector.recordError(error, {
+                    operation: 'runUserChecks',
+                    userName: user.UserName
+                });
+            }
+        }
+    }
+
+    /**
+     * 역할 과도한 권한 검사만 실행
+     */
+    async runRoleChecks(roles, policies) {
+        const allRoles = roles || [];
+
+        if (allRoles.length === 0) {
+            const finding = new InspectionFinding({
+                resourceId: 'no-iam-roles-policies',
+                resourceType: 'IAMRole',
+                riskLevel: 'PASS',
+                issue: '역할 과도한 권한 검사 - 통과 (역할 없음)',
+                recommendation: 'IAM 역할 생성 시 최소 권한 원칙을 적용하세요',
+                details: {
+                    totalRoles: 0,
+                    status: '현재 역할 과도한 권한 관련 위험이 없습니다'
+                },
+                category: 'COMPLIANCE'
+            });
+
+            this.inspector.addFinding(finding);
+            return;
+        }
+
+        // 각 역할별 정책 검사
+        for (const role of allRoles) {
+            try {
+                // 1. 역할 연결된 관리형 정책 검사
+                await this.checkRoleAttachedPolicies(role);
+
+                // 2. 역할 인라인 정책 검사
+                await this.checkRoleInlinePolicies(role);
+
+                // 3. 서비스 역할 검사
+                await this.checkServiceRole(role);
+
+            } catch (error) {
+                this.inspector.recordError(error, {
+                    operation: 'runRoleChecks',
+                    roleName: role.RoleName
+                });
+            }
+        }
+    }
+
+    /**
+     * 과도한 권한 정책 검사 실행 (기존 함수 - 더 이상 사용하지 않음)
+     */
+    async runAllChecks_deprecated(users, roles, policies) {
         const allUsers = users || [];
         const allRoles = roles || [];
         const allPolicies = policies || [];
@@ -31,8 +121,8 @@ class OverprivilegedPoliciesChecker {
             const finding = new InspectionFinding({
                 resourceId: 'no-iam-resources',
                 resourceType: 'IAMPolicy',
-                riskLevel: 'LOW',
-                issue: 'IAM 리소스가 없어 과도한 권한 정책 검사가 불필요합니다',
+                riskLevel: 'PASS',
+                issue: '과도한 권한 정책 검사 - 통과 (리소스 없음)',
                 recommendation: 'IAM 사용자나 역할 생성 시 최소 권한 원칙을 적용하세요',
                 details: {
                     totalUsers: 0,
@@ -127,8 +217,8 @@ class OverprivilegedPoliciesChecker {
                     resourceId: `${user.UserName}-dangerous-policies`,
                     resourceType: 'IAMUser',
                     riskLevel: 'HIGH',
-                    issue: `사용자 '${user.UserName}'에 위험한 관리형 정책이 연결되어 있습니다`,
-                    recommendation: '위험한 정책을 제거하고 필요한 최소 권한만 부여하세요',
+                    issue: `사용자 '${user.UserName}'에 위험한 정책 연결: ${dangerousPolicies.map(p => `${p.PolicyName} (${this.getPolicyRiskReason(p.PolicyName)})`).join(', ')}`,
+                    recommendation: `위험한 정책들을 제거하고 필요한 최소 권한만 부여하세요: ${dangerousPolicies.map(p => p.PolicyName).join(', ')}`,
                     details: {
                         userName: user.UserName,
                         dangerousPolicies: dangerousPolicies.map(policy => ({
@@ -329,8 +419,8 @@ class OverprivilegedPoliciesChecker {
                     resourceId: `${role.RoleName}-dangerous-policies`,
                     resourceType: 'IAMRole',
                     riskLevel: 'HIGH',
-                    issue: `역할 '${role.RoleName}'에 위험한 관리형 정책이 연결되어 있습니다`,
-                    recommendation: '역할의 위험한 정책을 제거하고 필요한 최소 권한만 부여하세요',
+                    issue: `역할 '${role.RoleName}'에 위험한 정책 연결: ${dangerousPolicies.map(p => `${p.PolicyName} (${this.getPolicyRiskReason(p.PolicyName)})`).join(', ')}`,
+                    recommendation: `위험한 정책들을 제거하고 필요한 최소 권한만 부여하세요: ${dangerousPolicies.map(p => p.PolicyName).join(', ')}`,
                     details: {
                         roleName: role.RoleName,
                         dangerousPolicies: dangerousPolicies.map(policy => ({
@@ -471,35 +561,36 @@ class OverprivilegedPoliciesChecker {
             }
         }
 
-        const finding = new InspectionFinding({
-            resourceId: 'privileges-summary',
-            resourceType: 'IAMGeneral',
-            riskLevel: riskLevel,
-            issue: issue,
-            recommendation: recommendation,
-            details: {
-                totalUsers: totalUsers,
-                totalRoles: totalRoles,
-                totalPolicies: totalPolicies,
-                potentialAdminUsers: potentialAdminUsers,
-                adminUserRatio: `${Math.round((potentialAdminUsers / Math.max(totalUsers, 1)) * 100)}%`,
-                privilegeManagementScore: Math.max(0, 100 - (potentialAdminUsers * 20)),
-                organizationalRecommendations: [
-                    '최소 권한 원칙 적용',
-                    '역할 기반 접근 제어 도입',
-                    '정기적인 권한 검토 수행',
-                    '권한 승격 프로세스 구축'
-                ],
-                complianceMetrics: {
-                    userPolicyCompliance: Math.round(((totalUsers - potentialAdminUsers) / Math.max(totalUsers, 1)) * 100) + '%',
-                    roleBasedAccessControl: totalRoles > 0 ? 'Implemented' : 'Not Implemented',
-                    policyManagement: totalPolicies > 0 ? 'Active' : 'Minimal'
-                }
-            },
-            category: 'SECURITY'
-        });
+        // 전체 요약 결과는 제거 - 개별 사용자/역할 결과만 표시
+        // const finding = new InspectionFinding({
+        //     resourceId: 'privileges-summary',
+        //     resourceType: 'IAMGeneral',
+        //     riskLevel: riskLevel,
+        //     issue: issue,
+        //     recommendation: recommendation,
+        //     details: {
+        //         totalUsers: totalUsers,
+        //         totalRoles: totalRoles,
+        //         totalPolicies: totalPolicies,
+        //         potentialAdminUsers: potentialAdminUsers,
+        //         adminUserRatio: `${Math.round((potentialAdminUsers / Math.max(totalUsers, 1)) * 100)}%`,
+        //         privilegeManagementScore: Math.max(0, 100 - (potentialAdminUsers * 20)),
+        //         organizationalRecommendations: [
+        //             '최소 권한 원칙 적용',
+        //             '역할 기반 접근 제어 도입',
+        //             '정기적인 권한 검토 수행',
+        //             '권한 승격 프로세스 구축'
+        //         ],
+        //         complianceMetrics: {
+        //             userPolicyCompliance: Math.round(((totalUsers - potentialAdminUsers) / Math.max(totalUsers, 1)) * 100) + '%',
+        //             roleBasedAccessControl: totalRoles > 0 ? 'Implemented' : 'Not Implemented',
+        //             policyManagement: totalPolicies > 0 ? 'Active' : 'Minimal'
+        //         }
+        //     },
+        //     category: 'SECURITY'
+        // });
 
-        this.inspector.addFinding(finding);
+        // this.inspector.addFinding(finding);
     }
 
     /**

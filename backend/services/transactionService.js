@@ -394,7 +394,8 @@ class TransactionService {
       return 'NOT_CHECKED';
     }
 
-    if (issuesFound === 0) {
+    // PASS 항목들만 있는 경우 (issuesFound가 0이거나 riskLevel이 PASS)
+    if (issuesFound === 0 || riskLevel === 'PASS') {
       return 'PASS';
     }
 

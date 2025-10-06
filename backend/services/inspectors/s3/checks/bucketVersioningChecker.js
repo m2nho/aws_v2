@@ -43,26 +43,50 @@ class BucketVersioningChecker {
           });
         } else if (status === 'Enabled') {
           versioningEnabledCount++;
-          results.findings.push({
-            id: `s3-versioning-enabled-${bucket.Name}`,
-            title: 'S3 버킷 버전 관리 활성화됨',
-            description: `S3 버킷 '${bucket.Name}'의 버전 관리가 활성화되어 있습니다.`,
-            severity: 'info',
-            resource: bucket.Name,
-            recommendation: '버전 관리가 활성화되어 있습니다. 스토리지 비용 관리를 위해 라이프사이클 정책을 설정하여 오래된 버전을 자동으로 삭제하거나 저렴한 스토리지 클래스로 이동시키세요.'
-          });
+          
+          // 통합된 버전 관리 분석
+          const issues = [];
+          const recommendations = [];
+          let securityScore = 80; // 기본 버전 관리 점수
+          let maxSeverity = 'pass';
 
           // MFA Delete 검사
           if (mfaDelete !== 'Enabled') {
-            results.findings.push({
-              id: `s3-mfa-delete-disabled-${bucket.Name}`,
-              title: 'MFA Delete 비활성화',
-              description: `S3 버킷 '${bucket.Name}'에서 MFA Delete가 비활성화되어 있습니다.`,
-              severity: 'medium',
-              resource: bucket.Name,
-              recommendation: '중요한 데이터가 포함된 버킷의 경우 MFA Delete를 활성화하여 객체 버전 삭제 시 추가 인증을 요구하세요. 이는 실수나 악의적인 삭제로부터 데이터를 보호합니다.'
-            });
+            issues.push('MFA Delete 비활성화');
+            recommendations.push('중요 데이터 보호를 위해 MFA Delete 활성화');
+            securityScore -= 20;
+            maxSeverity = 'medium';
+          } else {
+            securityScore += 20;
           }
+
+          // 통합된 결과 생성
+          const status = securityScore >= 90 ? '최적 설정' : securityScore >= 70 ? '양호한 설정' : '개선 필요';
+          
+          results.findings.push({
+            id: `s3-versioning-comprehensive-${bucket.Name}`,
+            title: `버전 관리 상태 - ${status}`,
+            description: issues.length > 0 ? 
+              `S3 버킷 '${bucket.Name}' 버전 관리 분석: 활성화됨, ${issues.join(', ')}` :
+              `S3 버킷 '${bucket.Name}'의 버전 관리가 최적으로 설정되어 있습니다.`,
+            severity: maxSeverity,
+            riskLevel: maxSeverity === 'pass' ? 'PASS' : maxSeverity.toUpperCase(),
+            resource: bucket.Name,
+            recommendation: issues.length > 0 ? 
+              `버전 관리가 활성화되어 있지만 추가 보안 강화가 필요합니다: ${recommendations.join(', ')}` :
+              '버전 관리가 최적으로 설정되어 있습니다. 스토리지 비용 관리를 위해 라이프사이클 정책을 설정하세요.',
+            details: {
+              versioningEnabled: true,
+              mfaDeleteEnabled: mfaDelete === 'Enabled',
+              securityScore: securityScore,
+              issues: issues,
+              recommendations: recommendations,
+              actionItems: [
+                mfaDelete !== 'Enabled' ? 'MFA Delete 활성화' : null,
+                '라이프사이클 정책 설정으로 비용 최적화'
+              ].filter(Boolean)
+            }
+          });
         }
 
       } catch (error) {
@@ -78,17 +102,7 @@ class BucketVersioningChecker {
       }
     }
 
-    // 전체 요약 결과 추가
-    results.findings.push({
-      id: 's3-versioning-summary',
-      title: 'S3 버전 관리 검사 완료',
-      description: `총 ${buckets.length}개 버킷 검사 완료 - 활성화: ${versioningEnabledCount}개, 비활성화: ${versioningDisabledCount}개`,
-      severity: 'info',
-      resource: 'All Buckets',
-      recommendation: versioningDisabledCount > 0 
-        ? '비활성화된 버킷들에 대해 버전 관리 활성화를 고려하세요.'
-        : '모든 버킷의 버전 관리 상태가 확인되었습니다.'
-    });
+
 
     return results;
   }

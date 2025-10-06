@@ -47,6 +47,16 @@ class UnusedElasticIpChecker {
              instance.PublicIpAddress; // 중지된 상태에서도 퍼블릭 IP가 있으면 EIP일 가능성
     });
 
+    const instancesWithoutEip = instances.filter(instance => {
+      return !instance.PublicIpAddress || 
+             instance.PublicIpAddress === instance.PrivateIpAddress;
+    });
+
+    // 개별 인스턴스별 결과 생성
+    for (const instance of instances) {
+      this.checkInstanceElasticIpStatus(instance);
+    }
+
     if (stoppedInstancesWithPotentialEip.length > 0) {
       const finding = new InspectionFinding({
         resourceId: 'potential-unused-eips',
@@ -171,6 +181,74 @@ class UnusedElasticIpChecker {
         category: 'COST_OPTIMIZATION'
       });
 
+      this.inspector.addFinding(finding);
+    }
+  }
+
+  /**
+   * 개별 인스턴스 Elastic IP 상태 확인
+   */
+  checkInstanceElasticIpStatus(instance) {
+    const hasPublicIp = !!instance.PublicIpAddress;
+    const hasElasticIp = hasPublicIp && instance.PublicIpAddress !== instance.PrivateIpAddress;
+    const instanceName = this.getInstanceName(instance);
+    
+    if (instance.State?.Name === 'stopped' && hasElasticIp) {
+      // 중지된 인스턴스에 EIP가 연결된 경우
+      const finding = new InspectionFinding({
+        resourceId: instance.InstanceId,
+        resourceType: 'EC2Instance',
+        riskLevel: 'MEDIUM',
+        issue: 'Elastic IP 비용 발생 중',
+        recommendation: '중지된 인스턴스의 Elastic IP를 해제하여 비용을 절감하세요.',
+        details: {
+          instanceId: instance.InstanceId,
+          instanceName: instanceName,
+          publicIp: instance.PublicIpAddress,
+          instanceState: instance.State?.Name,
+          costImpact: '월 약 $3.65 비용 발생',
+          stoppedSince: this.extractStopDate(instance.StateTransitionReason)
+        },
+        category: 'COST_OPTIMIZATION'
+      });
+      
+      this.inspector.addFinding(finding);
+    } else if (instance.State?.Name === 'running' && hasElasticIp) {
+      // 실행 중인 인스턴스에 EIP가 연결된 경우 - 정상
+      const finding = new InspectionFinding({
+        resourceId: instance.InstanceId,
+        resourceType: 'EC2Instance',
+        riskLevel: 'PASS',
+        issue: 'Elastic IP 검사 - 통과',
+        recommendation: 'Elastic IP가 실행 중인 인스턴스에 적절히 연결되어 있습니다.',
+        details: {
+          instanceId: instance.InstanceId,
+          instanceName: instanceName,
+          publicIp: instance.PublicIpAddress,
+          instanceState: instance.State?.Name,
+          status: 'EIP가 활발히 사용 중'
+        },
+        category: 'COST_OPTIMIZATION'
+      });
+      
+      this.inspector.addFinding(finding);
+    } else if (!hasPublicIp) {
+      // 퍼블릭 IP가 없는 인스턴스 - 비용 효율적
+      const finding = new InspectionFinding({
+        resourceId: instance.InstanceId,
+        resourceType: 'EC2Instance',
+        riskLevel: 'PASS',
+        issue: 'Elastic IP 검사 - 통과 (EIP 없음)',
+        recommendation: '인스턴스가 Elastic IP를 사용하지 않아 비용 효율적입니다.',
+        details: {
+          instanceId: instance.InstanceId,
+          instanceName: instanceName,
+          instanceState: instance.State?.Name,
+          status: 'EIP 미사용으로 비용 효율적'
+        },
+        category: 'COST_OPTIMIZATION'
+      });
+      
       this.inspector.addFinding(finding);
     }
   }

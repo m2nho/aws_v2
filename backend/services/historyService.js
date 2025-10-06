@@ -53,11 +53,15 @@ class HistoryService {
       const timestamp = Date.now();
       const isoTimestamp = new Date().toISOString();
 
+      // 검사 결과에 따라 상태 결정
+      const findings = inspectionData.results.findings || [];
+      const status = this.determineInspectionStatus(findings);
+
       const historyRecord = {
         customerId: inspectionData.customerId,
         inspectionId,
         serviceType: inspectionData.serviceType,
-        status: 'COMPLETED',
+        status: status,
         startTime: inspectionData.startTime || timestamp,
         endTime: inspectionData.endTime || timestamp,
         duration: inspectionData.duration || 0,
@@ -1134,6 +1138,56 @@ class HistoryService {
       }
       console.error('검사 상태 업데이트 실패:', error);
       throw new Error(`검사 상태 업데이트 실패: ${error.message}`);
+    }
+  }
+
+  /**
+   * 검사 결과에 따라 전체 검사 상태 결정
+   * @param {Array} findings - 검사 결과 목록
+   * @returns {string} 검사 상태 (PASS, WARNING, FAIL)
+   */
+  determineInspectionStatus(findings) {
+    if (!findings || findings.length === 0) {
+      return 'PASS';
+    }
+
+    let hasCritical = false;
+    let hasHigh = false;
+    let hasMedium = false;
+    let hasLow = false;
+    let hasPass = false;
+
+    findings.forEach(finding => {
+      const riskLevel = finding.riskLevel || finding.severity;
+      
+      switch (riskLevel) {
+        case 'CRITICAL':
+          hasCritical = true;
+          break;
+        case 'HIGH':
+          hasHigh = true;
+          break;
+        case 'MEDIUM':
+          hasMedium = true;
+          break;
+        case 'LOW':
+          hasLow = true;
+          break;
+        case 'PASS':
+          hasPass = true;
+          break;
+      }
+    });
+
+    // 우선순위에 따라 상태 결정
+    if (hasCritical || hasHigh) {
+      return 'FAIL';
+    } else if (hasMedium || hasLow) {
+      return 'WARNING';
+    } else if (hasPass) {
+      return 'PASS';
+    } else {
+      return 'PASS'; // 기본값
     }
   }
 }

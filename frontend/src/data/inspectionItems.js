@@ -189,9 +189,16 @@ export const inspectionItems = {
         description: 'IAM 정책 및 권한 검사',
         items: [
           {
-            id: 'overprivileged-policies',
-            name: '과도한 권한',
-            description: '필요 이상의 권한을 가진 정책을 검사합니다',
+            id: 'overprivileged-user-policies',
+            name: '사용자 과도한 권한',
+            description: '필요 이상의 권한을 가진 사용자 정책을 검사합니다',
+            severity: 'HIGH',
+            enabled: true
+          },
+          {
+            id: 'overprivileged-role-policies',
+            name: '역할 과도한 권한',
+            description: '필요 이상의 권한을 가진 역할 정책을 검사합니다',
             severity: 'HIGH',
             enabled: true
           },
@@ -261,13 +268,13 @@ export const inspectionItems = {
             severity: 'MEDIUM',
             enabled: true
           },
-          {
-            id: 'bucket-mfa-delete',
-            name: 'MFA Delete',
-            description: '중요한 버킷의 MFA Delete 설정을 검사합니다',
-            severity: 'MEDIUM',
-            enabled: true
-          },
+          // {
+          //   id: 'bucket-mfa-delete',
+          //   name: 'MFA Delete',
+          //   description: '중요한 버킷의 MFA Delete 설정을 검사합니다 (버전 관리 검사에 통합됨)',
+          //   severity: 'MEDIUM',
+          //   enabled: false
+          // },
           {
             id: 'bucket-logging',
             name: '액세스 로깅',
@@ -300,7 +307,8 @@ export const severityColors = {
   CRITICAL: '#DC2626',
   HIGH: '#EA580C',
   MEDIUM: '#D97706',
-  LOW: '#65A30D'
+  LOW: '#65A30D',
+  PASS: '#16A34A'
 };
 
 // 심각도별 아이콘
@@ -308,5 +316,6 @@ export const severityIcons = {
   CRITICAL: '🚨',
   HIGH: '⚠️',
   MEDIUM: '⚡',
-  LOW: 'ℹ️'
+  LOW: 'ℹ️',
+  PASS: '✅'
 };

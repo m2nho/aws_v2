@@ -6,7 +6,7 @@ const bucketEncryptionChecker = require('./checks/bucketEncryptionChecker');
 const bucketVersioningChecker = require('./checks/bucketVersioningChecker');
 const bucketLoggingChecker = require('./checks/bucketLoggingChecker');
 const bucketPublicAccessChecker = require('./checks/bucketPublicAccessChecker');
-const bucketMfaDeleteChecker = require('./checks/bucketMfaDeleteChecker');
+// const bucketMfaDeleteChecker = require('./checks/bucketMfaDeleteChecker'); // 중복 검사로 비활성화
 const bucketLifecycleChecker = require('./checks/bucketLifecycleChecker');
 const bucketCorsChecker = require('./checks/bucketCorsChecker');
 
@@ -58,7 +58,7 @@ class S3Inspector extends BaseInspector {
         { CheckerClass: bucketVersioningChecker, name: '버전 관리 검사' },
         { CheckerClass: bucketLoggingChecker, name: '로깅 검사' },
         { CheckerClass: bucketPublicAccessChecker, name: '퍼블릭 액세스 검사' },
-        { CheckerClass: bucketMfaDeleteChecker, name: 'MFA Delete 검사' },
+        // { CheckerClass: bucketMfaDeleteChecker, name: 'MFA Delete 검사' }, // 중복 검사로 비활성화
         { CheckerClass: bucketLifecycleChecker, name: '라이프사이클 검사' },
         { CheckerClass: bucketCorsChecker, name: 'CORS 검사' }
       ];
@@ -246,10 +246,10 @@ class S3Inspector extends BaseInspector {
           CheckerClass = bucketPublicAccessChecker;
           checkerName = '퍼블릭 액세스 검사';
           break;
-        case 'bucket-mfa-delete':
-          CheckerClass = bucketMfaDeleteChecker;
-          checkerName = 'MFA Delete 검사';
-          break;
+        // case 'bucket-mfa-delete': // 중복 검사로 비활성화
+        //   CheckerClass = bucketMfaDeleteChecker;
+        //   checkerName = 'MFA Delete 검사';
+        //   break;
         case 'bucket-lifecycle':
           CheckerClass = bucketLifecycleChecker;
           checkerName = '라이프사이클 검사';
@@ -329,6 +329,7 @@ class S3Inspector extends BaseInspector {
 
   mapSeverityToRiskLevel(severity) {
     const mapping = {
+      'pass': 'PASS',
       'high': 'HIGH',
       'medium': 'MEDIUM', 
       'low': 'LOW',
@@ -348,7 +349,7 @@ class S3Inspector extends BaseInspector {
       'bucket-versioning',
       'bucket-logging',
       'bucket-public-access',
-      'bucket-mfa-delete',
+      // 'bucket-mfa-delete', // 중복 검사로 비활성화
       'bucket-lifecycle',
       'bucket-cors'
     ];

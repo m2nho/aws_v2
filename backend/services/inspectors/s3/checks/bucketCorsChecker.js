@@ -7,11 +7,12 @@ class BucketCorsChecker {
     if (buckets.length === 0) {
       results.findings.push({
         id: 's3-no-buckets-cors-check',
-        title: '검사할 S3 버킷 없음',
-        description: '현재 계정에 S3 버킷이 없어 CORS 검사를 수행할 수 없습니다.',
-        severity: 'info',
+        title: 'S3 CORS 검사 - 통과 (버킷 없음)',
+        description: '현재 계정에 S3 버킷이 없어 CORS 관련 보안 위험이 없습니다.',
+        severity: 'pass',
+        riskLevel: 'PASS',
         resource: 'N/A',
-        recommendation: 'S3 버킷이 생성된 후 다시 검사를 실행하세요.'
+        recommendation: 'S3 버킷 생성 시 CORS 설정을 신중하게 검토하세요.'
       });
       return results;
     }
@@ -46,13 +47,14 @@ class BucketCorsChecker {
 
       } catch (error) {
         if (error.name === 'NoSuchCORSConfiguration') {
-          // CORS 설정이 없는 경우는 일반적이므로 정보성 메시지만 추가
+          // CORS 설정이 없는 경우는 보안상 더 안전함
           noCorsCount++;
           results.findings.push({
             id: `s3-no-cors-config-${bucket.Name}`,
-            title: 'CORS 설정 없음',
-            description: `S3 버킷 '${bucket.Name}'에 CORS 설정이 없습니다.`,
-            severity: 'info',
+            title: 'CORS 설정 없음 - 통과',
+            description: `S3 버킷 '${bucket.Name}'에 CORS 설정이 없어 보안상 안전합니다.`,
+            severity: 'pass',
+            riskLevel: 'PASS',
             resource: bucket.Name,
             recommendation: '웹 애플리케이션에서 이 버킷에 직접 액세스해야 하는 경우에만 CORS를 설정하세요. 불필요한 CORS 설정은 보안 위험을 증가시킬 수 있습니다.'
           });
@@ -62,17 +64,7 @@ class BucketCorsChecker {
       }
     }
 
-    // 전체 요약 결과 추가
-    results.findings.push({
-      id: 's3-cors-summary',
-      title: 'S3 CORS 검사 완료',
-      description: `총 ${buckets.length}개 버킷 검사 완료 - CORS 설정: ${corsConfiguredCount}개, CORS 없음: ${noCorsCount}개, 위험한 CORS: ${dangerousCorsCount}개`,
-      severity: 'info',
-      resource: 'All Buckets',
-      recommendation: dangerousCorsCount > 0
-        ? '위험한 CORS 설정이 있는 버킷들을 즉시 검토하세요.'
-        : 'CORS 설정이 안전하게 구성되어 있거나 필요에 따라 설정되지 않았습니다.'
-    });
+    // 전체 요약 결과는 제거 - 개별 버킷 결과만 표시
 
     return results;
   }

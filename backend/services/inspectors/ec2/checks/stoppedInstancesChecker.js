@@ -17,8 +17,8 @@ class StoppedInstancesChecker {
             const finding = new InspectionFinding({
                 resourceId: 'no-instances',
                 resourceType: 'EC2Instance',
-                riskLevel: 'LOW',
-                issue: '인스턴스가 없어 중지된 인스턴스 검사가 불필요합니다',
+                riskLevel: 'PASS',
+                issue: '중지된 인스턴스 검사 - 통과 (인스턴스 없음)',
                 recommendation: '향후 인스턴스 사용 시 비용 최적화를 위해 정기적으로 사용량을 검토하세요',
                 details: {
                     totalInstances: instances.length,
@@ -194,6 +194,33 @@ class StoppedInstancesChecker {
                         'AMI 생성 후 종료',
                         'EBS 볼륨 비용도 발생함',
                         '정기적인 사용 계획 검토'
+                    ]
+                },
+                category: 'COST_OPTIMIZATION'
+            });
+
+            this.inspector.addFinding(finding);
+        } else if (instance.State?.Name === 'running') {
+            // 실행 중인 인스턴스 - 비용 최적화 관점에서 양호
+            const instanceName = this.getInstanceName(instance);
+            
+            const finding = new InspectionFinding({
+                resourceId: instance.InstanceId,
+                resourceType: 'EC2Instance',
+                riskLevel: 'PASS',
+                issue: '중지된 인스턴스 검사 - 통과',
+                recommendation: '인스턴스가 활발히 사용되고 있어 비용 최적화 상태가 양호합니다.',
+                details: {
+                    instanceId: instance.InstanceId,
+                    instanceName: instanceName,
+                    instanceType: instance.InstanceType,
+                    state: instance.State.Name,
+                    status: '활발히 사용 중인 인스턴스',
+                    costOptimizationTips: [
+                        '사용량 모니터링 지속',
+                        '필요 시 인스턴스 타입 최적화',
+                        '예약 인스턴스 고려',
+                        '스케줄링 자동화 검토'
                     ]
                 },
                 category: 'COST_OPTIMIZATION'

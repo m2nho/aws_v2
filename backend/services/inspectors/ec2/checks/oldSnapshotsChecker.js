@@ -39,7 +39,30 @@ class OldSnapshotsChecker {
       instance.BlockDeviceMappings && instance.BlockDeviceMappings.length > 0
     );
 
-    if (instancesWithEbs.length > 0) {
+    if (instancesWithEbs.length === 0) {
+      // EBS 볼륨이 없는 경우
+      const finding = new InspectionFinding({
+        resourceId: 'no-ebs-volumes',
+        resourceType: 'EBSSnapshot',
+        riskLevel: 'PASS',
+        issue: '오래된 스냅샷 검사 - 통과 (EBS 볼륨 없음)',
+        recommendation: 'EBS 볼륨이 없어 스냅샷 관련 비용 위험이 없습니다.',
+        details: {
+          instancesWithEbs: 0,
+          totalInstances: instances.length,
+          status: '스냅샷 관련 비용 위험 없음'
+        },
+        category: 'COST_OPTIMIZATION'
+      });
+      
+      this.inspector.addFinding(finding);
+    } else {
+      // 개별 인스턴스별로 스냅샷 관리 상태 확인
+      for (const instance of instancesWithEbs) {
+        this.checkInstanceSnapshotStatus(instance);
+      }
+      
+      // 전체 요약
       const finding = new InspectionFinding({
         resourceId: 'snapshot-cleanup-needed',
         resourceType: 'EBSSnapshot',
@@ -222,6 +245,80 @@ class OldSnapshotsChecker {
         category: 'RELIABILITY'
       });
 
+      this.inspector.addFinding(finding);
+    } else {
+      // 중요한 인스턴스가 없는 경우
+      const finding = new InspectionFinding({
+        resourceId: 'no-critical-instances-snapshots',
+        resourceType: 'EBSSnapshot',
+        riskLevel: 'PASS',
+        issue: '자동 스냅샷 검사 - 통과 (중요 인스턴스 없음)',
+        recommendation: '현재 중요한 인스턴스가 없어 자동 스냅샷 설정이 필수적이지 않습니다.',
+        details: {
+          criticalInstances: 0,
+          totalInstances: instances.length,
+          status: '중요한 인스턴스가 없어 자동 스냅샷 위험 낮음'
+        },
+        category: 'COMPLIANCE'
+      });
+      
+      this.inspector.addFinding(finding);
+    }
+  }
+
+  /**
+   * 개별 인스턴스 스냅샷 상태 확인
+   */
+  checkInstanceSnapshotStatus(instance) {
+    const instanceName = this.getInstanceName(instance);
+    const volumeCount = instance.BlockDeviceMappings?.length || 0;
+    
+    // 인스턴스 생성 시간을 기준으로 스냅샷 필요성 판단
+    const launchTime = new Date(instance.LaunchTime);
+    const daysSinceLaunch = Math.floor((Date.now() - launchTime.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (daysSinceLaunch > 30) {
+      // 30일 이상 된 인스턴스는 스냅샷 관리 필요
+      const finding = new InspectionFinding({
+        resourceId: instance.InstanceId,
+        resourceType: 'EC2Instance',
+        riskLevel: 'LOW',
+        issue: '스냅샷 관리 권장',
+        recommendation: '인스턴스가 30일 이상 실행되어 스냅샷 정리 및 관리를 검토하세요.',
+        details: {
+          instanceId: instance.InstanceId,
+          instanceName: instanceName,
+          volumeCount: volumeCount,
+          daysSinceLaunch: daysSinceLaunch,
+          snapshotManagementTips: [
+            '90일 이상 된 스냅샷 검토',
+            '불필요한 스냅샷 삭제',
+            '자동 스냅샷 정책 설정',
+            '비용 모니터링'
+          ]
+        },
+        category: 'COST_OPTIMIZATION'
+      });
+      
+      this.inspector.addFinding(finding);
+    } else {
+      // 최근 생성된 인스턴스
+      const finding = new InspectionFinding({
+        resourceId: instance.InstanceId,
+        resourceType: 'EC2Instance',
+        riskLevel: 'PASS',
+        issue: '스냅샷 관리 검사 - 통과',
+        recommendation: '최근 생성된 인스턴스로 현재 스냅샷 관리 부담이 적습니다.',
+        details: {
+          instanceId: instance.InstanceId,
+          instanceName: instanceName,
+          volumeCount: volumeCount,
+          daysSinceLaunch: daysSinceLaunch,
+          status: '최근 생성된 인스턴스로 스냅샷 관리 부담 적음'
+        },
+        category: 'COMPLIANCE'
+      });
+      
       this.inspector.addFinding(finding);
     }
   }

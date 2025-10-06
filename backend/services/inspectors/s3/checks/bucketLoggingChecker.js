@@ -92,16 +92,7 @@ class BucketLoggingChecker {
     }
 
     // 전체 요약 결과 추가
-    results.findings.push({
-      id: 's3-logging-summary',
-      title: 'S3 액세스 로깅 검사 완료',
-      description: `총 ${buckets.length}개 버킷 검사 완료 - 로깅 활성화: ${loggingEnabledCount}개, 비활성화: ${loggingDisabledCount}개, 자기 로깅: ${selfLoggingCount}개`,
-      severity: 'info',
-      resource: 'All Buckets',
-      recommendation: loggingDisabledCount > 0 || selfLoggingCount > 0
-        ? '로깅이 비활성화되었거나 잘못 설정된 버킷들을 검토하세요.'
-        : '모든 버킷의 로깅 설정이 확인되었습니다.'
-    });
+    // 전체 요약 결과는 제거 - 개별 버킷 결과만 표시
 
     return results;
   }

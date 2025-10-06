@@ -21,8 +21,8 @@ class MfaEnabledChecker {
             const finding = new InspectionFinding({
                 resourceId: 'no-iam-users',
                 resourceType: 'IAMUser',
-                riskLevel: 'LOW',
-                issue: 'IAM 사용자가 없어 MFA 검사가 불필요합니다',
+                riskLevel: 'PASS',
+                issue: 'MFA 검사 - 통과 (IAM 사용자 없음)',
                 recommendation: 'IAM 사용자 생성 시 MFA를 반드시 활성화하세요',
                 details: {
                     totalUsers: 0,
@@ -41,17 +41,11 @@ class MfaEnabledChecker {
             return;
         }
 
-        // 각 사용자별 MFA 검사
+        // 각 사용자별 통합 MFA 검사
         for (const user of activeUsers) {
             try {
-                // 1. MFA 디바이스 활성화 검사
-                this.checkUserMfaStatus(user);
-
-                // 2. 콘솔 액세스 사용자 MFA 검사
-                this.checkConsoleUserMfa(user);
-
-                // 3. 권한이 높은 사용자 MFA 검사
-                this.checkPrivilegedUserMfa(user);
+                // 통합된 MFA 검사
+                this.checkUserMfaComprehensive(user);
 
             } catch (error) {
                 this.inspector.recordError(error, {
@@ -60,13 +54,104 @@ class MfaEnabledChecker {
                 });
             }
         }
-
-        // 전체 MFA 상태 요약
-        this.generateMfaSummary(activeUsers);
     }
 
     /**
-     * 사용자 MFA 상태 검사
+     * 사용자별 통합 MFA 검사
+     */
+    checkUserMfaComprehensive(user) {
+        const mfaDevices = user.MFADevices || [];
+        const hasMfa = mfaDevices.length > 0;
+        const hasConsoleAccess = this.hasConsoleAccess(user);
+        const isPrivilegedUser = this.isPrivilegedUser(user);
+        
+        const issues = [];
+        const riskFactors = [];
+        let riskScore = 0;
+        let maxRiskLevel = 'PASS';
+
+        // MFA 상태 분석
+        if (!hasMfa) {
+            issues.push('MFA 미활성화');
+            riskScore += 50;
+            maxRiskLevel = 'HIGH';
+
+            // 추가 위험 요소 분석
+            if (hasConsoleAccess) {
+                issues.push('콘솔 액세스 권한 보유');
+                riskFactors.push('콘솔 로그인 시 MFA 없이 접근 가능');
+                riskScore += 30;
+                maxRiskLevel = 'CRITICAL';
+            }
+
+            if (isPrivilegedUser) {
+                issues.push('높은 권한 보유');
+                riskFactors.push('관리자 권한으로 MFA 없이 접근 가능');
+                riskScore += 20;
+                maxRiskLevel = 'CRITICAL';
+            }
+        }
+
+        // 결과 결정
+        let status = '';
+        let recommendation = '';
+
+        if (hasMfa) {
+            status = 'MFA 활성화됨';
+            recommendation = 'MFA가 활성화되어 있습니다. 백업 코드를 안전한 곳에 보관하세요.';
+            maxRiskLevel = 'PASS';
+        } else {
+            if (maxRiskLevel === 'CRITICAL') {
+                status = '즉시 조치 필요 - 높은 위험';
+                recommendation = '콘솔 액세스 또는 높은 권한을 가진 사용자에게 즉시 MFA를 설정하세요.';
+            } else {
+                status = 'MFA 설정 필요';
+                recommendation = 'AWS 콘솔에서 해당 사용자의 보안 자격 증명 탭에서 MFA 디바이스를 할당하세요.';
+            }
+        }
+
+        // 통합된 결과 생성
+        const finding = new InspectionFinding({
+            resourceId: user.UserName,
+            resourceType: 'IAMUser',
+            riskLevel: maxRiskLevel,
+            issue: issues.length > 0 ? 
+                `MFA 상태 - ${status}: ${issues.join(', ')}` : 
+                `MFA 상태 - ${status}`,
+            recommendation: recommendation,
+            details: {
+                userName: user.UserName,
+                mfaStatus: hasMfa ? 'ENABLED' : 'DISABLED',
+                mfaDevicesCount: mfaDevices.length,
+                hasConsoleAccess: hasConsoleAccess,
+                isPrivilegedUser: isPrivilegedUser,
+                riskScore: riskScore,
+                status: status,
+                issues: issues,
+                riskFactors: riskFactors,
+                mfaDevices: hasMfa ? mfaDevices.map(device => ({
+                    serialNumber: device.SerialNumber,
+                    enableDate: device.EnableDate?.toISOString() || device.EnableDate
+                })) : [],
+                actionItems: !hasMfa ? [
+                    'IAM 콘솔에서 MFA 디바이스 설정',
+                    hasConsoleAccess ? '콘솔 액세스 보안 강화 우선' : null,
+                    isPrivilegedUser ? '관리자 권한 보안 강화 우선' : null
+                ].filter(Boolean) : [
+                    'MFA 백업 코드 안전한 곳에 보관',
+                    '디바이스 분실 시 즉시 교체',
+                    '정기적인 디바이스 동작 확인'
+                ],
+                securityLevel: hasMfa ? '높음' : (maxRiskLevel === 'CRITICAL' ? '매우 낮음' : '낮음')
+            },
+            category: 'SECURITY'
+        });
+
+        this.inspector.addFinding(finding);
+    }
+
+    /**
+     * 사용자 MFA 상태 검사 (개별 함수 - 더 이상 사용하지 않음)
      */
     checkUserMfaStatus(user) {
         const mfaDevices = user.MFADevices || [];
@@ -129,27 +214,22 @@ class MfaEnabledChecker {
             const finding = new InspectionFinding({
                 resourceId: user.UserName,
                 resourceType: 'IAMUser',
-                riskLevel: 'LOW',
-                issue: `IAM 사용자 '${user.UserName}'에 MFA가 활성화되어 보안 상태가 양호합니다`,
-                recommendation: 'MFA 백업 코드를 안전한 곳에 보관하고 디바이스 분실 시 즉시 교체하세요',
+                riskLevel: 'PASS',
+                issue: `MFA 상태 - 활성화됨`,
+                recommendation: 'MFA가 활성화되어 있습니다. 백업 코드를 안전한 곳에 보관하세요.',
                 details: {
                     userName: user.UserName,
+                    mfaStatus: 'ENABLED',
                     mfaDevicesCount: mfaDevices.length,
                     mfaDevices: mfaDevices.map(device => ({
                         serialNumber: device.SerialNumber,
                         enableDate: device.EnableDate?.toISOString() || device.EnableDate
                     })),
-                    securityBenefits: [
-                        '2단계 인증으로 계정 보안 강화',
-                        '피싱 공격 방어',
-                        '무차별 대입 공격 차단',
-                        '계정 탈취 위험 현저히 감소'
-                    ],
-                    maintenanceTips: [
-                        'MFA 디바이스 백업 코드 안전한 곳에 보관',
-                        'MFA 디바이스 분실 시 즉시 새 디바이스로 교체',
-                        '정기적인 MFA 디바이스 동작 확인',
-                        '여러 MFA 디바이스 등록 고려'
+                    securityLevel: '높음',
+                    actionItems: [
+                        'MFA 백업 코드 안전한 곳에 보관',
+                        '디바이스 분실 시 즉시 교체',
+                        '정기적인 디바이스 동작 확인'
                     ]
                 },
                 category: 'COMPLIANCE'
@@ -160,9 +240,9 @@ class MfaEnabledChecker {
     }
 
     /**
-     * 콘솔 액세스 사용자 MFA 검사
+     * 콘솔 액세스 사용자 MFA 검사 (개별 함수 - 더 이상 사용하지 않음)
      */
-    checkConsoleUserMfa(user) {
+    checkConsoleUserMfa_deprecated(user) {
         const hasConsoleAccess = this.hasConsoleAccess(user);
         const mfaDevices = user.MFADevices || [];
         const hasMfa = mfaDevices.length > 0;
@@ -205,9 +285,9 @@ class MfaEnabledChecker {
     }
 
     /**
-     * 권한이 높은 사용자 MFA 검사
+     * 권한이 높은 사용자 MFA 검사 (개별 함수 - 더 이상 사용하지 않음)
      */
-    checkPrivilegedUserMfa(user) {
+    checkPrivilegedUserMfa_deprecated(user) {
         const isPrivileged = this.isPrivilegedUser(user);
         const mfaDevices = user.MFADevices || [];
         const hasMfa = mfaDevices.length > 0;
@@ -251,9 +331,9 @@ class MfaEnabledChecker {
     }
 
     /**
-     * 전체 MFA 상태 요약
+     * 전체 MFA 상태 요약 (더 이상 사용하지 않음)
      */
-    generateMfaSummary(users) {
+    generateMfaSummary_deprecated(users) {
         const totalUsers = users.length;
         const usersWithMfa = users.filter(user => (user.MFADevices || []).length > 0).length;
         const usersWithoutMfa = totalUsers - usersWithMfa;
@@ -264,7 +344,8 @@ class MfaEnabledChecker {
         let recommendation = '';
 
         if (usersWithoutMfa === 0) {
-            issue = `모든 IAM 사용자(${totalUsers}명)가 MFA를 활성화하여 보안 상태가 우수합니다`;
+            riskLevel = 'PASS';
+            issue = `IAM MFA 검사 - 모두 통과 (${totalUsers}명 사용자)`;
             recommendation = '현재 상태를 유지하고 새 사용자에게도 MFA를 적용하세요';
         } else if (mfaComplianceRate >= 80) {
             riskLevel = 'MEDIUM';
@@ -276,41 +357,7 @@ class MfaEnabledChecker {
             recommendation = 'MFA 활성화를 강제하는 정책을 적용하고 모든 사용자의 MFA를 즉시 활성화하세요';
         }
 
-        const finding = new InspectionFinding({
-            resourceId: 'mfa-compliance-summary',
-            resourceType: 'IAMUser',
-            riskLevel: riskLevel,
-            issue: issue,
-            recommendation: recommendation,
-            details: {
-                totalUsers: totalUsers,
-                usersWithMfa: usersWithMfa,
-                usersWithoutMfa: usersWithoutMfa,
-                complianceRate: `${mfaComplianceRate}%`,
-                status: mfaComplianceRate === 100 ? '완전 준수' : '부분 준수',
-                organizationalBenefits: [
-                    '전사적 보안 수준 향상',
-                    '컴플라이언스 요구사항 충족',
-                    '보안 사고 위험 감소',
-                    '고객 신뢰도 증가'
-                ],
-                implementationStrategy: [
-                    'MFA 활성화 의무화 정책 수립',
-                    '사용자 교육 및 훈련 실시',
-                    'MFA 디바이스 지원 및 배포',
-                    '정기적인 준수 상태 모니터링'
-                ],
-                targetMetrics: [
-                    '목표: MFA 준수율 100%',
-                    '모니터링: 월별 준수율 측정',
-                    '개선: 분기별 보안 교육',
-                    '유지: 연간 보안 정책 검토'
-                ]
-            },
-            category: 'SECURITY'
-        });
-
-        this.inspector.addFinding(finding);
+        // 전체 요약 결과는 제거 - 개별 사용자 결과만 표시
     }
 
     /**
