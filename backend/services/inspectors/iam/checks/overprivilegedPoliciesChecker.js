@@ -45,14 +45,8 @@ class OverprivilegedPoliciesChecker {
         // 각 사용자별 정책 검사
         for (const user of allUsers) {
             try {
-                // 1. 사용자 연결된 관리형 정책 검사
+                // 사용자 관리형 정책 검사
                 await this.checkUserAttachedPolicies(user);
-
-                // 2. 사용자 인라인 정책 검사
-                await this.checkUserInlinePolicies(user);
-
-                // 3. 관리자 권한 사용자 검사
-                await this.checkAdminPrivileges(user);
 
             } catch (error) {
                 this.inspector.recordError(error, {
@@ -90,14 +84,8 @@ class OverprivilegedPoliciesChecker {
         // 각 역할별 정책 검사
         for (const role of allRoles) {
             try {
-                // 1. 역할 연결된 관리형 정책 검사
+                // 역할 관리형 정책 검사
                 await this.checkRoleAttachedPolicies(role);
-
-                // 2. 역할 인라인 정책 검사
-                await this.checkRoleInlinePolicies(role);
-
-                // 3. 서비스 역할 검사
-                await this.checkServiceRole(role);
 
             } catch (error) {
                 this.inspector.recordError(error, {
@@ -470,7 +458,7 @@ class OverprivilegedPoliciesChecker {
                 details: {
                     roleName: role.RoleName,
                     roleType: 'SERVICE_ROLE',
-                    createDate: role.CreateDate?.toISOString() || role.CreateDate,
+                    createDate: this.formatDate(role.CreateDate),
                     serviceRoleBestPractices: [
                         '서비스별 전용 역할 사용',
                         '최소 권한 원칙 적용',
@@ -506,8 +494,8 @@ class OverprivilegedPoliciesChecker {
                     policyName: policy.PolicyName,
                     policyId: policy.PolicyId,
                     policyArn: policy.Arn,
-                    createDate: policy.CreateDate?.toISOString() || policy.CreateDate,
-                    updateDate: policy.UpdateDate?.toISOString() || policy.UpdateDate,
+                    createDate: this.formatDate(policy.CreateDate),
+                    updateDate: this.formatDate(policy.UpdateDate),
                     riskLevel: this.getPolicyRiskLevel(policy.PolicyName),
                     riskReason: this.getPolicyRiskReason(policy.PolicyName),
                     usageGuidelines: [
@@ -733,6 +721,16 @@ class OverprivilegedPoliciesChecker {
         }
 
         return recommendations;
+    }
+    /**
+     * 날짜를 안전하게 ISO 문자열로 변환
+     */
+    formatDate(date) {
+        if (!date) return null;
+        if (typeof date === 'string') return date;
+        if (date instanceof Date) return date.toISOString();
+        if (typeof date.toISOString === 'function') return date.toISOString();
+        return date.toString();
     }
 }
 

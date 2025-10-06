@@ -50,7 +50,8 @@ class IAMInspector extends BaseInspector {
       'unused-credentials',
       'overprivileged-user-policies',
       'overprivileged-role-policies',
-      'inline-policies'
+      'inline-policies',
+      'unused-policies'
     ];
   }
 
@@ -102,7 +103,7 @@ class IAMInspector extends BaseInspector {
   async performItemInspection(awsCredentials, inspectionConfig) {
     // 자격 증명을 저장하여 나중에 사용할 수 있도록 함
     this.currentCredentials = awsCredentials;
-    
+
     const targetItem = inspectionConfig.targetItem;
     const results = {
       users: [],
@@ -135,6 +136,10 @@ class IAMInspector extends BaseInspector {
 
         case 'inline-policies':
           await this._inspectInlinePolicies(results);
+          break;
+
+        case 'unused-policies':
+          await this._inspectUnusedPolicies(results);
           break;
 
         default:
@@ -203,58 +208,58 @@ class IAMInspector extends BaseInspector {
   // 개별 검사 메서드들
   async _inspectRootAccessKey(results) {
     this.updateProgress('루트 계정 액세스 키 검사 중', 70);
-    
+
     // IAM 클라이언트와 데이터 수집기가 초기화되지 않은 경우 초기화
     if (!this.iamClient || !this.dataCollector) {
       await this.initializeIAMResources();
     }
-    
+
     // 새로운 검사 인스턴스 생성
     const checker = new this.checkerClasses.rootAccessKey(this);
     await checker.runAllChecks();
-    
+
     results.findings = this.findings;
   }
 
   async _inspectMfaEnabled(results) {
     this.updateProgress('IAM 사용자 조회 중', 30);
-    
+
     // IAM 클라이언트와 데이터 수집기가 초기화되지 않은 경우 초기화
     if (!this.iamClient || !this.dataCollector) {
       await this.initializeIAMResources();
     }
-    
+
     const users = await this.dataCollector.getUsers();
     results.users = users;
     this.incrementResourceCount(users.length);
 
     this.updateProgress('MFA 활성화 검사 중', 70);
-    
+
     // 새로운 검사 인스턴스 생성
     const checker = new this.checkerClasses.mfaEnabled(this);
     await checker.runAllChecks(users);
-    
+
     results.findings = this.findings;
   }
 
   async _inspectUnusedCredentials(results) {
     this.updateProgress('IAM 사용자 조회 중', 30);
-    
+
     // IAM 클라이언트와 데이터 수집기가 초기화되지 않은 경우 초기화
     if (!this.iamClient || !this.dataCollector) {
       await this.initializeIAMResources();
     }
-    
+
     const users = await this.dataCollector.getUsers();
     results.users = users;
     this.incrementResourceCount(users.length);
 
     this.updateProgress('미사용 자격 증명 검사 중', 70);
-    
+
     // 새로운 검사 인스턴스 생성
     const checker = new this.checkerClasses.unusedCredentials(this);
     await checker.runAllChecks(users);
-    
+
     results.findings = this.findings;
   }
 
@@ -288,72 +293,242 @@ class IAMInspector extends BaseInspector {
 
   async _inspectOverprivilegedUserPolicies(results) {
     this.updateProgress('IAM 사용자 데이터 수집 중', 30);
-    
+
     // IAM 클라이언트와 데이터 수집기가 초기화되지 않은 경우 초기화
     if (!this.iamClient || !this.dataCollector) {
       await this.initializeIAMResources();
     }
-    
+
     const data = await this.dataCollector.collectAllData();
-    
+
     results.users = data.users;
     results.policies = data.policies;
     this.incrementResourceCount(data.users.length + data.policies.length);
 
     this.updateProgress('사용자 과도한 권한 정책 검사 중', 70);
-    
+
     // 새로운 검사 인스턴스 생성 - 사용자만 검사
     const checker = new this.checkerClasses.overprivilegedPolicies(this);
     await checker.runUserChecks(data.users, data.policies);
-    
+
     results.findings = this.findings;
   }
 
   async _inspectOverprivilegedRolePolicies(results) {
     this.updateProgress('IAM 역할 데이터 수집 중', 30);
-    
+
     // IAM 클라이언트와 데이터 수집기가 초기화되지 않은 경우 초기화
     if (!this.iamClient || !this.dataCollector) {
       await this.initializeIAMResources();
     }
-    
+
     const data = await this.dataCollector.collectAllData();
-    
+
     results.roles = data.roles;
     results.policies = data.policies;
     this.incrementResourceCount(data.roles.length + data.policies.length);
 
     this.updateProgress('역할 과도한 권한 정책 검사 중', 70);
-    
+
     // 새로운 검사 인스턴스 생성 - 역할만 검사
     const checker = new this.checkerClasses.overprivilegedPolicies(this);
     await checker.runRoleChecks(data.roles, data.policies);
-    
+
     results.findings = this.findings;
   }
 
   async _inspectInlinePolicies(results) {
     this.updateProgress('IAM 데이터 수집 중', 30);
-    
+
     // IAM 클라이언트와 데이터 수집기가 초기화되지 않은 경우 초기화
     if (!this.iamClient || !this.dataCollector) {
       await this.initializeIAMResources();
     }
-    
+
     const data = await this.dataCollector.collectAllData();
-    
+
     results.users = data.users;
     results.roles = data.roles;
     results.policies = data.policies;
     this.incrementResourceCount(data.users.length + data.roles.length + data.policies.length);
 
     this.updateProgress('인라인 정책 검사 중', 70);
-    
+
     // 새로운 검사 인스턴스 생성
     const checker = new this.checkerClasses.inlinePolicies(this);
     await checker.runAllChecks(data.users, data.roles, data.policies);
-    
+
     results.findings = this.findings;
+  }
+
+  async _inspectUnusedPolicies(results) {
+    this.updateProgress('IAM 데이터 수집 중', 30);
+
+    // IAM 클라이언트와 데이터 수집기가 초기화되지 않은 경우 초기화
+    if (!this.iamClient || !this.dataCollector) {
+      await this.initializeIAMResources();
+    }
+
+    const data = await this.dataCollector.collectAllData();
+
+    results.users = data.users;
+    results.roles = data.roles;
+    results.policies = data.policies;
+    this.incrementResourceCount(data.users.length + data.roles.length + data.policies.length);
+
+    this.updateProgress('사용되지 않는 정책 검사 중', 70);
+
+    // 사용되지 않는 정책 검사 수행
+    this.checkUnusedPolicies(data.users, data.roles, data.policies);
+
+    results.findings = this.findings;
+  }
+
+  checkUnusedPolicies(users, roles, policies) {
+    if (!policies || policies.length === 0) {
+      const finding = new InspectionFinding({
+        resourceId: 'no-policies',
+        resourceType: 'IAMPolicy',
+        riskLevel: 'PASS',
+        issue: '사용되지 않는 정책 검사 - 통과 (정책 없음)',
+        recommendation: '정책 생성 시 명확한 명명 규칙과 사용 목적을 문서화하세요',
+        details: {
+          totalPolicies: 0,
+          status: '현재 사용되지 않는 정책 관련 위험이 없습니다'
+        },
+        category: 'COMPLIANCE'
+      });
+
+      this.addFinding(finding);
+      return;
+    }
+
+    // 사용자 관리형 정책만 검사 (AWS 관리형 정책 제외)
+    const customerManagedPolicies = policies.filter(policy =>
+      !policy.Arn.includes('aws:policy/')
+    );
+
+    if (customerManagedPolicies.length === 0) {
+      const finding = new InspectionFinding({
+        resourceId: 'no-customer-policies',
+        resourceType: 'IAMPolicy',
+        riskLevel: 'PASS',
+        issue: '사용되지 않는 정책 검사 - 통과 (고객 관리형 정책 없음)',
+        recommendation: '고객 관리형 정책 생성 시 정기적인 사용 현황 검토를 계획하세요',
+        details: {
+          totalPolicies: policies.length,
+          customerManagedPolicies: 0,
+          awsManagedPolicies: policies.length,
+          status: '고객 관리형 정책이 없어 미사용 정책 위험이 없습니다'
+        },
+        category: 'COMPLIANCE'
+      });
+
+      this.addFinding(finding);
+      return;
+    }
+
+    // 연결된 정책들 수집
+    const attachedPolicyArns = new Set();
+
+    // 사용자에게 연결된 정책들
+    users.forEach(user => {
+      if (user.AttachedManagedPolicies) {
+        user.AttachedManagedPolicies.forEach(policy => {
+          attachedPolicyArns.add(policy.PolicyArn);
+        });
+      }
+    });
+
+    // 역할에게 연결된 정책들
+    roles.forEach(role => {
+      if (role.AttachedManagedPolicies) {
+        role.AttachedManagedPolicies.forEach(policy => {
+          attachedPolicyArns.add(policy.PolicyArn);
+        });
+      }
+    });
+
+    // 사용되지 않는 정책들 찾기
+    const unusedPolicies = customerManagedPolicies.filter(policy =>
+      !attachedPolicyArns.has(policy.Arn)
+    );
+
+    // 각 사용되지 않는 정책에 대한 결과 생성
+    unusedPolicies.forEach(policy => {
+      const createDate = new Date(policy.CreateDate);
+      const daysSinceCreation = Math.floor((Date.now() - createDate.getTime()) / (1000 * 60 * 60 * 24));
+
+      let riskLevel = 'LOW';
+      if (daysSinceCreation >= 90) {
+        riskLevel = 'MEDIUM'; // 90일 이상 미사용
+      }
+
+      const finding = new InspectionFinding({
+        resourceId: policy.PolicyName,
+        resourceType: 'IAMPolicy',
+        riskLevel: riskLevel,
+        issue: `정책 '${policy.PolicyName}'이 ${daysSinceCreation}일 동안 사용되지 않고 있습니다`,
+        recommendation: '사용하지 않는 정책을 삭제하여 계정을 정리하고 관리 복잡성을 줄이세요',
+        details: {
+          policyName: policy.PolicyName,
+          policyArn: policy.Arn,
+          createDate: this.formatDate(policy.CreateDate),
+          updateDate: this.formatDate(policy.UpdateDate),
+          daysSinceCreation: daysSinceCreation,
+          attachmentCount: 0,
+          status: '미사용 정책',
+          cleanupBenefits: [
+            '계정 정리 및 관리 단순화',
+            '의도치 않은 정책 연결 방지',
+            '보안 위험 감소',
+            '정책 관리 효율성 향상'
+          ],
+          deletionSteps: [
+            '정책 사용 여부 최종 확인',
+            '정책 내용 백업 (필요시)',
+            'IAM 콘솔에서 정책 삭제',
+            '정책 삭제 로그 기록'
+          ],
+          precautions: [
+            '삭제 전 정책 내용 검토',
+            '향후 사용 가능성 확인',
+            '관련 팀과 삭제 계획 협의',
+            '백업 및 복구 계획 수립'
+          ]
+        },
+        category: 'COST'
+      });
+
+      this.addFinding(finding);
+    });
+
+    // 사용되지 않는 정책이 없는 경우
+    if (unusedPolicies.length === 0) {
+      const finding = new InspectionFinding({
+        resourceId: 'all-policies-used',
+        resourceType: 'IAMPolicy',
+        riskLevel: 'PASS',
+        issue: '사용되지 않는 정책 검사 - 통과',
+        recommendation: '모든 고객 관리형 정책이 사용되고 있습니다. 정기적인 정책 사용 현황 검토를 계속하세요.',
+        details: {
+          totalPolicies: policies.length,
+          customerManagedPolicies: customerManagedPolicies.length,
+          awsManagedPolicies: policies.length - customerManagedPolicies.length,
+          unusedPolicies: 0,
+          status: '모든 정책이 활발히 사용 중',
+          managementTips: [
+            '새 정책 생성 시 명확한 목적 정의',
+            '정기적인 정책 사용 현황 검토',
+            '정책 명명 규칙 준수',
+            '정책 생성 시 태그 활용'
+          ]
+        },
+        category: 'COMPLIANCE'
+      });
+
+      this.addFinding(finding);
+    }
   }
 
   async _inspectUnknownItem(results, targetItem) {
@@ -368,11 +543,13 @@ class IAMInspector extends BaseInspector {
         status: 'UNKNOWN_ITEM',
         supportedItems: [
           'root-access-key',
-          'mfa-enabled', 
+          'mfa-enabled',
           'unused-credentials',
           'overprivileged-user-policies',
           'overprivileged-role-policies',
-          'inline-policies'
+          'inline-policies',
+          'unused-policies',
+          'unused-policies'
         ],
         troubleshooting: [
           '검사 항목 이름 확인',
@@ -392,7 +569,7 @@ class IAMInspector extends BaseInspector {
    */
   getServiceSpecificRecommendations() {
     const recommendations = [];
-    
+
     if (!this.findings || this.findings.length === 0) {
       return recommendations;
     }
@@ -466,6 +643,16 @@ class IAMInspector extends BaseInspector {
     }
 
     return completedChecks;
+  }
+  /**
+   * 날짜를 안전하게 ISO 문자열로 변환
+   */
+  formatDate(date) {
+    if (!date) return null;
+    if (typeof date === 'string') return date;
+    if (date instanceof Date) return date.toISOString();
+    if (typeof date.toISOString === 'function') return date.toISOString();
+    return date.toString();
   }
 }
 

@@ -88,17 +88,17 @@ class IAMDataCollector {
                   return {
                     accessKeyId: key.AccessKeyId,
                     status: key.Status,
-                    createDate: key.CreateDate?.toISOString() || key.CreateDate,
+                    createDate: this.formatDate(key.CreateDate),
                     lastUsed: usageResponse.AccessKeyLastUsed ? {
                       ...usageResponse.AccessKeyLastUsed,
-                      LastUsedDate: usageResponse.AccessKeyLastUsed.LastUsedDate?.toISOString() || usageResponse.AccessKeyLastUsed.LastUsedDate
+                      LastUsedDate: this.formatDate(usageResponse.AccessKeyLastUsed.LastUsedDate)
                     } : null
                   };
                 } catch (error) {
                   return {
                     accessKeyId: key.AccessKeyId,
                     status: key.Status,
-                    createDate: key.CreateDate?.toISOString() || key.CreateDate,
+                    createDate: this.formatDate(key.CreateDate),
                     lastUsed: null,
                     error: error.message
                   };
@@ -200,6 +200,16 @@ class IAMDataCollector {
       });
       return null;
     }
+  }
+  /**
+   * 날짜를 안전하게 ISO 문자열로 변환
+   */
+  formatDate(date) {
+    if (!date) return null;
+    if (typeof date === 'string') return date;
+    if (date instanceof Date) return date.toISOString();
+    if (typeof date.toISOString === 'function') return date.toISOString();
+    return date.toString();
   }
 }
 

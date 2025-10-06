@@ -168,7 +168,7 @@ class MfaEnabledChecker {
                 details: {
                     userName: user.UserName,
                     userId: user.UserId,
-                    createDate: user.CreateDate?.toISOString() || user.CreateDate,
+                    createDate: this.formatDate(user.CreateDate),
                     mfaDevicesCount: 0,
                     hasConsoleAccess: this.hasConsoleAccess(user),
                     hasAccessKeys: (user.AccessKeys || []).length > 0,
@@ -427,6 +427,16 @@ class MfaEnabledChecker {
         }
 
         return recommendations;
+    }
+    /**
+     * 날짜를 안전하게 ISO 문자열로 변환
+     */
+    formatDate(date) {
+        if (!date) return null;
+        if (typeof date === 'string') return date;
+        if (date instanceof Date) return date.toISOString();
+        if (typeof date.toISOString === 'function') return date.toISOString();
+        return date.toString();
     }
 }
 

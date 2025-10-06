@@ -208,6 +208,13 @@ export const inspectionItems = {
             description: '관리되지 않는 인라인 정책 사용을 검사합니다',
             severity: 'MEDIUM',
             enabled: true
+          },
+          {
+            id: 'unused-policies',
+            name: '사용되지 않는 정책',
+            description: '어떤 사용자나 역할에도 연결되지 않은 정책을 검사합니다',
+            severity: 'LOW',
+            enabled: true
           }
         ]
       }

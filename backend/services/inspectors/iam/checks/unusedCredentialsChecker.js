@@ -69,7 +69,7 @@ class UnusedCredentialsChecker {
         const details = {
             userName: user.UserName,
             userId: user.UserId,
-            createDate: user.CreateDate?.toISOString() || user.CreateDate,
+            createDate: this.formatDate(user.CreateDate),
             totalAccessKeys: accessKeys.length,
             activeAccessKeys: activeKeys.length,
             inactiveAccessKeys: accessKeys.length - activeKeys.length
@@ -105,7 +105,7 @@ class UnusedCredentialsChecker {
             const keyDetail = {
                 accessKeyId: accessKey.accessKeyId,
                 status: accessKey.status,
-                createDate: accessKey.createDate?.toISOString() || accessKey.createDate,
+                createDate: this.formatDate(accessKey.createDate),
                 issues: []
             };
 
@@ -132,7 +132,7 @@ class UnusedCredentialsChecker {
                 const lastUsedDate = new Date(lastUsed.LastUsedDate);
                 daysSinceLastUse = Math.floor((Date.now() - lastUsedDate.getTime()) / (1000 * 60 * 60 * 24));
                 isUnused = daysSinceLastUse >= 60;
-                keyDetail.lastUsed = lastUsed.LastUsedDate?.toISOString() || lastUsed.LastUsedDate;
+                keyDetail.lastUsed = this.formatDate(lastUsed.LastUsedDate);
                 keyDetail.lastUsedService = lastUsed.ServiceName || 'N/A';
             }
 
@@ -253,6 +253,16 @@ class UnusedCredentialsChecker {
         recommendations.push('자동화된 키 관리 시스템 도입을 고려하세요.');
         
         return recommendations;
+    }
+    /**
+     * 날짜를 안전하게 ISO 문자열로 변환
+     */
+    formatDate(date) {
+        if (!date) return null;
+        if (typeof date === 'string') return date;
+        if (date instanceof Date) return date.toISOString();
+        if (typeof date.toISOString === 'function') return date.toISOString();
+        return date.toString();
     }
 }
 
