@@ -198,9 +198,15 @@ class WebSocketService {
    * @returns {Function} Unsubscribe function
    */
   subscribeToInspection(inspectionId, callback) {
+    console.log(`📋 [Frontend WebSocket] Subscribing to inspection:`, {
+      inspectionId,
+      isConnected: this.connectionStatus.isConnected,
+      existingSubscriptions: Array.from(this.subscriptions.keys())
+    });
     
     // 이미 구독된 검사인지 확인
     if (this.subscriptions.has(inspectionId) && this.subscriptions.get(inspectionId).has(callback)) {
+      console.log(`⚠️ [Frontend WebSocket] Already subscribed to ${inspectionId}`);
       return () => {
         this.unsubscribeFromInspection(inspectionId, callback);
       };
@@ -220,7 +226,11 @@ class WebSocketService {
     
     this.sendMessage(subscriptionMessage);
     
-    this.logger.info('Subscribed to inspection', { inspectionId });
+    console.log(`✅ [Frontend WebSocket] Subscribed to inspection:`, {
+      inspectionId,
+      totalSubscriptions: this.subscriptions.size,
+      callbacksForThisInspection: this.subscriptions.get(inspectionId).size
+    });
     
     // Return unsubscribe function
     return () => {
@@ -283,7 +293,16 @@ class WebSocketService {
   handleMessage(event) {
     try {
       const message = JSON.parse(event.data);
-      this.logger.debug('Message received', { message });
+      
+      // 중요한 메시지들은 항상 로깅
+      if (['progress_update', 'status_change', 'inspection_complete', 'subscription_moved'].includes(message.type)) {
+        console.log(`📨 [Frontend WebSocket] Message received:`, {
+          type: message.type,
+          inspectionId: message.data?.inspectionId,
+          progress: message.data?.progress?.percentage,
+          status: message.data?.status
+        });
+      }
       
       const { type, data } = message;
       
@@ -294,6 +313,26 @@ class WebSocketService {
           
         case 'subscription_confirmed':
           this.logger.info('Subscription confirmed', { inspectionId: data.inspectionId });
+          break;
+          
+        case 'subscription_moved':
+          console.log(`🔄 [Frontend WebSocket] Subscription moved:`, {
+            from: data.fromInspectionId,
+            to: data.toBatchId,
+            message: data.message
+          });
+          this.handleSubscriptionMoved(data);
+          break;
+          
+        case 'unsubscription_confirmed':
+          console.log(`✅ [Frontend WebSocket] Unsubscription confirmed:`, {
+            inspectionId: data.inspectionId
+          });
+          break;
+          
+        case 'global_notification':
+          console.log(`📢 [Frontend WebSocket] Global notification:`, data);
+          this.handleGlobalNotification(data);
           break;
           
         case 'progress_update':
@@ -336,6 +375,16 @@ class WebSocketService {
     const { inspectionId } = data;
     const callbacks = this.subscriptions.get(inspectionId);
     
+    console.log(`📊 [Frontend WebSocket] Progress update received:`, {
+      inspectionId,
+      progress: data.progress?.percentage,
+      completedItems: data.progress?.completedItems,
+      totalItems: data.progress?.totalItems,
+      currentStep: data.progress?.currentStep,
+      hasCallbacks: !!callbacks,
+      callbackCount: callbacks?.size || 0
+    });
+    
     if (callbacks) {
       callbacks.forEach(callback => {
         try {
@@ -350,6 +399,11 @@ class WebSocketService {
           this.logger.error('Error in progress callback', { error, inspectionId });
         }
       });
+    } else {
+      console.warn(`⚠️ [Frontend WebSocket] No callbacks for progress update:`, {
+        inspectionId,
+        availableSubscriptions: Array.from(this.subscriptions.keys())
+      });
     }
   }
 
@@ -360,6 +414,14 @@ class WebSocketService {
   handleStatusChange(data) {
     const { inspectionId } = data;
     const callbacks = this.subscriptions.get(inspectionId);
+    
+    console.log(`📡 [Frontend WebSocket] Status change received:`, {
+      inspectionId,
+      status: data.status,
+      message: data.message,
+      hasCallbacks: !!callbacks,
+      callbackCount: callbacks?.size || 0
+    });
     
     if (callbacks) {
       callbacks.forEach(callback => {
@@ -375,7 +437,73 @@ class WebSocketService {
           this.logger.error('Error in status change callback', { error, inspectionId });
         }
       });
+    } else {
+      console.warn(`⚠️ [Frontend WebSocket] No callbacks for status change:`, {
+        inspectionId,
+        availableSubscriptions: Array.from(this.subscriptions.keys())
+      });
     }
+  }
+
+  /**
+   * Handle subscription moved messages
+   * @param {Object} data - Subscription moved data
+   */
+  handleSubscriptionMoved(data) {
+    const { fromInspectionId, toBatchId } = data;
+    
+    // 기존 구독을 새로운 배치 ID로 이동
+    if (this.subscriptions.has(fromInspectionId)) {
+      const callbacks = this.subscriptions.get(fromInspectionId);
+      this.subscriptions.set(toBatchId, callbacks);
+      this.subscriptions.delete(fromInspectionId);
+      
+      console.log(`🔄 [Frontend WebSocket] Moved subscription callbacks:`, {
+        from: fromInspectionId,
+        to: toBatchId,
+        callbackCount: callbacks.size
+      });
+      
+      // 콜백들에게 구독 이동 알림
+      callbacks.forEach(callback => {
+        try {
+          callback({
+            type: 'subscription_moved',
+            data: {
+              ...data,
+              messageType: 'subscription_moved'
+            }
+          });
+        } catch (error) {
+          this.logger.error('Error in subscription moved callback', { error, fromInspectionId, toBatchId });
+        }
+      });
+    }
+  }
+
+  /**
+   * Handle global notification messages
+   * @param {Object} data - Global notification data
+   */
+  handleGlobalNotification(data) {
+    console.log(`📢 [Frontend WebSocket] Global notification received:`, data);
+    
+    // 모든 활성 구독자에게 글로벌 알림 전달
+    this.subscriptions.forEach((callbacks, inspectionId) => {
+      callbacks.forEach(callback => {
+        try {
+          callback({
+            type: 'global_notification',
+            data: {
+              ...data,
+              messageType: 'global_notification'
+            }
+          });
+        } catch (error) {
+          this.logger.error('Error in global notification callback', { error, inspectionId });
+        }
+      });
+    });
   }
 
   /**

@@ -470,16 +470,22 @@ const getItemHistory = async (req, res) => {
 const getAllItemStatus = async (req, res) => {
     try {
         const customerId = req.user.userId;
-        
+        console.log(`🔍 [InspectionController] Getting all item status for customer ${customerId}`);
 
 
         // 단일 테이블 구조에서 최신 검사 결과 조회
         const historyService = require('../services/historyService');
         const result = await historyService.getLatestInspectionResults(customerId);
         
+        console.log(`🔍 [InspectionController] History service result:`, {
+            success: result.success,
+            hasData: !!result.data,
+            serviceCount: Object.keys(result.data?.services || {}).length
+        });
 
 
         if (!result.success) {
+            console.error(`❌ [InspectionController] Failed to get item status for ${customerId}`);
             return res.status(500).json(ApiResponse.error({
                 code: 'ALL_ITEM_STATUS_RETRIEVAL_FAILED',
                 message: 'Failed to retrieve all item status',
@@ -487,12 +493,22 @@ const getAllItemStatus = async (req, res) => {
             }));
         }
 
+        console.log(`✅ [InspectionController] Returning item status for ${customerId}`, {
+            serviceTypes: Object.keys(result.data.services),
+            totalItems: Object.values(result.data.services).reduce((sum, service) => sum + Object.keys(service).length, 0)
+        });
 
+        // 캐시 무효화 헤더 추가
+        res.set({
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        });
         
         res.status(200).json(ApiResponse.success(result.data));
 
     } catch (error) {
-        console.error('Get all item status error:', error);
+        console.error(`❌ [InspectionController] Get all item status error for customer:`, error);
         res.status(500).json(ApiResponse.error({
             code: 'INTERNAL_ERROR',
             message: 'Internal server error',

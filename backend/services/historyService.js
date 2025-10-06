@@ -447,6 +447,7 @@ class HistoryService {
    */
   async getLatestInspectionResults(customerId, serviceType = null) {
     try {
+      console.log(`🔍 [HistoryService] Getting latest results for customer ${customerId}, service: ${serviceType || 'ALL'}`);
 
       
       let filterExpression = 'customerId = :customerId AND recordType = :recordType';
@@ -464,13 +465,31 @@ class HistoryService {
       const params = {
         TableName: this.tableName,
         FilterExpression: filterExpression,
-        ExpressionAttributeValues: expressionAttributeValues
+        ExpressionAttributeValues: expressionAttributeValues,
+        ConsistentRead: true // 강한 일관성 읽기로 최신 데이터 보장
       };
+
+      console.log(`🔍 [HistoryService] Scanning with params:`, {
+        tableName: this.tableName,
+        filterExpression,
+        consistentRead: true
+      });
 
       const command = new ScanCommand(params);
       const result = await this.client.send(command);
 
+      console.log(`🔍 [HistoryService] Scan result:`, {
+        itemCount: result.Items?.length || 0,
+        scannedCount: result.ScannedCount,
+        consumedCapacity: result.ConsumedCapacity
+      });
+
       const groupedServices = this.groupItemsByService(result.Items || []);
+
+      console.log(`🔍 [HistoryService] Grouped services:`, {
+        serviceTypes: Object.keys(groupedServices),
+        totalItems: Object.values(groupedServices).reduce((sum, service) => sum + Object.keys(service).length, 0)
+      });
 
       return {
         success: true,

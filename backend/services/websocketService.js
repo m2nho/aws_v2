@@ -34,10 +34,10 @@ class WebSocketService {
       path: '/ws/inspections'
     });
 
-    // Cleanup disconnected clients periodically
+    // Cleanup disconnected clients periodically (increased interval for long-running inspections)
     setInterval(() => {
       this.cleanupDisconnectedClients();
-    }, 30000); // Every 30 seconds
+    }, 60000); // Every 60 seconds (increased from 30)
   }
 
   /**
@@ -88,6 +88,8 @@ class WebSocketService {
     ws.connectionId = connectionId;
     ws.subscribedInspections = new Set();
     ws.isAlive = true;
+    ws.connectionTime = Date.now();
+    ws.lastPongTime = Date.now();
 
     // Add to user connections
     if (!this.userConnections.has(userId)) {
@@ -104,6 +106,7 @@ class WebSocketService {
     // Set up ping/pong for connection health
     ws.on('pong', () => {
       ws.isAlive = true;
+      ws.lastPongTime = Date.now();
     });
 
     // Handle incoming messages
@@ -295,6 +298,14 @@ class WebSocketService {
    */
   handleDisconnection(ws, code, reason) {
     const userId = ws.userId;
+    
+    console.log(`🔌 [WebSocketService] Client disconnecting:`, {
+      userId,
+      connectionId: ws.connectionId,
+      code,
+      reason: reason?.toString(),
+      subscribedInspections: Array.from(ws.subscribedInspections || [])
+    });
     const connectionId = ws.connectionId;
 
     // Remove from user connections
@@ -344,9 +355,11 @@ class WebSocketService {
   broadcastProgressUpdate(inspectionId, progressData) {
     const subscribers = this.clients.get(inspectionId);
     
-
-    
     if (!subscribers || subscribers.size === 0) {
+      console.log(`⚠️ [WebSocketService] No subscribers for progress update: ${inspectionId}`, {
+        progress: progressData.progress?.percentage,
+        availableInspections: Array.from(this.clients.keys())
+      });
       return;
     }
 
@@ -359,7 +372,13 @@ class WebSocketService {
       }
     };
 
-
+    console.log(`📊 [WebSocketService] Broadcasting progress update for ${inspectionId}:`, {
+      progress: progressData.progress?.percentage,
+      completedItems: progressData.progress?.completedItems,
+      totalItems: progressData.progress?.totalItems,
+      subscriberCount: subscribers.size,
+      currentStep: progressData.progress?.currentStep
+    });
 
     let successCount = 0;
     let errorCount = 0;
@@ -372,7 +391,12 @@ class WebSocketService {
       }
     });
 
-
+    console.log(`📊 [WebSocketService] Progress update broadcast result:`, {
+      inspectionId,
+      successCount,
+      errorCount,
+      progress: progressData.progress?.percentage
+    });
 
     this.logger.debug('Progress update broadcasted', {
       inspectionId,
@@ -395,6 +419,10 @@ class WebSocketService {
 
     
     if (!subscribers || subscribers.size === 0) {
+      console.log(`⚠️ [WebSocketService] No subscribers for status change: ${inspectionId}`, {
+        status: statusData.status,
+        availableInspections: Array.from(this.clients.keys())
+      });
       return;
     }
 
@@ -407,13 +435,15 @@ class WebSocketService {
       }
     };
 
-
+    console.log(`📡 [WebSocketService] Broadcasting status change for ${inspectionId}:`, {
+      status: statusData.status,
+      subscriberCount: subscribers.size,
+      messageType: statusData.status === 'IN_PROGRESS' ? 'batch_progress' : 'status_update'
+    });
 
     subscribers.forEach(ws => {
       this.sendMessage(ws, message);
     });
-
-
 
     this.logger.info('Status change broadcasted', {
       inspectionId,
@@ -429,8 +459,34 @@ class WebSocketService {
    * @param {Object} completionData - Completion data
    */
   broadcastInspectionComplete(inspectionId, completionData) {
+    console.log(`📡 [WebSocketService] Broadcasting completion for ${inspectionId}`, {
+      hasSubscribers: !!this.clients.get(inspectionId),
+      subscriberCount: this.clients.get(inspectionId)?.size || 0,
+      status: completionData.status,
+      saveSuccessful: completionData.saveSuccessful,
+      retransmission: completionData.retransmission,
+      totalActiveInspections: this.clients.size,
+      allInspectionIds: Array.from(this.clients.keys()),
+      isBatchCompletion: completionData.batchId === inspectionId
+    });
+
     const subscribers = this.clients.get(inspectionId);
     if (!subscribers || subscribers.size === 0) {
+      console.log(`⚠️ [WebSocketService] No subscribers for ${inspectionId} - checking if subscribers were moved`, {
+        allActiveInspections: Array.from(this.clients.keys()),
+        totalConnections: this.wss ? this.wss.clients.size : 0
+      });
+      
+      // 구독자가 없는 경우 전체 연결된 클라이언트에게 글로벌 알림 전송
+      if (completionData.batchId === inspectionId) {
+        console.log(`📢 [WebSocketService] Sending global batch completion notification`);
+        this.broadcastToAllClients({
+          type: 'batch_complete',
+          ...completionData,
+          inspectionId,
+          timestamp: Date.now()
+        });
+      }
       return;
     }
 
@@ -439,25 +495,43 @@ class WebSocketService {
       data: {
         inspectionId,
         ...completionData,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        forceRefresh: true, // 프론트엔드에서 강제 새로고침 트리거
+        refreshCommand: 'RELOAD_ALL_DATA', // 명시적 새로고침 명령
+        cacheBreaker: Date.now() // 캐시 무효화용 타임스탬프
       }
     };
 
+    console.log(`📡 [WebSocketService] Sending message to ${subscribers.size} subscribers for ${inspectionId}`);
+
+    let successCount = 0;
+    let errorCount = 0;
+
     subscribers.forEach(ws => {
-      this.sendMessage(ws, message);
+      if (this.sendMessage(ws, message)) {
+        successCount++;
+      } else {
+        errorCount++;
+      }
+    });
+
+    console.log(`📡 [WebSocketService] Broadcast result for ${inspectionId}:`, {
+      successCount,
+      errorCount,
+      totalSubscribers: subscribers.size
     });
 
     this.logger.info('Inspection completion broadcasted', {
       inspectionId,
       subscriberCount: subscribers.size,
       status: completionData.status,
-      duration: completionData.duration
+      duration: completionData.duration,
+      successCount,
+      errorCount
     });
 
-    // Clean up subscribers for completed inspection after a delay
-    setTimeout(() => {
-      this.clients.delete(inspectionId);
-    }, 60000); // 1 minute delay
+    // 배치 검사 중에는 절대 구독자를 정리하지 않음
+    console.log(`⏳ [WebSocketService] Keeping all subscribers for ${inspectionId} until batch completion`);
   }
 
   /**
@@ -492,12 +566,17 @@ class WebSocketService {
     // Check all clients and remove disconnected ones
     this.wss.clients.forEach(ws => {
       if (!ws.isAlive) {
-        ws.terminate();
-        cleanedCount++;
-        return;
+        // Give more time for long-running inspections
+        const timeSinceLastPong = Date.now() - (ws.lastPongTime || ws.connectionTime || Date.now());
+        if (timeSinceLastPong > 180000) { // 3 minutes instead of immediate termination
+          ws.terminate();
+          cleanedCount++;
+          return;
+        }
       }
 
       ws.isAlive = false;
+      ws.lastPingTime = Date.now();
       ws.ping();
     });
 
@@ -538,6 +617,178 @@ class WebSocketService {
    */
   generateConnectionId() {
     return `conn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  /**
+   * Broadcast to all connected clients (global notification)
+   * @param {Object} messageData - Message data to broadcast
+   */
+  broadcastToAllClients(messageData) {
+    if (!this.wss || !this.wss.clients) {
+      console.log(`⚠️ [WebSocketService] No WebSocket server or clients available for global broadcast`);
+      return;
+    }
+
+    const message = {
+      type: 'global_notification',
+      data: {
+        ...messageData,
+        timestamp: Date.now()
+      }
+    };
+
+    let successCount = 0;
+    let errorCount = 0;
+
+    this.wss.clients.forEach(ws => {
+      if (ws.readyState === WebSocket.OPEN) {
+        if (this.sendMessage(ws, message)) {
+          successCount++;
+        } else {
+          errorCount++;
+        }
+      }
+    });
+
+    console.log(`📡 [WebSocketService] Global broadcast result:`, {
+      totalClients: this.wss.clients.size,
+      successCount,
+      errorCount,
+      messageType: messageData.type
+    });
+  }
+
+  /**
+   * Move subscribers from individual inspection ID to batch ID
+   * @param {string} fromInspectionId - Source inspection ID
+   * @param {string} toBatchId - Target batch ID
+   * @returns {boolean} Whether the move was successful
+   */
+  moveSubscribersToBatch(fromInspectionId, toBatchId) {
+    const fromSubscribers = this.clients.get(fromInspectionId);
+    
+    if (!fromSubscribers || fromSubscribers.size === 0) {
+      console.log(`⚠️ [WebSocketService] No subscribers to move from ${fromInspectionId} to ${toBatchId}`, {
+        availableInspections: Array.from(this.clients.keys()),
+        totalConnections: this.wss ? this.wss.clients.size : 0
+      });
+      return false;
+    }
+
+    console.log(`🔄 [WebSocketService] Moving ${fromSubscribers.size} subscribers from ${fromInspectionId} to ${toBatchId}`);
+
+    // 배치 ID 구독자 집합 생성 또는 가져오기
+    if (!this.clients.has(toBatchId)) {
+      this.clients.set(toBatchId, new Set());
+    }
+    const batchSubscribers = this.clients.get(toBatchId);
+
+    let movedCount = 0;
+    // 구독자들을 배치 ID로 이동 (중복 방지)
+    fromSubscribers.forEach(ws => {
+      if (!batchSubscribers.has(ws)) {
+        batchSubscribers.add(ws);
+        movedCount++;
+      }
+      // 웹소켓 객체의 구독 정보도 업데이트
+      if (ws.subscribedInspections) {
+        ws.subscribedInspections.delete(fromInspectionId);
+        ws.subscribedInspections.add(toBatchId);
+      }
+    });
+
+    // 기존 개별 검사 ID 구독자 제거
+    this.clients.delete(fromInspectionId);
+
+    console.log(`✅ [WebSocketService] Moved subscribers: ${fromInspectionId} → ${toBatchId} (${movedCount} moved, ${batchSubscribers.size} total)`, {
+      batchSubscribers: batchSubscribers.size,
+      remainingInspections: Array.from(this.clients.keys())
+    });
+
+    // 이동 확인 메시지를 구독자들에게 전송
+    if (batchSubscribers.size > 0) {
+      const firstSubscriber = Array.from(batchSubscribers)[0];
+      this.sendMessage(firstSubscriber, {
+        type: 'subscription_moved',
+        data: {
+          fromInspectionId,
+          toBatchId,
+          timestamp: Date.now(),
+          message: 'Your subscription has been moved to batch updates'
+        }
+      });
+    }
+
+    return movedCount > 0;
+  }
+
+  /**
+   * Force move all active subscribers to batch ID (emergency method)
+   * @param {string} batchId - Target batch ID
+   * @param {Array} inspectionIds - Array of inspection IDs to move from
+   */
+  forceMoveToBatch(batchId, inspectionIds) {
+    console.log(`🚨 [WebSocketService] Force moving all subscribers to batch ${batchId}`, {
+      targetInspections: inspectionIds,
+      currentInspections: Array.from(this.clients.keys())
+    });
+
+    if (!this.clients.has(batchId)) {
+      this.clients.set(batchId, new Set());
+    }
+    const batchSubscribers = this.clients.get(batchId);
+
+    let totalMoved = 0;
+
+    // 모든 개별 검사 ID에서 구독자 이동
+    inspectionIds.forEach(inspectionId => {
+      const subscribers = this.clients.get(inspectionId);
+      if (subscribers && subscribers.size > 0) {
+        console.log(`🔄 [WebSocketService] Force moving ${subscribers.size} subscribers from ${inspectionId}`);
+        
+        subscribers.forEach(ws => {
+          if (!batchSubscribers.has(ws)) {
+            batchSubscribers.add(ws);
+            totalMoved++;
+          }
+          // 웹소켓 객체의 구독 정보도 업데이트
+          if (ws.subscribedInspections) {
+            ws.subscribedInspections.delete(inspectionId);
+            ws.subscribedInspections.add(batchId);
+          }
+        });
+
+        this.clients.delete(inspectionId);
+      }
+    });
+
+    console.log(`✅ [WebSocketService] Force move completed: ${totalMoved} subscribers moved to ${batchId}`);
+    return totalMoved;
+  }
+
+  /**
+   * Clean up batch subscribers
+   * @param {string} batchId - Batch ID
+   * @param {Array} inspectionIds - Array of inspection IDs in the batch
+   */
+  cleanupBatchSubscribers(batchId, inspectionIds) {
+    console.log(`🧹 [WebSocketService] Cleaning up batch subscribers for ${batchId}`, {
+      inspectionCount: inspectionIds.length,
+      inspectionIds: inspectionIds
+    });
+
+    // 배치 ID와 모든 개별 검사 ID의 구독자 정리
+    const allIds = [batchId, ...inspectionIds];
+    
+    allIds.forEach(id => {
+      const subscribers = this.clients.get(id);
+      if (subscribers && subscribers.size > 0) {
+        console.log(`🧹 [WebSocketService] Removing ${subscribers.size} subscribers for ${id}`);
+        this.clients.delete(id);
+      }
+    });
+
+    console.log(`✅ [WebSocketService] Batch cleanup completed for ${batchId}`);
   }
 
   /**

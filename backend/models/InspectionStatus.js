@@ -11,7 +11,10 @@ class InspectionStatus {
     progress = null,
     estimatedTimeRemaining = null,
     currentStep = null,
-    error = null
+    error = null,
+    batchId = null,
+    itemId = null,
+    itemName = null
   }) {
     this.inspectionId = inspectionId;
     this.status = status;
@@ -19,6 +22,9 @@ class InspectionStatus {
     this.estimatedTimeRemaining = estimatedTimeRemaining;
     this.currentStep = currentStep;
     this.error = error;
+    this.batchId = batchId;
+    this.itemId = itemId;
+    this.itemName = itemName;
     this.startTime = Date.now();
     this.lastUpdated = Date.now();
     
@@ -147,6 +153,18 @@ class InspectionStatus {
       startTime: this.startTime,
       lastUpdated: this.lastUpdated
     };
+
+    if (this.batchId) {
+      response.batchId = this.batchId;
+    }
+
+    if (this.itemId) {
+      response.itemId = this.itemId;
+    }
+
+    if (this.itemName) {
+      response.itemName = this.itemName;
+    }
 
     if (this.progress) {
       response.progress = { ...this.progress };

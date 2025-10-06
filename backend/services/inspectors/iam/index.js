@@ -113,32 +113,41 @@ class IAMInspector extends BaseInspector {
     };
 
     try {
+      this.updateProgress('검사 시작', 10);
+
       switch (targetItem) {
         case 'root-access-key':
+          this.updateProgress('Root Access Key 검사 중', 20);
           await this._inspectRootAccessKey(results);
           break;
 
         case 'mfa-enabled':
+          this.updateProgress('MFA 활성화 검사 중', 20);
           await this._inspectMfaEnabled(results);
           break;
 
         case 'unused-credentials':
+          this.updateProgress('미사용 자격증명 검사 중', 20);
           await this._inspectUnusedCredentials(results);
           break;
 
         case 'overprivileged-user-policies':
+          this.updateProgress('사용자 과도한 권한 검사 중', 20);
           await this._inspectOverprivilegedUserPolicies(results);
           break;
 
         case 'overprivileged-role-policies':
+          this.updateProgress('역할 과도한 권한 검사 중', 20);
           await this._inspectOverprivilegedRolePolicies(results);
           break;
 
         case 'inline-policies':
+          this.updateProgress('인라인 정책 검사 중', 20);
           await this._inspectInlinePolicies(results);
           break;
 
         case 'unused-policies':
+          this.updateProgress('미사용 정책 검사 중', 20);
           await this._inspectUnusedPolicies(results);
           break;
 
@@ -207,17 +216,20 @@ class IAMInspector extends BaseInspector {
 
   // 개별 검사 메서드들
   async _inspectRootAccessKey(results) {
-    this.updateProgress('루트 계정 액세스 키 검사 중', 70);
+    this.updateProgress('루트 계정 액세스 키 검사 준비 중', 30);
 
     // IAM 클라이언트와 데이터 수집기가 초기화되지 않은 경우 초기화
     if (!this.iamClient || !this.dataCollector) {
       await this.initializeIAMResources();
     }
 
+    this.updateProgress('루트 계정 액세스 키 검사 실행 중', 60);
+
     // 새로운 검사 인스턴스 생성
     const checker = new this.checkerClasses.rootAccessKey(this);
     await checker.runAllChecks();
 
+    this.updateProgress('루트 계정 액세스 키 검사 완료', 80);
     results.findings = this.findings;
   }
 
@@ -229,16 +241,18 @@ class IAMInspector extends BaseInspector {
       await this.initializeIAMResources();
     }
 
+    this.updateProgress('사용자 데이터 수집 중', 50);
     const users = await this.dataCollector.getUsers();
     results.users = users;
     this.incrementResourceCount(users.length);
 
-    this.updateProgress('MFA 활성화 검사 중', 70);
+    this.updateProgress('MFA 활성화 검사 실행 중', 70);
 
     // 새로운 검사 인스턴스 생성
     const checker = new this.checkerClasses.mfaEnabled(this);
     await checker.runAllChecks(users);
 
+    this.updateProgress('MFA 검사 완료', 80);
     results.findings = this.findings;
   }
 
@@ -250,16 +264,18 @@ class IAMInspector extends BaseInspector {
       await this.initializeIAMResources();
     }
 
+    this.updateProgress('사용자 데이터 수집 중', 50);
     const users = await this.dataCollector.getUsers();
     results.users = users;
     this.incrementResourceCount(users.length);
 
-    this.updateProgress('미사용 자격 증명 검사 중', 70);
+    this.updateProgress('미사용 자격 증명 검사 실행 중', 70);
 
     // 새로운 검사 인스턴스 생성
     const checker = new this.checkerClasses.unusedCredentials(this);
     await checker.runAllChecks(users);
 
+    this.updateProgress('미사용 자격 증명 검사 완료', 80);
     results.findings = this.findings;
   }
 
@@ -299,18 +315,20 @@ class IAMInspector extends BaseInspector {
       await this.initializeIAMResources();
     }
 
+    this.updateProgress('사용자 및 정책 데이터 수집 중', 50);
     const data = await this.dataCollector.collectAllData();
 
     results.users = data.users;
     results.policies = data.policies;
     this.incrementResourceCount(data.users.length + data.policies.length);
 
-    this.updateProgress('사용자 과도한 권한 정책 검사 중', 70);
+    this.updateProgress('사용자 과도한 권한 정책 검사 실행 중', 70);
 
     // 새로운 검사 인스턴스 생성 - 사용자만 검사
     const checker = new this.checkerClasses.overprivilegedPolicies(this);
     await checker.runUserChecks(data.users, data.policies);
 
+    this.updateProgress('사용자 과도한 권한 검사 완료', 80);
     results.findings = this.findings;
   }
 
@@ -322,18 +340,20 @@ class IAMInspector extends BaseInspector {
       await this.initializeIAMResources();
     }
 
+    this.updateProgress('역할 및 정책 데이터 수집 중', 50);
     const data = await this.dataCollector.collectAllData();
 
     results.roles = data.roles;
     results.policies = data.policies;
     this.incrementResourceCount(data.roles.length + data.policies.length);
 
-    this.updateProgress('역할 과도한 권한 정책 검사 중', 70);
+    this.updateProgress('역할 과도한 권한 정책 검사 실행 중', 70);
 
     // 새로운 검사 인스턴스 생성 - 역할만 검사
     const checker = new this.checkerClasses.overprivilegedPolicies(this);
     await checker.runRoleChecks(data.roles, data.policies);
 
+    this.updateProgress('역할 과도한 권한 검사 완료', 80);
     results.findings = this.findings;
   }
 

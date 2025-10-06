@@ -20,6 +20,9 @@ class InspectionService {
     // 진행 중인 검사 상태를 메모리에 저장 (실제 환경에서는 Redis 등 사용)
     this.activeInspections = new Map();
     
+    // 배치 정보를 별도로 관리
+    this.activeBatches = new Map(); // batchId -> { inspectionIds: [], completedIds: [], totalItems: number }
+    
     // 검사 단계 정의
     this.inspectionSteps = {
       'EC2': [
@@ -95,6 +98,14 @@ class InspectionService {
         jobs: inspectionJobs.map(job => ({ id: job.inspectionId, item: job.itemId }))
       });
 
+      // 배치 정보 등록
+      this.activeBatches.set(batchId, {
+        inspectionIds: inspectionJobs.map(job => job.inspectionId),
+        completedIds: [],
+        totalItems: inspectionJobs.length,
+        startTime: Date.now()
+      });
+
       // 각 검사 작업의 상태 초기화
       const inspectionStatuses = new Map();
       for (const job of inspectionJobs) {
@@ -108,6 +119,13 @@ class InspectionService {
         
         this.activeInspections.set(job.inspectionId, inspectionStatus);
         inspectionStatuses.set(job.inspectionId, inspectionStatus);
+        
+        console.log(`📋 [InspectionService] Initialized inspection job:`, {
+          inspectionId: job.inspectionId,
+          itemId: job.itemId,
+          itemName: job.itemName,
+          batchId
+        });
         
         // DynamoDB에 개별 검사 시작 상태 저장
         await this.saveInspectionStart(customerId, job.inspectionId, serviceType, assumeRoleArn, {
@@ -126,14 +144,58 @@ class InspectionService {
         // WebSocket 연결 상태 확인 및 초기 상태 브로드캐스트
         const wsStats = webSocketService.getConnectionStats();
         
-        // 검사 시작 즉시 WebSocket으로 상태 브로드캐스트
-        webSocketService.broadcastStatusChange(job.inspectionId, {
+        // 검사 시작 즉시 WebSocket으로 상태 브로드캐스트 (배치 ID 사용)
+        console.log(`🚀 [InspectionService] Starting inspection for ${job.itemName} (${job.inspectionId}) in batch ${batchId}`);
+        
+        // 첫 번째 검사 시작 시에만 초기 진행률 전송
+        if (inspectionJobs.indexOf(job) === 0) {
+          webSocketService.broadcastProgressUpdate(batchId, {
+            status: 'STARTING',
+            progress: {
+              percentage: 0,
+              completedItems: 0,
+              totalItems: inspectionJobs.length,
+              currentStep: `Starting batch inspection (${inspectionJobs.length} items)`,
+              estimatedTimeRemaining: null
+            },
+            batchInfo: {
+              batchId,
+              totalInspections: inspectionJobs.length,
+              completedInspections: 0,
+              remainingInspections: inspectionJobs.length,
+              inspectionItems: inspectionJobs.map(j => ({
+                itemId: j.itemId,
+                itemName: j.itemName,
+                status: 'PENDING'
+              }))
+            }
+          });
+        }
+        
+        webSocketService.broadcastStatusChange(batchId, {
           status: 'STARTING',
           message: `Starting ${job.itemName} inspection`,
           timestamp: Date.now(),
           itemId: job.itemId,
-          itemName: job.itemName
+          itemName: job.itemName,
+          inspectionId: job.inspectionId // 개별 검사 ID도 포함
         });
+        
+        // 구독자 이동을 여러 번 시도 (프론트엔드 구독 타이밍 고려)
+        const attemptSubscriberMove = (attempt = 1) => {
+          console.log(`🔄 [InspectionService] Attempt ${attempt}: Moving subscribers from ${job.inspectionId} to batch ${batchId}`);
+          const moved = webSocketService.moveSubscribersToBatch(job.inspectionId, batchId);
+          
+          // 이동에 실패했고 시도 횟수가 5회 미만이면 재시도
+          if (!moved && attempt < 5) {
+            setTimeout(() => attemptSubscriberMove(attempt + 1), 200 * attempt);
+          }
+        };
+        
+        // 즉시 시도 후 100ms, 500ms, 1000ms 후에도 재시도
+        setTimeout(() => attemptSubscriberMove(1), 50);
+        setTimeout(() => attemptSubscriberMove(2), 100);
+        setTimeout(() => attemptSubscriberMove(3), 500);
         
         return this.executeItemInspectionAsync(
           customerId,
@@ -144,9 +206,12 @@ class InspectionService {
             ...inspectionConfig,
             targetItemId: job.itemId,
             batchId,
-            itemName: job.itemName
+            itemName: job.itemName,
+            isFirstInBatch: inspectionJobs.indexOf(job) === 0, // 첫 번째 검사인지 표시
+            firstInspectionId: inspectionJobs[0]?.inspectionId // 첫 번째 검사 ID 전달
           }
         ).catch(error => {
+       
           this.logger.error('Async item inspection execution failed', {
             inspectionId: job.inspectionId,
             itemId: job.itemId,
@@ -160,22 +225,57 @@ class InspectionService {
         });
       });
 
+      // 1초 후 강제 구독자 이동 시도 (모든 개별 검사 ID → 배치 ID)
+      setTimeout(() => {
+        console.log(`🚨 [InspectionService] Attempting force move to batch ${batchId}`);
+        const moved = webSocketService.forceMoveToBatch(batchId, inspectionJobs.map(job => job.inspectionId));
+        console.log(`🚨 [InspectionService] Force move result: ${moved} subscribers moved`);
+      }, 1000);
+
       // 모든 검사 작업을 병렬로 실행하되 응답은 즉시 반환
       Promise.all(executionPromises).then(() => {
-
+        console.log(`🎯 [InspectionService] Batch ${batchId} completed - all ${inspectionJobs.length} inspections finished`);
+        
+        // 모든 검사가 완료되었을 때만 배치 완료 알림 전송
+        this.broadcastBatchCompletion(batchId, inspectionJobs);
+        
+        // 배치 완료 시 웹소켓 구독자 정리
+        setTimeout(() => {
+          console.log(`🧹 [InspectionService] Cleaning up batch ${batchId} subscribers`);
+          webSocketService.cleanupBatchSubscribers(batchId, inspectionJobs.map(job => job.inspectionId));
+        }, 5000); // 5초 후 정리
+      }).catch(error => {
+        console.error(`❌ [InspectionService] Batch ${batchId} failed:`, error);
+        
+        // 배치 실패 시에도 완료 알림 전송 (실패 상태로)
+        this.broadcastBatchCompletion(batchId, inspectionJobs, error);
+      }).finally(() => {
+        // 배치 완료 후 배치 정보 정리
+        setTimeout(() => {
+          this.activeBatches.delete(batchId);
+          console.log(`🧹 [InspectionService] Cleaned up batch info for ${batchId}`);
+        }, 10000); // 10초 후 정리
       });
 
       return {
         success: true,
         data: {
           batchId,
+          // 프론트엔드가 첫 번째 검사 ID로 구독하도록 안내 (자동 이동됨)
+          subscriptionId: inspectionJobs[0]?.inspectionId || batchId,
           inspectionJobs: inspectionJobs.map(job => ({
             inspectionId: job.inspectionId,
             itemId: job.itemId,
             itemName: job.itemName,
             status: 'PENDING'
           })),
-          message: `Started ${inspectionJobs.length} inspection(s) successfully`
+          message: `Started ${inspectionJobs.length} inspection(s) successfully`,
+          // 웹소켓 구독 안내
+          websocketInstructions: {
+            subscribeToId: inspectionJobs[0]?.inspectionId || batchId,
+            batchId: batchId,
+            message: 'Subscribe to the first inspection ID - will be automatically moved to batch updates'
+          }
         }
       };
 
@@ -194,6 +294,115 @@ class InspectionService {
         }
       };
     }
+  }
+
+  /**
+   * 배치 진행률 계산
+   * @param {string} batchId - 배치 ID
+   * @returns {Object} 진행률 정보
+   */
+  calculateBatchProgress(batchId) {
+    const batchInfo = this.activeBatches.get(batchId);
+    
+    if (!batchInfo) {
+      console.log(`⚠️ [InspectionService] Batch not found: ${batchId}`);
+      return {
+        percentage: 0,
+        completedItems: 0,
+        totalItems: 0,
+        estimatedTimeRemaining: null
+      };
+    }
+    
+    // 완료된 검사 수 계산
+    const completedItems = batchInfo.inspectionIds.filter(inspectionId => {
+      const inspection = this.activeInspections.get(inspectionId);
+      return inspection && (inspection.status === 'COMPLETED' || inspection.status === 'FAILED');
+    }).length;
+    
+    const totalItems = batchInfo.totalItems;
+    const percentage = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+    
+    // 예상 완료 시간 계산
+    let estimatedTimeRemaining = null;
+    if (completedItems > 0 && completedItems < totalItems) {
+      const elapsedTime = Date.now() - batchInfo.startTime;
+      const averageTimePerItem = elapsedTime / completedItems;
+      const remainingItems = totalItems - completedItems;
+      estimatedTimeRemaining = Math.round(averageTimePerItem * remainingItems / 1000); // 초 단위
+    }
+    
+    console.log(`📊 [InspectionService] Batch progress for ${batchId}:`, {
+      percentage,
+      completedItems,
+      totalItems,
+      estimatedTimeRemaining,
+      batchExists: !!batchInfo
+    });
+    
+    return {
+      percentage,
+      completedItems,
+      totalItems,
+      estimatedTimeRemaining
+    };
+  }
+
+  /**
+   * 배치 완료 알림 전송
+   * @param {string} batchId - 배치 ID
+   * @param {Array} inspectionJobs - 검사 작업 목록
+   * @param {Error} error - 오류 (있는 경우)
+   */
+  broadcastBatchCompletion(batchId, inspectionJobs, error = null) {
+    console.log(`🎉 [InspectionService] Broadcasting batch completion for ${batchId}`, {
+      totalJobs: inspectionJobs.length,
+      hasError: !!error
+    });
+
+    const completionData = {
+      status: error ? 'FAILED' : 'COMPLETED',
+      batchId,
+      totalInspections: inspectionJobs.length,
+      completedInspections: error ? 0 : inspectionJobs.length,
+      inspectionJobs: inspectionJobs.map(job => ({
+        inspectionId: job.inspectionId,
+        itemId: job.itemId,
+        itemName: job.itemName,
+        status: error ? 'FAILED' : 'COMPLETED'
+      })),
+      completedAt: Date.now(),
+      duration: Date.now() - (this.activeInspections.get(inspectionJobs[0]?.inspectionId)?.startTime || Date.now()),
+      saveSuccessful: !error,
+      forceRefresh: true,
+      refreshCommand: 'RELOAD_ALL_DATA',
+      cacheBreaker: Date.now()
+    };
+
+    if (error) {
+      completionData.error = error.message;
+    }
+
+    // 최종 진행률 업데이트 (100% 완료)
+    webSocketService.broadcastProgressUpdate(batchId, {
+      status: error ? 'FAILED' : 'COMPLETED',
+      progress: {
+        percentage: 100,
+        completedItems: inspectionJobs.length,
+        totalItems: inspectionJobs.length,
+        currentStep: error ? 'Batch failed' : 'All inspections completed',
+        estimatedTimeRemaining: 0
+      },
+      batchInfo: {
+        batchId,
+        totalInspections: inspectionJobs.length,
+        completedInspections: inspectionJobs.length,
+        remainingInspections: 0
+      }
+    });
+
+    // 배치 완료 알림 전송
+    webSocketService.broadcastInspectionComplete(batchId, completionData);
   }
 
   /**
@@ -286,46 +495,84 @@ class InspectionService {
       
       inspectionStatus.complete();
 
-      // Broadcast completion via WebSocket
-      webSocketService.broadcastInspectionComplete(inspectionId, {
-        status: 'COMPLETED',
-        results: inspectionResult.results,
-        duration: inspectionResult.duration,
-        completedAt: Date.now(),
-        totalSteps: steps.length,
-        resourcesProcessed: inspectionResult.results?.summary?.totalResources || 0,
-        itemId: inspectionConfig.targetItemId,
-        itemName: inspectionConfig.itemName
-      });
-
-      // 5. 트랜잭션을 사용한 일관성 있는 결과 저장
+      // 5. 트랜잭션을 사용한 일관성 있는 결과 저장 (웹소켓 알림 전에 먼저 저장)
+      console.log(`💾 [InspectionService] Starting DB save for ${inspectionId}`);
       let saveSuccessful = false;
       
       try {
+        console.log(`💾 [InspectionService] Attempting transaction save for ${inspectionId}`);
         await this.saveInspectionResultWithTransaction(inspectionResult);
         saveSuccessful = true;
+        console.log(`✅ [InspectionService] Transaction save successful for ${inspectionId}`);
 
       } catch (saveError) {
-        this.logger.error('Critical: Failed to save item inspection result', {
-          inspectionId: inspectionResult.inspectionId,
-          itemId: inspectionConfig.targetItemId,
+        console.error(`❌ [InspectionService] Transaction save failed for ${inspectionId}:`, {
           error: saveError.message,
           stack: saveError.stack
         });
         
         // 즉시 강제 저장 시도
         try {
+          console.log(`🚨 [InspectionService] Attempting emergency save for ${inspectionId}`);
           await this.emergencySaveInspectionResult(inspectionResult);
           saveSuccessful = true;
+          console.log(`✅ [InspectionService] Emergency save successful for ${inspectionId}`);
         } catch (emergencyError) {
+          console.error(`❌ [InspectionService] Emergency save also failed for ${inspectionId}:`, {
+            error: emergencyError.message
+          });
         }
       }
+
+      // 개별 검사 완료 시에는 완료 알림을 보내지 않고 진행 상황만 업데이트
+      const batchId = inspectionConfig.batchId || inspectionId;
+      console.log(`📊 [InspectionService] Individual inspection ${inspectionId} completed, updating batch progress for ${batchId}`);
       
-      // 저장 상태에 관계없이 검사는 완료로 처리
-      inspectionStatus.complete();
+      // 배치 진행률 계산
+      const batchProgress = this.calculateBatchProgress(batchId);
       
-      if (!saveSuccessful) {
-        // WebSocket으로 저장 실패 알림
+      // 배치 진행률 업데이트 (progress_update 메시지)
+      webSocketService.broadcastProgressUpdate(batchId, {
+        status: 'IN_PROGRESS',
+        progress: {
+          percentage: batchProgress.percentage,
+          completedItems: batchProgress.completedItems,
+          totalItems: batchProgress.totalItems,
+          currentStep: `Completed ${inspectionConfig.itemName}`,
+          estimatedTimeRemaining: batchProgress.estimatedTimeRemaining
+        },
+        completedItem: {
+          inspectionId,
+          itemId: inspectionConfig.targetItemId,
+          itemName: inspectionConfig.itemName,
+          saveSuccessful,
+          completedAt: Date.now()
+        },
+        batchInfo: {
+          batchId,
+          totalInspections: batchProgress.totalItems,
+          completedInspections: batchProgress.completedItems,
+          remainingInspections: batchProgress.totalItems - batchProgress.completedItems
+        }
+      });
+      
+      // 상태 변경도 함께 알림
+      webSocketService.broadcastStatusChange(batchId, {
+        status: 'IN_PROGRESS',
+        message: `Completed ${inspectionConfig.itemName} (${batchProgress.completedItems}/${batchProgress.totalItems})`,
+        progress: batchProgress.percentage,
+        completedItem: {
+          inspectionId,
+          itemId: inspectionConfig.targetItemId,
+          itemName: inspectionConfig.itemName,
+          saveSuccessful,
+          completedAt: Date.now()
+        },
+        timestamp: Date.now()
+      });
+      
+      if (!saveSuccessful && !isBatchInspection) {
+        // 단일 검사에서만 저장 실패 알림
         webSocketService.broadcastStatusChange(inspectionId, {
           status: 'COMPLETED_WITH_SAVE_ERROR',
           error: 'Data save failed but inspection completed',
@@ -355,14 +602,34 @@ class InspectionService {
 
       inspectionStatus.fail(error.message);
 
-      // Broadcast failure via WebSocket
-      webSocketService.broadcastStatusChange(inspectionId, {
-        status: 'FAILED',
-        error: error.message,
-        failedAt: Date.now(),
-        itemId: inspectionConfig.targetItemId,
-        partialResults: inspector?.getPartialResults?.() || null
-      });
+      // 배치 검사인 경우 배치 ID로 실패 알림, 단일 검사인 경우 개별 ID로 실패 알림
+      const batchId = inspectionConfig.batchId || inspectionId;
+      const isBatchInspection = inspectionConfig.batchId && inspectionConfig.batchId !== inspectionId;
+      
+      if (isBatchInspection) {
+        // 배치 검사 중 개별 항목 실패
+        webSocketService.broadcastStatusChange(batchId, {
+          status: 'ITEM_FAILED',
+          error: error.message,
+          failedAt: Date.now(),
+          failedItem: {
+            inspectionId,
+            itemId: inspectionConfig.targetItemId,
+            itemName: inspectionConfig.itemName,
+            error: error.message
+          },
+          partialResults: inspector?.getPartialResults?.() || null
+        });
+      } else {
+        // 단일 검사 실패
+        webSocketService.broadcastStatusChange(inspectionId, {
+          status: 'FAILED',
+          error: error.message,
+          failedAt: Date.now(),
+          itemId: inspectionConfig.targetItemId,
+          partialResults: inspector?.getPartialResults?.() || null
+        });
+      }
     }
   }
 
@@ -417,17 +684,7 @@ class InspectionService {
       
       inspectionStatus.complete();
 
-      // Broadcast completion via WebSocket
-      webSocketService.broadcastInspectionComplete(inspectionId, {
-        status: 'COMPLETED',
-        results: inspectionResult.results,
-        duration: inspectionResult.duration,
-        completedAt: Date.now(),
-        totalSteps: steps.length,
-        resourcesProcessed: inspectionResult.results?.summary?.totalResources || 0
-      });
-
-      // 5. 트랜잭션을 사용한 일관성 있는 결과 저장
+      // 5. 트랜잭션을 사용한 일관성 있는 결과 저장 (웹소켓 알림 전에 먼저 저장)
       let saveSuccessful = false;
       
       try {
@@ -448,9 +705,17 @@ class InspectionService {
         } catch (emergencyError) {
         }
       }
+
+      // 단일 검사의 경우에만 즉시 완료 알림 전송 (배치가 아닌 경우)
+      const batchId = inspectionResult.metadata?.batchId || inspectionId;
+      const isBatchInspection = inspectionResult.metadata?.batchId && inspectionResult.metadata?.batchId !== inspectionId;
       
-      // 저장 상태에 관계없이 검사는 완료로 처리
-      inspectionStatus.complete();
+      if (!isBatchInspection) {
+        // 단일 검사인 경우에만 완료 알림 전송
+        this.verifyAndBroadcastCompletion(batchId, inspectionResult, null, saveSuccessful, inspectionId);
+      } else {
+        console.log(`📊 [InspectionService] Single inspection ${inspectionId} completed (part of batch), no completion broadcast`);
+      }
       
       if (!saveSuccessful) {
         // WebSocket으로 저장 실패 알림
@@ -482,7 +747,7 @@ class InspectionService {
 
       inspectionStatus.fail(error.message);
 
-      // Broadcast failure via WebSocket
+      // Broadcast failure via WebSocket (단일 검사 방식)
       webSocketService.broadcastStatusChange(inspectionId, {
         status: 'FAILED',
         error: error.message,
@@ -1534,6 +1799,148 @@ class InspectionService {
       uptime: process.uptime(),
       timestamp: Date.now()
     };
+  }
+
+  /**
+   * DB 저장 검증 후 완료 알림 전송
+   * @param {string} broadcastId - 웹소켓 브로드캐스트 ID (배치 ID 또는 검사 ID)
+   * @param {InspectionResult} inspectionResult - 검사 결과
+   * @param {Object} inspectionConfig - 검사 설정 (선택사항)
+   * @param {boolean} saveSuccessful - 저장 성공 여부
+   * @param {string} actualInspectionId - 실제 검사 ID (선택사항)
+   */
+  async verifyAndBroadcastCompletion(broadcastId, inspectionResult, inspectionConfig = null, saveSuccessful = false, actualInspectionId = null) {
+    const inspectionId = actualInspectionId || broadcastId;
+    console.log(`🔍 [InspectionService] Starting completion verification for ${inspectionId} (broadcast: ${broadcastId})`, {
+      saveSuccessful,
+      customerId: inspectionResult.customerId,
+      serviceType: inspectionResult.serviceType,
+      hasResults: !!inspectionResult.results
+    });
+
+    const maxRetries = 3;
+    let retryCount = 0;
+    
+    const attemptBroadcast = async () => {
+      try {
+        console.log(`🔍 [InspectionService] Attempt ${retryCount + 1} for ${inspectionId} (broadcast: ${broadcastId})`);
+        
+        // DB에서 실제로 저장된 데이터 확인
+        if (saveSuccessful) {
+          console.log(`🔍 [InspectionService] Verifying DB save for ${inspectionId}`);
+          
+          const historyService = require('./historyService');
+          const verificationResult = await historyService.getLatestInspectionResults(
+            inspectionResult.customerId,
+            inspectionResult.serviceType
+          );
+          
+          console.log(`🔍 [InspectionService] DB verification result for ${inspectionId}:`, {
+            success: verificationResult.success,
+            hasServices: !!verificationResult.data?.services,
+            serviceCount: Object.keys(verificationResult.data?.services || {}).length
+          });
+          
+          if (verificationResult.success && verificationResult.data.services) {
+            console.log(`✅ [InspectionService] DB verification successful for ${inspectionId}, sending completion`);
+            
+            // 저장된 데이터가 확인되면 완료 알림 전송
+            const completionData = {
+              status: 'COMPLETED',
+              results: inspectionResult.results,
+              duration: inspectionResult.duration,
+              completedAt: Date.now(),
+              totalSteps: inspectionConfig ? inspectionConfig.totalSteps : 5,
+              resourcesProcessed: inspectionResult.results?.summary?.totalResources || 0,
+              itemId: inspectionConfig?.targetItemId,
+              itemName: inspectionConfig?.itemName,
+              saveSuccessful: true,
+              // 실제 저장된 데이터도 포함
+              savedData: verificationResult.data,
+              // 데이터 변경 감지를 위한 타임스탬프
+              dataTimestamp: Date.now(),
+              inspectionId: inspectionId // 검사 ID 포함
+            };
+            
+            // 즉시 알림 전송 (배치 ID로 브로드캐스트)
+            console.log(`📡 [InspectionService] Broadcasting completion for ${inspectionId} to ${broadcastId}`);
+            webSocketService.broadcastInspectionComplete(broadcastId, completionData);
+            
+            // 배치 ID로만 브로드캐스트 - 추가 알림 없음
+            
+            // 500ms 후 데이터 새로고침 명령 전송
+            setTimeout(() => {
+              console.log(`🔄 [InspectionService] Broadcasting data refresh command for ${inspectionId} to ${broadcastId}`);
+              webSocketService.broadcastStatusChange(broadcastId, {
+                type: 'DATA_REFRESH_REQUIRED',
+                message: 'Please refresh inspection data',
+                timestamp: Date.now(),
+                forceRefresh: true
+              });
+            }, 500);
+            
+            // 1초 후 다시 한 번 알림 전송 (확실한 전달을 위해)
+            setTimeout(() => {
+              console.log(`📡 [InspectionService] Broadcasting retransmission for ${inspectionId} to ${broadcastId}`);
+              webSocketService.broadcastInspectionComplete(broadcastId, {
+                ...completionData,
+                retransmission: true
+              });
+            }, 1000);
+            return true;
+          } else {
+            console.log(`❌ [InspectionService] DB verification failed for ${inspectionId}`);
+          }
+        } else {
+          console.log(`⚠️ [InspectionService] Save was not successful for ${inspectionId}`);
+        }
+        
+        // 저장 실패하거나 검증 실패 시 기본 알림
+        console.log(`📡 [InspectionService] Broadcasting basic completion for ${inspectionId} to ${broadcastId}`);
+        webSocketService.broadcastInspectionComplete(broadcastId, {
+          status: 'COMPLETED',
+          results: inspectionResult.results,
+          duration: inspectionResult.duration,
+          completedAt: Date.now(),
+          totalSteps: inspectionConfig ? inspectionConfig.totalSteps : 5,
+          resourcesProcessed: inspectionResult.results?.summary?.totalResources || 0,
+          itemId: inspectionConfig?.targetItemId,
+          itemName: inspectionConfig?.itemName,
+          saveSuccessful: saveSuccessful
+        });
+        return true;
+        
+      } catch (error) {
+        console.error(`❌ [InspectionService] Failed to verify DB save for ${inspectionId}, retrying...`, {
+          retryCount,
+          error: error.message,
+          stack: error.stack
+        });
+        return false;
+      }
+    };
+    
+    // 재시도 로직
+    while (retryCount < maxRetries) {
+      if (await attemptBroadcast()) {
+        console.log(`✅ [InspectionService] Completion broadcast successful for ${inspectionId}`);
+        return;
+      }
+      retryCount++;
+      console.log(`🔄 [InspectionService] Retrying completion broadcast for ${inspectionId} (${retryCount}/${maxRetries})`);
+      await new Promise(resolve => setTimeout(resolve, 1000 * retryCount)); // 지수 백오프
+    }
+    
+    // 최종 실패 시 기본 알림
+    console.error(`❌ [InspectionService] Final failure for completion broadcast ${inspectionId} to ${broadcastId}`);
+    webSocketService.broadcastInspectionComplete(broadcastId, {
+      status: 'COMPLETED',
+      results: inspectionResult.results,
+      duration: inspectionResult.duration,
+      completedAt: Date.now(),
+      saveSuccessful: false,
+      error: 'Failed to verify data save'
+    });
   }
 
   /**

@@ -39,10 +39,10 @@ class TransactionService {
    */
   async saveInspectionResultsTransaction(inspectionData, itemResults = []) {
     try {
-      this.logger.info('Starting transaction for inspection results', {
-        inspectionId: inspectionData.inspectionId,
+      console.log(`💾 [TransactionService] Starting transaction for ${inspectionData.inspectionId}`, {
         itemCount: itemResults.length,
         customerId: inspectionData.customerId,
+        serviceType: inspectionData.serviceType,
         hasResults: !!inspectionData.results
       });
       
@@ -88,14 +88,23 @@ class TransactionService {
         });
 
         // 2. LATEST 레코드 (덮어쓰기)
+        const latestItem = {
+          ...baseItem,
+          itemKey: `${itemResult.serviceType}#${itemResult.itemId}#LATEST`,
+          recordType: 'LATEST'
+        };
+        
+        console.log(`💾 [TransactionService] Creating LATEST record:`, {
+          itemKey: latestItem.itemKey,
+          lastInspectionId: latestItem.lastInspectionId,
+          lastInspectionTime: latestItem.lastInspectionTime,
+          status: latestItem.status
+        });
+        
         transactItems.push({
           Put: {
             TableName: this.itemsTableName,
-            Item: {
-              ...baseItem,
-              itemKey: `${itemResult.serviceType}#${itemResult.itemId}#LATEST`,
-              recordType: 'LATEST'
-            }
+            Item: latestItem
           }
         });
       });
