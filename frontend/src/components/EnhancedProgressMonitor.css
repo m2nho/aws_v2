@@ -521,4 +521,49 @@
     animation: none;
     transition: none;
   }
+}/* 간소화된
+ 진행 정보 */
+.progress-summary {
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 16px;
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.summary-item:last-child {
+  border-bottom: none;
+}
+
+.summary-label {
+  font-size: 14px;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.summary-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #495057;
+}
+
+.summary-value.connection-connected {
+  color: #28a745;
+}
+
+.summary-value.connection-disconnected {
+  color: #dc3545;
+}
+
+.step-counter {
+  font-size: 12px;
+  color: #6c757d;
+  font-weight: 500;
 }

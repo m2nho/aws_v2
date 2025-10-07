@@ -1,0 +1,152 @@
+/* Bottom Progress Indicator Styles */
+.bottom-progress-indicator {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 1000;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  border: 1px solid #3b82f6;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  transition: all 0.3s ease;
+  min-width: 280px;
+  max-width: 360px;
+  
+  /* 쑉 내려오는 애니메이션 */
+  animation: slideInFromBottom 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+@keyframes slideInFromBottom {
+  0% {
+    transform: translateY(100px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.bottom-progress-indicator.collapsed {
+  width: 280px;
+}
+
+/* 메인 표시기 */
+.progress-main {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-radius: 12px;
+}
+
+.progress-icon {
+  font-size: 16px;
+  margin-right: 12px;
+}
+
+.progress-icon.spinning {
+  animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.progress-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.progress-text-main {
+  font-size: 13px;
+  font-weight: 500;
+  color: #495057;
+}
+
+.progress-bar-mini {
+  height: 4px;
+  background-color: #e9ecef;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-fill-mini {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #2563eb);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.progress-percentage {
+  font-size: 14px;
+  font-weight: 600;
+  color: #3b82f6;
+  margin-right: 8px;
+  min-width: 32px;
+  text-align: right;
+}
+
+.progress-count {
+  background-color: #dc3545;
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-right: 8px;
+  min-width: 16px;
+  text-align: center;
+}
+
+/* 확장 기능 제거됨 - 간단한 표시기만 유지 */
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .bottom-progress-indicator {
+    bottom: 10px;
+    right: 10px;
+    min-width: 260px;
+    max-width: 300px;
+  }
+  
+  .bottom-progress-indicator.collapsed {
+    width: 260px;
+  }
+}
+
+/* 다크 모드 지원 */
+@media (prefers-color-scheme: dark) {
+  .bottom-progress-indicator {
+    background: #2d3748;
+    border-color: #4a5568;
+    color: #e2e8f0;
+  }
+  
+
+  
+  .progress-bar-mini,
+  .progress-bar-detail {
+    background-color: #4a5568;
+  }
+  
+  .progress-text-main,
+  .progress-percentage-detail,
+  .inspection-service {
+    color: #e2e8f0;
+  }
+  
+  .inspection-step,
+  .inspection-time {
+    color: #a0aec0;
+  }
+  
+  .inspection-items {
+    color: #718096;
+  }
+  
+
+}

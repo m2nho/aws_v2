@@ -120,12 +120,7 @@ class InspectionService {
         this.activeInspections.set(job.inspectionId, inspectionStatus);
         inspectionStatuses.set(job.inspectionId, inspectionStatus);
         
-        console.log(`📋 [InspectionService] Initialized inspection job:`, {
-          inspectionId: job.inspectionId,
-          itemId: job.itemId,
-          itemName: job.itemName,
-          batchId
-        });
+
         
         // DynamoDB에 개별 검사 시작 상태 저장
         await this.saveInspectionStart(customerId, job.inspectionId, serviceType, assumeRoleArn, {
@@ -143,9 +138,6 @@ class InspectionService {
         
         // WebSocket 연결 상태 확인 및 초기 상태 브로드캐스트
         const wsStats = webSocketService.getConnectionStats();
-        
-        // 검사 시작 즉시 WebSocket으로 상태 브로드캐스트 (배치 ID 사용)
-        console.log(`🚀 [InspectionService] Starting inspection for ${job.itemName} (${job.inspectionId}) in batch ${batchId}`);
         
         // 첫 번째 검사 시작 시에만 초기 진행률 전송
         if (inspectionJobs.indexOf(job) === 0) {
@@ -181,21 +173,10 @@ class InspectionService {
           inspectionId: job.inspectionId // 개별 검사 ID도 포함
         });
         
-        // 구독자 이동을 여러 번 시도 (프론트엔드 구독 타이밍 고려)
-        const attemptSubscriberMove = (attempt = 1) => {
-          console.log(`🔄 [InspectionService] Attempt ${attempt}: Moving subscribers from ${job.inspectionId} to batch ${batchId}`);
-          const moved = webSocketService.moveSubscribersToBatch(job.inspectionId, batchId);
-          
-          // 이동에 실패했고 시도 횟수가 5회 미만이면 재시도
-          if (!moved && attempt < 5) {
-            setTimeout(() => attemptSubscriberMove(attempt + 1), 200 * attempt);
-          }
-        };
-        
-        // 즉시 시도 후 100ms, 500ms, 1000ms 후에도 재시도
-        setTimeout(() => attemptSubscriberMove(1), 50);
-        setTimeout(() => attemptSubscriberMove(2), 100);
-        setTimeout(() => attemptSubscriberMove(3), 500);
+        // 구독자 이동 (프론트엔드 구독 타이밍 고려)
+        setTimeout(() => {
+          webSocketService.moveSubscribersToBatch(job.inspectionId, batchId);
+        }, 100);
         
         return this.executeItemInspectionAsync(
           customerId,
@@ -225,11 +206,9 @@ class InspectionService {
         });
       });
 
-      // 1초 후 강제 구독자 이동 시도 (모든 개별 검사 ID → 배치 ID)
+      // 강제 구독자 이동 시도 (모든 개별 검사 ID → 배치 ID)
       setTimeout(() => {
-        console.log(`🚨 [InspectionService] Attempting force move to batch ${batchId}`);
-        const moved = webSocketService.forceMoveToBatch(batchId, inspectionJobs.map(job => job.inspectionId));
-        console.log(`🚨 [InspectionService] Force move result: ${moved} subscribers moved`);
+        webSocketService.forceMoveToBatch(batchId, inspectionJobs.map(job => job.inspectionId));
       }, 1000);
 
       // 모든 검사 작업을 병렬로 실행하되 응답은 즉시 반환
@@ -245,15 +224,12 @@ class InspectionService {
           webSocketService.cleanupBatchSubscribers(batchId, inspectionJobs.map(job => job.inspectionId));
         }, 5000); // 5초 후 정리
       }).catch(error => {
-        console.error(`❌ [InspectionService] Batch ${batchId} failed:`, error);
-        
         // 배치 실패 시에도 완료 알림 전송 (실패 상태로)
         this.broadcastBatchCompletion(batchId, inspectionJobs, error);
       }).finally(() => {
         // 배치 완료 후 배치 정보 정리
         setTimeout(() => {
           this.activeBatches.delete(batchId);
-          console.log(`🧹 [InspectionService] Cleaned up batch info for ${batchId}`);
         }, 10000); // 10초 후 정리
       });
 
@@ -305,7 +281,6 @@ class InspectionService {
     const batchInfo = this.activeBatches.get(batchId);
     
     if (!batchInfo) {
-      console.log(`⚠️ [InspectionService] Batch not found: ${batchId}`);
       return {
         percentage: 0,
         completedItems: 0,
@@ -332,13 +307,7 @@ class InspectionService {
       estimatedTimeRemaining = Math.round(averageTimePerItem * remainingItems / 1000); // 초 단위
     }
     
-    console.log(`📊 [InspectionService] Batch progress for ${batchId}:`, {
-      percentage,
-      completedItems,
-      totalItems,
-      estimatedTimeRemaining,
-      batchExists: !!batchInfo
-    });
+
     
     return {
       percentage,
@@ -355,10 +324,6 @@ class InspectionService {
    * @param {Error} error - 오류 (있는 경우)
    */
   broadcastBatchCompletion(batchId, inspectionJobs, error = null) {
-    console.log(`🎉 [InspectionService] Broadcasting batch completion for ${batchId}`, {
-      totalJobs: inspectionJobs.length,
-      hasError: !!error
-    });
 
     const completionData = {
       status: error ? 'FAILED' : 'COMPLETED',
@@ -526,7 +491,6 @@ class InspectionService {
 
       // 개별 검사 완료 시에는 완료 알림을 보내지 않고 진행 상황만 업데이트
       const batchId = inspectionConfig.batchId || inspectionId;
-      console.log(`📊 [InspectionService] Individual inspection ${inspectionId} completed, updating batch progress for ${batchId}`);
       
       // 배치 진행률 계산
       const batchProgress = this.calculateBatchProgress(batchId);

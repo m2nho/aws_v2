@@ -1,0 +1,140 @@
+/* Completion Notifications Styles */
+.completion-notifications {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.completion-notification {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  border: 1px solid #10b981;
+  min-width: 280px;
+  max-width: 320px;
+  animation: slideInRight 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.notification-header {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px 8px 16px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.notification-icon {
+  font-size: 18px;
+  margin-right: 8px;
+}
+
+.notification-title {
+  flex: 1;
+  font-weight: 600;
+  color: #10b981;
+  font-size: 14px;
+}
+
+.notification-close {
+  background: none;
+  border: none;
+  color: #6c757d;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: background-color 0.2s ease;
+}
+
+.notification-close:hover {
+  background-color: #f8f9fa;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.notification-content {
+  padding: 8px 16px 12px 16px;
+}
+
+.notification-service {
+  font-weight: 500;
+  color: #495057;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.notification-duration {
+  font-size: 12px;
+  color: #6c757d;
+  margin-bottom: 4px;
+}
+
+.notification-summary {
+  font-size: 12px;
+  color: #6c757d;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .completion-notifications {
+    top: 10px;
+    right: 10px;
+  }
+  
+  .completion-notification {
+    min-width: 260px;
+    max-width: 280px;
+  }
+}
+
+/* 다크 모드 지원 */
+@media (prefers-color-scheme: dark) {
+  .completion-notification {
+    background: #2d3748;
+    border-color: #10b981;
+    color: #e2e8f0;
+  }
+  
+  .notification-header {
+    border-bottom-color: #4a5568;
+  }
+  
+  .notification-title {
+    color: #10b981;
+  }
+  
+  .notification-service {
+    color: #e2e8f0;
+  }
+  
+  .notification-duration,
+  .notification-summary {
+    color: #a0aec0;
+  }
+  
+  .notification-close {
+    color: #a0aec0;
+  }
+  
+  .notification-close:hover {
+    background-color: #4a5568;
+  }
+}

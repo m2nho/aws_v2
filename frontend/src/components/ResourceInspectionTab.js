@@ -5,6 +5,8 @@ import InspectionResultsView from './InspectionResultsView';
 import EnhancedProgressMonitor from './EnhancedProgressMonitor';
 import webSocketService from '../services/websocketService';
 import webSocketDebugger from '../utils/websocketDebugger';
+import { useInspectionStarter } from '../hooks/useInspectionStarter';
+import { useInspection } from '../context/InspectionContext';
 import './ResourceInspectionTab.css';
 
 // 뷰 상태 정의
@@ -20,6 +22,10 @@ const VIEW_STATES = {
  * Requirements: 1.1, 1.2, 6.1, 6.2
  */
 const ResourceInspectionTab = () => {
+  // 훅 사용
+  const { startInspection } = useInspectionStarter();
+  const { moveToBackground } = useInspection();
+  
   // 주요 상태 관리
   const [currentView, setCurrentView] = useState(VIEW_STATES.SELECTION);
   const [currentInspection, setCurrentInspection] = useState(null);
@@ -39,54 +45,35 @@ const ResourceInspectionTab = () => {
       setError(null);
       setCurrentView(VIEW_STATES.INSPECTION);
 
-      // 검사 시작 시에만 WebSocket 연결
-      
       // WebSocket 디버깅 시작 (개발 환경에서만)
       if (process.env.NODE_ENV === 'development') {
         webSocketDebugger.startDebugging();
       }
 
-      // 기존 연결이 있다면 정리
-      if (webSocketService.getConnectionStatus().isConnected) {
-        webSocketService.disconnect();
-      }
-
-      // 검사용 WebSocket 연결 시작
-      const token = webSocketService.getStoredToken();
-      if (token) {
-        try {
-          await webSocketService.connect(token);
-        } catch (wsError) {
-          // 연결 실패해도 검사는 계속 진행 (폴링으로 대체 가능)
-        }
-      }
-
-      // inspectionService.startInspection은 하나의 객체를 받음
-      const result = await inspectionService.startInspection({
-        serviceType: inspectionRequest.serviceType,
-        assumeRoleArn: inspectionRequest.assumeRoleArn,
-        inspectionConfig: inspectionRequest.inspectionConfig || {}
-      });
+      // useInspectionStarter 훅을 사용하여 검사 시작 (InspectionContext와 자동 연동)
+      const result = await startInspection(
+        inspectionRequest.serviceType,
+        inspectionRequest.inspectionConfig?.selectedItems || [], // 실제 선택된 항목들
+        inspectionRequest.assumeRoleArn
+      );
 
       if (result.success) {
-        // 배치 검사의 경우 첫 번째 검사 ID 사용
-        const inspectionId = result.data.inspectionJobs?.[0]?.inspectionId || result.data.inspectionId;
-        
         // WebSocket 구독 테스트 (개발 환경에서만)
         if (process.env.NODE_ENV === 'development') {
-          webSocketDebugger.testSubscription(inspectionId);
+          webSocketDebugger.testSubscription(result.subscriptionId);
         }
         
-        setCurrentInspection({
-          inspectionId: inspectionId,
-          serviceType: inspectionRequest.serviceType,
-          status: 'STARTED',
-          onInspectionComplete: inspectionRequest.onInspectionComplete,
-          batchData: result.data // 배치 정보 저장
-        });
+        // 검사를 바로 백그라운드로 이동
+        if (result.batchId) {
+          moveToBackground(result.batchId);
+        }
+        
+        // 바로 선택 화면으로 돌아가기 (우측 하단에서 진행률 확인 가능)
+        setCurrentView(VIEW_STATES.SELECTION);
+        setCurrentInspection(null);
         
       } else {
-        throw new Error(result.error?.message || '검사 시작에 실패했습니다.');
+        throw new Error(result.error || '검사 시작에 실패했습니다.');
       }
     } catch (error) {
       setError(error.message);
@@ -210,6 +197,20 @@ const ResourceInspectionTab = () => {
           />
           
           <div className="progress-actions">
+            <button 
+              className="background-button"
+              onClick={() => {
+                // 검사를 백그라운드로 이동
+                if (currentInspection?.batchId) {
+                  moveToBackground(currentInspection.batchId);
+                }
+                // 선택 화면으로 돌아가기
+                setCurrentView(VIEW_STATES.SELECTION);
+                setCurrentInspection(null);
+              }}
+            >
+              백그라운드에서 계속
+            </button>
             <button 
               className="cancel-button"
               onClick={handleBackToSelection}

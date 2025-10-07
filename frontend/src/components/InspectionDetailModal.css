@@ -1,0 +1,210 @@
+/* Inspection Detail Modal Styles */
+
+.inspection-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.inspection-modal {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  max-width: 800px;
+  width: 90%;
+  max-height: 90vh;
+  overflow: hidden;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.modal-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid #e1e5e9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+}
+
+.modal-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.modal-close-button {
+  background: none;
+  border: none;
+  color: #6c757d;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.modal-close-button:hover {
+  background-color: #f8f9fa;
+  color: #495057;
+}
+
+.modal-content {
+  padding: 24px;
+  overflow-y: auto;
+  max-height: calc(90vh - 160px); /* 헤더와 액션 버튼 공간 제외 */
+}
+
+.modal-actions {
+  padding: 16px 24px;
+  border-top: 1px solid #e1e5e9;
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  background-color: #f8f9fa;
+}
+
+.action-button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.action-button.primary {
+  background-color: #007bff;
+  color: white;
+}
+
+.action-button.primary:hover {
+  background-color: #0056b3;
+  transform: translateY(-1px);
+}
+
+.action-button.secondary {
+  background-color: #6c757d;
+  color: white;
+}
+
+.action-button.secondary:hover {
+  background-color: #545b62;
+  transform: translateY(-1px);
+}
+
+.action-button:active {
+  transform: translateY(0);
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .inspection-modal {
+    width: 95%;
+    max-height: 95vh;
+  }
+  
+  .modal-header {
+    padding: 16px 20px;
+  }
+  
+  .modal-title {
+    font-size: 16px;
+  }
+  
+  .modal-content {
+    padding: 20px;
+    max-height: calc(95vh - 140px);
+  }
+  
+  .modal-actions {
+    padding: 12px 20px;
+    flex-direction: column;
+  }
+  
+  .action-button {
+    width: 100%;
+    padding: 12px 16px;
+  }
+}
+
+/* 다크 모드 지원 */
+@media (prefers-color-scheme: dark) {
+  .inspection-modal {
+    background: #2c3e50;
+    color: white;
+  }
+  
+  .modal-header {
+    background: linear-gradient(135deg, #34495e, #2c3e50);
+    border-bottom-color: #34495e;
+  }
+  
+  .modal-title {
+    color: white;
+  }
+  
+  .modal-close-button {
+    color: #bdc3c7;
+  }
+  
+  .modal-close-button:hover {
+    background-color: #34495e;
+    color: #ecf0f1;
+  }
+  
+  .modal-actions {
+    background-color: #34495e;
+    border-top-color: #34495e;
+  }
+}
+
+/* 접근성 개선 */
+.inspection-modal:focus {
+  outline: 2px solid #007bff;
+  outline-offset: 2px;
+}
+
+/* 스크롤바 스타일링 */
+.modal-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.modal-content::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}

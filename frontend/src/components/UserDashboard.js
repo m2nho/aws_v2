@@ -207,6 +207,8 @@ const UserDashboard = () => {
           </section>
         ) : null}
 
+
+
         {/* 추가 안내 메시지 */}
         <section className="dashboard-card info-card" aria-labelledby="info-title">
           <h2 id="info-title" className="section-title">안내사항</h2>

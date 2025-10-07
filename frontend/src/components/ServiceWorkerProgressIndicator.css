@@ -1,0 +1,318 @@
+/**
+ * Service Worker Progress Indicator Styles
+ * Service Worker 기반 진행률 표시기 스타일
+ */
+
+.sw-progress-indicator {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  z-index: 10000;
+  min-width: 320px;
+  max-width: 400px;
+  color: white;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: slideInUp 0.4s ease-out;
+}
+
+.sw-progress-indicator.expanded {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.sw-progress-indicator.collapsed {
+  max-height: 120px;
+}
+
+/* 슬라이드 인 애니메이션 */
+@keyframes slideInUp {
+  from {
+    transform: translateY(100px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* 연결 상태 표시 */
+.connection-status {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  font-size: 11px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.connection-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 6px;
+  transition: background-color 0.3s ease;
+}
+
+.connection-status.connected .connection-dot {
+  background-color: #4ade80;
+  box-shadow: 0 0 6px #4ade80;
+}
+
+.connection-status.disconnected .connection-dot {
+  background-color: #f87171;
+  box-shadow: 0 0 6px #f87171;
+}
+
+.connection-text {
+  opacity: 0.8;
+}
+
+/* 메인 진행률 표시 */
+.sw-progress-main {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.sw-progress-main:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.progress-icon {
+  font-size: 24px;
+  margin-right: 12px;
+  transition: transform 0.3s ease;
+}
+
+.progress-icon.spinning {
+  animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.progress-info {
+  flex: 1;
+  margin-right: 12px;
+}
+
+.progress-text {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4ade80, #22c55e);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+  position: relative;
+}
+
+.progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.progress-percentage {
+  font-size: 16px;
+  font-weight: 700;
+  margin-right: 8px;
+  min-width: 45px;
+  text-align: right;
+}
+
+.progress-count {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-right: 8px;
+}
+
+.expand-arrow {
+  font-size: 12px;
+  opacity: 0.7;
+  transition: transform 0.3s ease;
+}
+
+.sw-progress-indicator.expanded .expand-arrow {
+  transform: rotate(180deg);
+}
+
+/* 상세 정보 */
+.sw-progress-details {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.details-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.details-header h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.details-count {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.inspection-detail-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.inspection-detail-item:last-child {
+  border-bottom: none;
+}
+
+.inspection-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.inspection-icon {
+  font-size: 16px;
+  margin-right: 8px;
+}
+
+.inspection-service {
+  font-weight: 600;
+  font-size: 13px;
+  flex: 1;
+}
+
+.inspection-time {
+  font-size: 11px;
+  opacity: 0.7;
+  font-family: 'Courier New', monospace;
+}
+
+.inspection-progress {
+  display: flex;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.progress-bar-detail {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  margin-right: 8px;
+  overflow: hidden;
+}
+
+.progress-fill-detail {
+  height: 100%;
+  background: linear-gradient(90deg, #4ade80, #22c55e);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.progress-percentage-detail {
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 35px;
+  text-align: right;
+}
+
+.inspection-step {
+  font-size: 11px;
+  opacity: 0.8;
+  margin-bottom: 4px;
+  font-style: italic;
+}
+
+.inspection-items {
+  font-size: 11px;
+  opacity: 0.7;
+  font-family: 'Courier New', monospace;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 480px) {
+  .sw-progress-indicator {
+    right: 10px;
+    bottom: 10px;
+    min-width: 280px;
+    max-width: calc(100vw - 20px);
+  }
+}
+
+/* 다크 모드 지원 */
+@media (prefers-color-scheme: dark) {
+  .sw-progress-indicator {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* 접근성 */
+.sw-progress-indicator:focus-within {
+  outline: 2px solid #4ade80;
+  outline-offset: 2px;
+}
+
+/* 스크롤바 스타일 */
+.sw-progress-indicator::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sw-progress-indicator::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}
+
+.sw-progress-indicator::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+}
+
+.sw-progress-indicator::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}

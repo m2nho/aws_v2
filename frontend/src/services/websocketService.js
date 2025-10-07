@@ -20,13 +20,18 @@ class WebSocketService {
     this.reconnectTimer = null;
     this.heartbeatTimer = null;
     this.token = null;
+    this.inspectionContext = null; // InspectionContext 참조
+    this.lastProgressData = null; // 중복 메시지 필터링용
+    this.messageBuffer = []; // 메시지 배치 처리용
+    this.bufferTimer = null;
     
     // Configuration
     this.config = {
       reconnectDelay: 1000, // Start with 1 second
       maxReconnectDelay: 30000, // Max 30 seconds
       heartbeatInterval: 30000, // 30 seconds
-      connectionTimeout: 10000 // 10 seconds
+      connectionTimeout: 10000, // 10 seconds
+      bufferDelay: 50 // 메시지 배치 처리 지연 시간 (ms)
     };
     
     this.logger = this.createLogger();
@@ -198,15 +203,8 @@ class WebSocketService {
    * @returns {Function} Unsubscribe function
    */
   subscribeToInspection(inspectionId, callback) {
-    console.log(`📋 [Frontend WebSocket] Subscribing to inspection:`, {
-      inspectionId,
-      isConnected: this.connectionStatus.isConnected,
-      existingSubscriptions: Array.from(this.subscriptions.keys())
-    });
-    
     // 이미 구독된 검사인지 확인
     if (this.subscriptions.has(inspectionId) && this.subscriptions.get(inspectionId).has(callback)) {
-      console.log(`⚠️ [Frontend WebSocket] Already subscribed to ${inspectionId}`);
       return () => {
         this.unsubscribeFromInspection(inspectionId, callback);
       };
@@ -226,11 +224,7 @@ class WebSocketService {
     
     this.sendMessage(subscriptionMessage);
     
-    console.log(`✅ [Frontend WebSocket] Subscribed to inspection:`, {
-      inspectionId,
-      totalSubscriptions: this.subscriptions.size,
-      callbacksForThisInspection: this.subscriptions.get(inspectionId).size
-    });
+    this.logger.info('Subscribed to inspection', { inspectionId });
     
     // Return unsubscribe function
     return () => {
@@ -293,16 +287,7 @@ class WebSocketService {
   handleMessage(event) {
     try {
       const message = JSON.parse(event.data);
-      
-      // 중요한 메시지들은 항상 로깅
-      if (['progress_update', 'status_change', 'inspection_complete', 'subscription_moved'].includes(message.type)) {
-        console.log(`📨 [Frontend WebSocket] Message received:`, {
-          type: message.type,
-          inspectionId: message.data?.inspectionId,
-          progress: message.data?.progress?.percentage,
-          status: message.data?.status
-        });
-      }
+      this.logger.debug('Message received', { message });
       
       const { type, data } = message;
       
@@ -316,22 +301,14 @@ class WebSocketService {
           break;
           
         case 'subscription_moved':
-          console.log(`🔄 [Frontend WebSocket] Subscription moved:`, {
-            from: data.fromInspectionId,
-            to: data.toBatchId,
-            message: data.message
-          });
           this.handleSubscriptionMoved(data);
           break;
           
         case 'unsubscription_confirmed':
-          console.log(`✅ [Frontend WebSocket] Unsubscription confirmed:`, {
-            inspectionId: data.inspectionId
-          });
+          this.logger.info('Unsubscription confirmed', { inspectionId: data.inspectionId });
           break;
           
         case 'global_notification':
-          console.log(`📢 [Frontend WebSocket] Global notification:`, data);
           this.handleGlobalNotification(data);
           break;
           
@@ -373,19 +350,28 @@ class WebSocketService {
    */
   handleProgressUpdate(data) {
     const { inspectionId } = data;
-    const callbacks = this.subscriptions.get(inspectionId);
     
-    console.log(`📊 [Frontend WebSocket] Progress update received:`, {
+    // 중복 메시지 필터링 (같은 진행률의 연속 메시지 무시)
+    if (this.lastProgressData && 
+        this.lastProgressData.inspectionId === inspectionId &&
+        this.lastProgressData.percentage === (data.progress?.percentage ?? data.percentage)) {
+      return; // 중복 메시지 무시
+    }
+    
+    this.lastProgressData = {
       inspectionId,
-      progress: data.progress?.percentage,
-      completedItems: data.progress?.completedItems,
-      totalItems: data.progress?.totalItems,
-      currentStep: data.progress?.currentStep,
-      hasCallbacks: !!callbacks,
-      callbackCount: callbacks?.size || 0
-    });
+      percentage: data.progress?.percentage ?? data.percentage,
+      timestamp: Date.now()
+    };
     
-    if (callbacks) {
+    // InspectionContext 업데이트 (배치 처리)
+    if (this.inspectionContext) {
+      this.inspectionContext.updateInspectionProgress(inspectionId, data);
+    }
+    
+    // 콜백은 필요한 경우에만 호출
+    const callbacks = this.subscriptions.get(inspectionId);
+    if (callbacks && callbacks.size > 0) {
       callbacks.forEach(callback => {
         try {
           callback({
@@ -399,11 +385,6 @@ class WebSocketService {
           this.logger.error('Error in progress callback', { error, inspectionId });
         }
       });
-    } else {
-      console.warn(`⚠️ [Frontend WebSocket] No callbacks for progress update:`, {
-        inspectionId,
-        availableSubscriptions: Array.from(this.subscriptions.keys())
-      });
     }
   }
 
@@ -413,17 +394,15 @@ class WebSocketService {
    */
   handleStatusChange(data) {
     const { inspectionId } = data;
+    
+    // 상태 변경은 항상 처리 (진행률과 달리 중요한 변경사항)
+    if (this.inspectionContext) {
+      this.inspectionContext.updateInspectionProgress(inspectionId, data);
+    }
+    
+    // 콜백 호출
     const callbacks = this.subscriptions.get(inspectionId);
-    
-    console.log(`📡 [Frontend WebSocket] Status change received:`, {
-      inspectionId,
-      status: data.status,
-      message: data.message,
-      hasCallbacks: !!callbacks,
-      callbackCount: callbacks?.size || 0
-    });
-    
-    if (callbacks) {
+    if (callbacks && callbacks.size > 0) {
       callbacks.forEach(callback => {
         try {
           callback({
@@ -436,11 +415,6 @@ class WebSocketService {
         } catch (error) {
           this.logger.error('Error in status change callback', { error, inspectionId });
         }
-      });
-    } else {
-      console.warn(`⚠️ [Frontend WebSocket] No callbacks for status change:`, {
-        inspectionId,
-        availableSubscriptions: Array.from(this.subscriptions.keys())
       });
     }
   }
@@ -457,12 +431,6 @@ class WebSocketService {
       const callbacks = this.subscriptions.get(fromInspectionId);
       this.subscriptions.set(toBatchId, callbacks);
       this.subscriptions.delete(fromInspectionId);
-      
-      console.log(`🔄 [Frontend WebSocket] Moved subscription callbacks:`, {
-        from: fromInspectionId,
-        to: toBatchId,
-        callbackCount: callbacks.size
-      });
       
       // 콜백들에게 구독 이동 알림
       callbacks.forEach(callback => {
@@ -486,8 +454,6 @@ class WebSocketService {
    * @param {Object} data - Global notification data
    */
   handleGlobalNotification(data) {
-    console.log(`📢 [Frontend WebSocket] Global notification received:`, data);
-    
     // 모든 활성 구독자에게 글로벌 알림 전달
     this.subscriptions.forEach((callbacks, inspectionId) => {
       callbacks.forEach(callback => {
@@ -513,6 +479,12 @@ class WebSocketService {
    */
   handleInspectionComplete(data) {
     const { inspectionId } = data;
+    
+    // InspectionContext에서 검사 완료 처리
+    if (this.inspectionContext) {
+      this.inspectionContext.completeInspection(inspectionId, data);
+    }
+    
     const callbacks = this.subscriptions.get(inspectionId);
     
     if (callbacks) {
@@ -818,6 +790,14 @@ class WebSocketService {
   }
 
   /**
+   * Set InspectionContext reference
+   * @param {Object} context - InspectionContext instance
+   */
+  setInspectionContext(context) {
+    this.inspectionContext = context;
+  }
+
+  /**
    * Create logger instance
    * @returns {Object} Logger object
    */
@@ -829,13 +809,22 @@ class WebSocketService {
         // DEBUG 로그는 완전히 비활성화
       },
       info: (message, meta = {}) => {
-        // 연결/해제 관련 중요한 정보만 출력
-        if (isDevelopment && (message.includes('Connecting') || message.includes('disconnection completed'))) {
+        // 중요한 연결 상태 변화만 로그
+        const importantMessages = [
+          'Connecting to WebSocket',
+          'WebSocket connected successfully',
+          'disconnection completed',
+          'Reconnection successful'
+        ];
+        
+        if (isDevelopment && importantMessages.some(msg => message.includes(msg))) {
           console.log(`[INFO] [WebSocketService] ${message}`, meta);
         }
       },
       warn: (message, meta = {}) => {
-        console.warn(`[WARN] [WebSocketService] ${message}`, meta);
+        if (isDevelopment) {
+          console.warn(`[WARN] [WebSocketService] ${message}`, meta);
+        }
       },
       error: (message, meta = {}) => {
         console.error(`[ERROR] [WebSocketService] ${message}`, meta);

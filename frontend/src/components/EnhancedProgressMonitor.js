@@ -15,9 +15,11 @@ const EnhancedProgressMonitor = ({
   onComplete,
   onError,
   onCancel,
+  onMoveToBackground,
   showDetailedMetrics = true,
   showConnectionStatus = true,
-  size = 'large'
+  size = 'large',
+  allowBackground = true
 }) => {
   const [showAdvancedView, setShowAdvancedView] = useState(false);
   const [performanceAlerts, setPerformanceAlerts] = useState([]);
@@ -80,6 +82,13 @@ const EnhancedProgressMonitor = ({
     stopMonitoring();
   };
 
+  // Handle move to background
+  const handleMoveToBackground = () => {
+    if (onMoveToBackground) {
+      onMoveToBackground();
+    }
+  };
+
   // Auto-dismiss alerts
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -91,24 +100,7 @@ const EnhancedProgressMonitor = ({
     return () => clearTimeout(timer);
   }, [performanceAlerts]);
 
-  // Monitor for performance issues
-  useEffect(() => {
-    if (progressData.velocity !== null && progressData.velocity < 0.5 && progressData.progress.percentage > 10) {
-      const alert = {
-        id: Date.now(),
-        type: 'slow_progress',
-        message: '진행 속도가 예상보다 느립니다. 네트워크 상태를 확인해주세요.',
-        timestamp: Date.now(),
-        severity: 'info'
-      };
-      
-      // Only add if not already present
-      setPerformanceAlerts(prev => {
-        const hasSlowAlert = prev.some(a => a.type === 'slow_progress' && Date.now() - a.timestamp < 10000);
-        return hasSlowAlert ? prev : [...prev.slice(-4), alert];
-      });
-    }
-  }, [progressData.velocity, progressData.progress.percentage]);
+
 
   return (
     <div className={`enhanced-progress-monitor ${size}`}>
@@ -124,6 +116,7 @@ const EnhancedProgressMonitor = ({
         estimatedTimeRemaining={progressData.estimatedTimeRemaining}
         startTime={progressData.startTime}
         onCancel={handleCancel}
+        onMoveToBackground={allowBackground ? handleMoveToBackground : undefined}
         showDetails={true}
         size={size}
       />
@@ -175,112 +168,42 @@ const EnhancedProgressMonitor = ({
         </div>
       )}
 
-      {/* Detailed Metrics */}
-      {showDetailedMetrics && (
-        <div className="detailed-metrics">
-          <div className="metrics-header">
-            <h4>상세 성능 지표</h4>
-            <button 
-              className="toggle-advanced-view"
-              onClick={() => setShowAdvancedView(!showAdvancedView)}
-            >
-              {showAdvancedView ? '간단히 보기' : '자세히 보기'}
-            </button>
-          </div>
-
-          <div className="metrics-grid">
-            <div className="metric-item">
-              <span className="metric-label">진행 속도</span>
-              <span className="metric-value">{metrics.progressRate}</span>
-            </div>
-            
-            <div className="metric-item">
-              <span className="metric-label">처리 속도</span>
-              <span className="metric-value">{metrics.processingRate}</span>
-            </div>
-            
-            <div className="metric-item">
-              <span className="metric-label">진행 추세</span>
-              <span className={`metric-value trend-${progressData.trend}`}>
-                {getTrendDisplayText(progressData.trend)}
+      {/* 간소화된 진행 정보 */}
+      {showDetailedMetrics && progressData.progress && (
+        <div className="progress-summary">
+          {(progressData.progress.totalItems > 0) && (
+            <div className="summary-item">
+              <span className="summary-label">진행 상황</span>
+              <span className="summary-value">
+                {progressData.progress.completedItems || 0} / {progressData.progress.totalItems} 항목 완료
               </span>
             </div>
-            
-            <div className="metric-item">
-              <span className="metric-label">연결 품질</span>
-              <span className={`metric-value quality-${metrics.connectionQuality.level}`}>
-                {metrics.connectionQuality.text}
-              </span>
-            </div>
-
-            {showAdvancedView && (
-              <>
-                <div className="metric-item">
-                  <span className="metric-label">처리 효율성</span>
-                  <span className="metric-value">{metrics.efficiency}</span>
-                </div>
-                
-                <div className="metric-item">
-                  <span className="metric-label">예측 정확도</span>
-                  <span className="metric-value">{metrics.estimatedAccuracy}</span>
-                </div>
-                
-                <div className="metric-item">
-                  <span className="metric-label">데이터 포인트</span>
-                  <span className="metric-value">{metrics.totalDataPoints}개</span>
-                </div>
-                
-                <div className="metric-item">
-                  <span className="metric-label">마지막 업데이트</span>
-                  <span className="metric-value">
-                    {metrics.timeSinceLastUpdate ? 
-                      `${Math.round(metrics.timeSinceLastUpdate / 1000)}초 전` : 
-                      '방금 전'
-                    }
+          )}
+          
+          {progressData.progress.currentStep && (
+            <div className="summary-item">
+              <span className="summary-label">현재 단계</span>
+              <span className="summary-value">
+                {progressData.progress.currentStep}
+                {progressData.progress.completedSteps !== undefined && progressData.progress.totalSteps > 0 && (
+                  <span className="step-counter">
+                    {' '}({progressData.progress.completedSteps + 1}/{progressData.progress.totalSteps} 단계)
                   </span>
-                </div>
-              </>
-            )}
+                )}
+              </span>
+            </div>
+          )}
+          
+          <div className="summary-item">
+            <span className="summary-label">연결 상태</span>
+            <span className={`summary-value connection-${connectionStatus.isConnected ? 'connected' : 'disconnected'}`}>
+              {connectionStatus.isConnected ? '정상' : '연결 끊김'}
+            </span>
           </div>
         </div>
       )}
 
-      {/* Advanced Diagnostics */}
-      {showAdvancedView && (
-        <div className="advanced-diagnostics">
-          <h4>진단 정보</h4>
-          <div className="diagnostic-grid">
-            <div className="diagnostic-item">
-              <span className="diagnostic-label">모니터링 상태</span>
-              <span className={`diagnostic-value ${isMonitoring ? 'active' : 'inactive'}`}>
-                {isMonitoring ? '활성' : '비활성'}
-              </span>
-            </div>
-            
-            <div className="diagnostic-item">
-              <span className="diagnostic-label">정체 감지</span>
-              <span className={`diagnostic-value ${progressData.isStagnant ? 'detected' : 'normal'}`}>
-                {progressData.isStagnant ? 
-                  `감지됨 (${progressData.stagnantCount}회)` : 
-                  '정상'
-                }
-              </span>
-            </div>
-            
-            <div className="diagnostic-item">
-              <span className="diagnostic-label">서비스 타입</span>
-              <span className="diagnostic-value">{serviceType}</span>
-            </div>
-            
-            <div className="diagnostic-item">
-              <span className="diagnostic-label">검사 ID</span>
-              <span className="diagnostic-value inspection-id">
-                {inspectionId?.substring(0, 8)}...
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* Error Display */}
       {progressError && (

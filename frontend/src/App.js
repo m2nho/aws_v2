@@ -1,8 +1,13 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context';
+import { InspectionProvider } from './context/InspectionContext';
 import { Navigation, ProtectedRoute, PublicRoute, UserList, ResourceInspectionTab } from './components';
 import InspectionHistory from './components/InspectionHistory';
 import WebSocketStatus from './components/WebSocketStatus';
+import SmartInspectionUI from './components/SmartInspectionUI';
+import GlobalProgressIndicator from './components/GlobalProgressIndicator';
+import BottomProgressIndicator from './components/BottomProgressIndicator';
+import ServiceWorkerProgressIndicator from './components/ServiceWorkerProgressIndicator';
 import { RegisterPage, LoginPage, UserDashboardPage } from './pages';
 import './App.css';
 
@@ -101,16 +106,28 @@ function AppContent() {
         
         {/* WebSocket 상태 표시 (개발 환경에서만) */}
         <WebSocketStatus />
+        
+        {/* 완료 알림 (우측 상단) */}
+        <GlobalProgressIndicator />
+        
+        {/* 진행률 표시기 (우측 하단) */}
+        <BottomProgressIndicator />
+        
+        {/* Service Worker 기반 진행률 표시기 */}
+        <ServiceWorkerProgressIndicator />
       </div>
     </Router>
   );
 }
 
-// Root App component with AuthProvider
+// Root App component with AuthProvider and InspectionProvider
 function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <InspectionProvider>
+        <AppContent />
+        <SmartInspectionUI />
+      </InspectionProvider>
     </AuthProvider>
   );
 }

@@ -12,6 +12,7 @@ const ProgressIndicator = ({
   estimatedTimeRemaining = null,
   startTime = null,
   onCancel = null,
+  onMoveToBackground = null,
   showDetails = true,
   size = 'medium' // 'small', 'medium', 'large'
 }) => {
@@ -139,16 +140,29 @@ const ProgressIndicator = ({
           </span>
         </div>
         
-        {onCancel && isActive && (
-          <button 
-            className="cancel-button"
-            onClick={onCancel}
-            aria-label="검사 취소"
-            title="검사 취소"
-          >
-            ✕
-          </button>
-        )}
+        <div className="progress-actions">
+          {onMoveToBackground && isActive && (
+            <button 
+              className="background-button"
+              onClick={onMoveToBackground}
+              aria-label="백그라운드로 이동"
+              title="백그라운드에서 계속 진행"
+            >
+              ⬇️
+            </button>
+          )}
+          
+          {onCancel && isActive && (
+            <button 
+              className="cancel-button"
+              onClick={onCancel}
+              aria-label="검사 취소"
+              title="검사 취소"
+            >
+              ✕
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Progress Bar */}

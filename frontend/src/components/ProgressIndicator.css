@@ -48,6 +48,33 @@
   font-size: 1em;
 }
 
+.progress-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.background-button {
+  background: none;
+  border: none;
+  color: #6c757d;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.background-button:hover {
+  background-color: #f8f9fa;
+  color: #495057;
+}
+
+.background-button:focus {
+  outline: 2px solid #007bff;
+  outline-offset: 2px;
+}
+
 .cancel-button {
   background: none;
   border: none;

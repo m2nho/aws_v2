@@ -1,0 +1,150 @@
+/* Minimal Progress Indicator Styles */
+
+.minimal-progress-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 9999;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  pointer-events: auto;
+}
+
+.minimal-progress-main {
+  background: white;
+  border-radius: 25px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  border: 1px solid #e1e5e9;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 280px;
+  max-width: 320px;
+}
+
+.progress-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+  animation: spin 2s linear infinite;
+}
+
+.progress-icon:not(:contains('🔄')) {
+  animation: none;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.progress-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.progress-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.progress-subtitle {
+  font-size: 11px;
+  color: #6c757d;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.step-info {
+  font-weight: 600;
+  color: #495057;
+}
+
+.progress-bar-mini {
+  height: 4px;
+  background-color: #e9ecef;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-fill-mini {
+  height: 100%;
+  background: linear-gradient(90deg, #007bff, #0056b3);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.progress-percentage {
+  font-size: 12px;
+  font-weight: 700;
+  color: #495057;
+  flex-shrink: 0;
+  min-width: 35px;
+  text-align: right;
+}
+
+/* 확장 기능 제거됨 - 간단한 표시기만 유지 */
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .minimal-progress-container {
+    bottom: 10px;
+    right: 10px;
+    left: 10px;
+  }
+  
+  .minimal-progress-main {
+    min-width: auto;
+    max-width: none;
+  }
+  
+  .progress-text {
+    font-size: 12px;
+  }
+  
+  .progress-percentage {
+    font-size: 11px;
+    min-width: 30px;
+  }
+}
+
+/* 다크 모드 지원 */
+@media (prefers-color-scheme: dark) {
+  .minimal-progress-main,
+  .minimal-progress-expanded {
+    background: #2c3e50;
+    border-color: #34495e;
+    color: white;
+  }
+  
+  .progress-text {
+    color: white;
+  }
+  
+  .progress-percentage {
+    color: #ecf0f1;
+  }
+  
+  .progress-bar-mini {
+    background-color: #34495e;
+  }
+}
+
+/* 접근성 - 클릭 불가하므로 focus 스타일 제거 */
+
+/* 애니메이션 최적화 */
+@media (prefers-reduced-motion: reduce) {
+  .progress-fill-mini {
+    transition: none;
+  }
+  
+  .progress-icon {
+    animation: none;
+  }
+}

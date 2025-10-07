@@ -1,0 +1,298 @@
+/* Background Inspection Monitor Styles */
+
+.background-monitor {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  border: 1px solid #e1e5e9;
+  z-index: 1000;
+  transition: all 0.3s ease;
+  max-width: 400px;
+  min-width: 300px;
+}
+
+.background-monitor.minimized {
+  max-width: 300px;
+}
+
+.monitor-header {
+  padding: 12px 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background-color 0.2s ease;
+}
+
+.monitor-header:hover {
+  background-color: #f8f9fa;
+}
+
+.monitor-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.status-icon {
+  font-size: 16px;
+  animation: spin 2s linear infinite;
+}
+
+.status-icon:not(:contains('🔄')) {
+  animation: none;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.service-type {
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 14px;
+}
+
+.status-text {
+  color: #6c757d;
+  font-size: 12px;
+}
+
+.monitor-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 6px;
+  background-color: #e9ecef;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #007bff, #0056b3);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  font-size: 12px;
+  font-weight: 600;
+  color: #495057;
+  min-width: 35px;
+  text-align: right;
+}
+
+.minimize-button {
+  background: none;
+  border: none;
+  color: #6c757d;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.minimize-button:hover {
+  background-color: #e9ecef;
+  color: #495057;
+}
+
+.monitor-details {
+  padding: 16px;
+  background-color: #f8f9fa;
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.detail-row:last-child {
+  margin-bottom: 0;
+}
+
+.detail-label {
+  font-size: 12px;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.detail-value {
+  font-size: 12px;
+  color: #495057;
+  font-weight: 600;
+  text-align: right;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.connection-connected {
+  color: #28a745;
+}
+
+.connection-disconnected {
+  color: #dc3545;
+}
+
+/* 알림 토스트 */
+.inspection-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1100;
+  animation: slideInRight 0.3s ease;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.notification-content {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  border: 1px solid #e1e5e9;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 350px;
+  min-width: 300px;
+}
+
+.notification-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.notification-text {
+  flex: 1;
+}
+
+.notification-title {
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.notification-subtitle {
+  color: #6c757d;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.notification-close {
+  background: none;
+  border: none;
+  color: #6c757d;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.notification-close:hover {
+  background-color: #e9ecef;
+  color: #495057;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .background-monitor {
+    bottom: 10px;
+    right: 10px;
+    left: 10px;
+    max-width: none;
+    min-width: auto;
+  }
+  
+  .inspection-notification {
+    top: 10px;
+    right: 10px;
+    left: 10px;
+  }
+  
+  .notification-content {
+    max-width: none;
+    min-width: auto;
+  }
+}
+
+/* 다크 모드 지원 */
+@media (prefers-color-scheme: dark) {
+  .background-monitor {
+    background: #2c3e50;
+    border-color: #34495e;
+    color: white;
+  }
+  
+  .monitor-header {
+    border-bottom-color: #34495e;
+  }
+  
+  .monitor-header:hover {
+    background-color: #34495e;
+  }
+  
+  .monitor-details {
+    background-color: #34495e;
+  }
+  
+  .service-type {
+    color: white;
+  }
+  
+  .status-text,
+  .detail-label {
+    color: #bdc3c7;
+  }
+  
+  .detail-value {
+    color: #ecf0f1;
+  }
+  
+  .progress-bar {
+    background-color: #34495e;
+  }
+  
+  .notification-content {
+    background: #2c3e50;
+    border-color: #34495e;
+    color: white;
+  }
+  
+  .notification-title {
+    color: white;
+  }
+  
+  .notification-subtitle {
+    color: #bdc3c7;
+  }
+}
