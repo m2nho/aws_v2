@@ -168,7 +168,7 @@ const ResourceInspectionTab = () => {
         </div>
       )}
 
-      {/* 뷰 상태에 따른 렌더링 */}
+      {/* Trusted Advisor 스타일 뷰 렌더링 */}
       {currentView === VIEW_STATES.SELECTION && (
         <ServiceInspectionSelector
           onStartInspection={handleStartInspection}
@@ -177,46 +177,69 @@ const ResourceInspectionTab = () => {
       )}
 
       {currentView === VIEW_STATES.INSPECTION && currentInspection && (
-        <div className="inspection-progress-container">
-          <div className="progress-header">
-            <h2>검사 진행 중</h2>
-            <p>{currentInspection.serviceType} 서비스 검사를 수행하고 있습니다...</p>
-          </div>
-          
-          <EnhancedProgressMonitor
-            inspectionId={currentInspection.inspectionId}
-            serviceType={currentInspection.serviceType}
-            onComplete={handleInspectionComplete}
-            onError={(errorData) => {
-              setError(errorData.message || '검사 중 오류가 발생했습니다.');
-              setCurrentView(VIEW_STATES.SELECTION);
-            }}
-            showDetailedMetrics={true}
-            showConnectionStatus={true}
-            size="large"
-          />
-          
-          <div className="progress-actions">
-            <button 
-              className="background-button"
-              onClick={() => {
-                // 검사를 백그라운드로 이동
-                if (currentInspection?.batchId) {
-                  moveToBackground(currentInspection.batchId);
-                }
-                // 선택 화면으로 돌아가기
-                setCurrentView(VIEW_STATES.SELECTION);
-                setCurrentInspection(null);
-              }}
-            >
-              백그라운드에서 계속
-            </button>
-            <button 
-              className="cancel-button"
-              onClick={handleBackToSelection}
-            >
-              검사 취소
-            </button>
+        <div className="trusted-advisor-progress">
+          <div className="progress-container-modern">
+            <div className="progress-header-modern">
+              <div className="progress-icon">
+                <span className="scanning-icon">🔍</span>
+              </div>
+              <div className="progress-content">
+                <h2>AWS 리소스 검사 진행 중</h2>
+                <p>{currentInspection.serviceType} 서비스의 보안 및 구성을 검사하고 있습니다</p>
+              </div>
+              <div className="progress-status">
+                <div className="status-indicator">
+                  <span className="status-dot"></span>
+                  <span className="status-text">실행 중</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="progress-monitor-section">
+              <EnhancedProgressMonitor
+                inspectionId={currentInspection.inspectionId}
+                serviceType={currentInspection.serviceType}
+                onComplete={handleInspectionComplete}
+                onError={(errorData) => {
+                  setError(errorData.message || '검사 중 오류가 발생했습니다.');
+                  setCurrentView(VIEW_STATES.SELECTION);
+                }}
+                showDetailedMetrics={true}
+                showConnectionStatus={true}
+                size="large"
+              />
+            </div>
+            
+            <div className="progress-actions-modern">
+              <div className="actions-info">
+                <span className="info-icon">💡</span>
+                <span className="info-text">
+                  검사는 백그라운드에서 계속 실행되며, 완료 시 알림을 받을 수 있습니다
+                </span>
+              </div>
+              <div className="action-buttons-group">
+                <button 
+                  className="background-action-btn"
+                  onClick={() => {
+                    if (currentInspection?.batchId) {
+                      moveToBackground(currentInspection.batchId);
+                    }
+                    setCurrentView(VIEW_STATES.SELECTION);
+                    setCurrentInspection(null);
+                  }}
+                >
+                  <span className="btn-icon">📱</span>
+                  <span className="btn-text">백그라운드에서 계속</span>
+                </button>
+                <button 
+                  className="cancel-action-btn"
+                  onClick={handleBackToSelection}
+                >
+                  <span className="btn-icon">❌</span>
+                  <span className="btn-text">검사 취소</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -1,9 +1,9 @@
-// AWS 서비스별 검사 항목 정의
+// AWS Trusted Advisor 스타일 서비스별 검사 항목 정의
 export const inspectionItems = {
   EC2: {
     id: 'EC2',
     name: 'Amazon EC2',
-    description: 'EC2 인스턴스 보안, 구성, 비용 최적화를 검사합니다',
+    description: 'EC2 인스턴스의 보안 설정, 성능 최적화, 비용 효율성을 종합적으로 검사하여 AWS 모범 사례를 준수하는지 확인합니다',
     icon: '🖥️',
     color: '#FF9900',
     categories: [
@@ -14,28 +14,32 @@ export const inspectionItems = {
         items: [
           {
             id: 'dangerous_ports',
-            name: '위험한 포트 보안',
-            description: 'SSH, RDP, 데이터베이스 포트 등의 인터넷 노출을 검사합니다',
+            name: '보안 그룹 - 위험한 포트 노출',
+            shortDescription: 'SSH, RDP 등 위험한 포트의 인터넷 노출 검사',
+            description: 'SSH(22), RDP(3389), 데이터베이스 포트(3306, 5432, 1433) 등이 인터넷(0.0.0.0/0)에 개방되어 있는지 검사합니다. 이러한 포트가 공개되면 무차별 대입 공격의 위험이 높아집니다.',
             severity: 'CRITICAL',
             enabled: true
           },
           {
             id: 'ebs_encryption',
-            name: 'EBS 볼륨 암호화',
-            description: '암호화되지 않은 EBS 볼륨과 스냅샷을 검사합니다',
+            name: 'EBS 볼륨 암호화 상태',
+            shortDescription: '암호화되지 않은 EBS 볼륨과 스냅샷 검사',
+            description: '암호화되지 않은 EBS 볼륨과 스냅샷을 식별합니다. 데이터 보호 규정 준수와 민감한 정보 보안을 위해 모든 EBS 볼륨은 암호화되어야 합니다.',
             severity: 'HIGH',
             enabled: true
           },
           {
             id: 'public_ip_exposure',
-            name: '퍼블릭 IP 노출',
-            description: '인스턴스의 불필요한 퍼블릭 IP 할당을 검사합니다',
+            name: '불필요한 퍼블릭 IP 할당',
+            shortDescription: '내부 서비스의 불필요한 퍼블릭 IP 검사',
+            description: '프라이빗 서브넷의 인스턴스나 내부 서비스용 인스턴스에 불필요하게 할당된 퍼블릭 IP를 검사합니다. 공격 표면을 줄이고 비용을 절감할 수 있습니다.',
             severity: 'MEDIUM',
             enabled: true
           },
           {
             id: 'ebs_volume_version',
             name: 'EBS 볼륨 버전',
+            shortDescription: '구형 볼륨 타입 및 GP3 업그레이드 검사',
             description: '2년 이상 된 인스턴스의 구형 볼륨 타입 및 GP3 업그레이드를 검사합니다',
             severity: 'MEDIUM',
             enabled: true
@@ -43,6 +47,7 @@ export const inspectionItems = {
           {
             id: 'termination-protection',
             name: '종료 보호 설정',
+            shortDescription: '중요 인스턴스의 실수 삭제 방지 설정 검사',
             description: '중요한 인스턴스의 실수 삭제 방지를 위한 종료 보호 설정을 검사합니다',
             severity: 'MEDIUM',
             enabled: true
@@ -57,6 +62,7 @@ export const inspectionItems = {
           {
             id: 'unused_security_groups',
             name: '미사용 보안 그룹',
+            shortDescription: '인스턴스에 연결되지 않은 보안 그룹 검사',
             description: 'EC2 인스턴스에 연결되지 않은 보안 그룹을 검사합니다',
             severity: 'MEDIUM',
             enabled: true
@@ -64,6 +70,7 @@ export const inspectionItems = {
           {
             id: 'unused_elastic_ip',
             name: '미사용 Elastic IP',
+            shortDescription: '중지된 인스턴스의 Elastic IP 검사',
             description: '중지된 인스턴스에 연결된 Elastic IP를 검사합니다',
             severity: 'MEDIUM',
             enabled: true
@@ -71,6 +78,7 @@ export const inspectionItems = {
           {
             id: 'old_snapshots',
             name: '오래된 스냅샷',
+            shortDescription: '90일 이상 된 스냅샷 정리 권장',
             description: '종료된 인스턴스 및 90일 이상 된 스냅샷 정리를 권장합니다',
             severity: 'LOW',
             enabled: true
@@ -78,6 +86,7 @@ export const inspectionItems = {
           {
             id: 'stopped-instances',
             name: '중지된 인스턴스',
+            shortDescription: '30일 이상 중지된 인스턴스 검사',
             description: '30일 이상 중지된 인스턴스의 비용 절감 기회를 검사합니다',
             severity: 'MEDIUM',
             enabled: true
@@ -91,7 +100,7 @@ export const inspectionItems = {
   RDS: {
     id: 'RDS',
     name: 'Amazon RDS',
-    description: 'RDS 데이터베이스 보안, 백업, 성능을 검사합니다',
+    description: 'RDS 데이터베이스의 보안 설정, 백업 정책, 성능 최적화 상태를 검사하여 데이터 보호와 고가용성을 보장합니다',
     icon: '🗄️',
     color: '#3F48CC',
     categories: [
@@ -103,6 +112,7 @@ export const inspectionItems = {
           {
             id: 'encryption',
             name: '암호화 설정',
+            shortDescription: '저장 시 및 전송 중 암호화 설정 검사',
             description: '저장 시 암호화 및 전송 중 암호화 설정을 검사합니다',
             severity: 'HIGH',
             enabled: true
@@ -110,6 +120,7 @@ export const inspectionItems = {
           {
             id: 'security_groups',
             name: '데이터베이스 보안 그룹',
+            shortDescription: '데이터베이스 접근 권한 및 네트워크 보안 검사',
             description: '데이터베이스 접근 권한 및 네트워크 보안을 검사합니다',
             severity: 'HIGH',
             enabled: true
@@ -117,6 +128,7 @@ export const inspectionItems = {
           {
             id: 'public_access',
             name: '퍼블릭 접근 설정',
+            shortDescription: '불필요한 퍼블릭 접근 허용 여부 검사',
             description: '불필요한 퍼블릭 접근 허용 여부를 검사합니다',
             severity: 'CRITICAL',
             enabled: true
@@ -131,6 +143,7 @@ export const inspectionItems = {
           {
             id: 'automated_backup',
             name: '자동 백업',
+            shortDescription: '자동 백업 활성화 및 보존 기간 검사',
             description: '자동 백업 활성화 및 보존 기간을 검사합니다',
             severity: 'HIGH',
             enabled: true
@@ -138,6 +151,7 @@ export const inspectionItems = {
           {
             id: 'snapshot_encryption',
             name: '스냅샷 암호화',
+            shortDescription: '데이터베이스 스냅샷 암호화 설정 검사',
             description: '데이터베이스 스냅샷 암호화 설정을 검사합니다',
             severity: 'MEDIUM',
             enabled: false
@@ -151,7 +165,7 @@ export const inspectionItems = {
   IAM: {
     id: 'IAM',
     name: 'AWS IAM',
-    description: 'IAM 사용자, 역할, 정책의 보안을 검사합니다',
+    description: 'IAM 사용자, 역할, 정책의 보안 설정을 검사하여 최소 권한 원칙 준수와 계정 보안을 강화합니다',
     icon: '👤',
     color: '#FF4B4B',
     categories: [
@@ -162,22 +176,25 @@ export const inspectionItems = {
         items: [
           {
             id: 'root-access-key',
-            name: '루트 계정 액세스 키',
-            description: '루트 계정의 액세스 키 사용 여부를 검사합니다',
+            name: '루트 계정 액세스 키 사용',
+            shortDescription: '루트 계정의 액세스 키 존재 여부 검사',
+            description: '루트 계정에 생성된 액세스 키가 있는지 검사합니다. 루트 계정은 모든 권한을 가지므로 액세스 키 사용은 극도로 위험하며 AWS 보안 모범 사례에 위배됩니다.',
             severity: 'CRITICAL',
             enabled: true
           },
           {
             id: 'mfa-enabled',
-            name: 'MFA 활성화',
-            description: '사용자 계정의 MFA 활성화 여부를 검사합니다',
+            name: '다중 인증(MFA) 활성화',
+            shortDescription: 'IAM 사용자 및 루트 계정의 MFA 설정 검사',
+            description: 'IAM 사용자와 루트 계정의 MFA 활성화 상태를 검사합니다. MFA는 계정 탈취 위험을 크게 줄이는 필수 보안 조치입니다.',
             severity: 'HIGH',
             enabled: true
           },
           {
             id: 'unused-credentials',
-            name: '미사용 자격 증명',
-            description: '장기간 사용되지 않는 액세스 키를 검사합니다',
+            name: '장기 미사용 자격 증명',
+            shortDescription: '90일 이상 미사용 액세스 키 검사',
+            description: '90일 이상 사용되지 않은 액세스 키와 콘솔 로그인을 검사합니다. 미사용 자격 증명은 보안 위험을 증가시키므로 정기적으로 정리해야 합니다.',
             severity: 'MEDIUM',
             enabled: true
           }
@@ -191,6 +208,7 @@ export const inspectionItems = {
           {
             id: 'overprivileged-user-policies',
             name: '사용자 과도한 권한',
+            shortDescription: '필요 이상의 권한을 가진 사용자 정책 검사',
             description: '필요 이상의 권한을 가진 사용자 정책을 검사합니다',
             severity: 'HIGH',
             enabled: true
@@ -198,6 +216,7 @@ export const inspectionItems = {
           {
             id: 'overprivileged-role-policies',
             name: '역할 과도한 권한',
+            shortDescription: '필요 이상의 권한을 가진 역할 정책 검사',
             description: '필요 이상의 권한을 가진 역할 정책을 검사합니다',
             severity: 'HIGH',
             enabled: true
@@ -205,6 +224,7 @@ export const inspectionItems = {
           {
             id: 'inline-policies',
             name: '인라인 정책',
+            shortDescription: '관리되지 않는 인라인 정책 사용 검사',
             description: '관리되지 않는 인라인 정책 사용을 검사합니다',
             severity: 'MEDIUM',
             enabled: true
@@ -212,6 +232,7 @@ export const inspectionItems = {
           {
             id: 'unused-policies',
             name: '사용되지 않는 정책',
+            shortDescription: '연결되지 않은 정책 검사',
             description: '어떤 사용자나 역할에도 연결되지 않은 정책을 검사합니다',
             severity: 'LOW',
             enabled: true
@@ -224,7 +245,7 @@ export const inspectionItems = {
   S3: {
     id: 'S3',
     name: 'Amazon S3',
-    description: 'S3 버킷 보안, 암호화, 접근 제어를 검사합니다',
+    description: 'S3 버킷의 보안 설정, 암호화 상태, 접근 제어 정책을 검사하여 데이터 유출 방지와 규정 준수를 보장합니다',
     icon: '🪣',
     color: '#569A31',
     categories: [
@@ -235,28 +256,32 @@ export const inspectionItems = {
         items: [
           {
             id: 'bucket-encryption',
-            name: '버킷 암호화',
-            description: '서버 측 암호화 설정 및 KMS 키 사용을 검사합니다',
+            name: 'S3 버킷 서버 측 암호화',
+            shortDescription: '버킷의 기본 암호화 설정 검사',
+            description: '버킷의 기본 암호화 설정과 KMS 키 사용 여부를 검사합니다. 저장된 데이터의 보안을 위해 모든 S3 버킷은 암호화되어야 합니다.',
             severity: 'HIGH',
             enabled: true
           },
           {
             id: 'bucket-public-access',
-            name: '퍼블릭 액세스 차단',
-            description: '버킷의 퍼블릭 액세스 차단 설정을 검사합니다',
+            name: 'S3 버킷 퍼블릭 액세스 차단',
+            shortDescription: '버킷의 퍼블릭 액세스 차단 설정 검사',
+            description: '버킷의 퍼블릭 액세스 차단 설정을 검사합니다. 의도하지 않은 데이터 노출을 방지하기 위해 퍼블릭 액세스는 차단되어야 합니다.',
             severity: 'CRITICAL',
             enabled: true
           },
           {
             id: 'bucket-policy',
-            name: '버킷 정책',
-            description: '위험한 버킷 정책 및 과도한 권한을 검사합니다',
+            name: 'S3 버킷 정책 보안',
+            shortDescription: '과도한 권한의 버킷 정책 검사',
+            description: '과도하게 관대한 버킷 정책이나 와일드카드(*) 사용으로 인한 보안 위험을 검사합니다. 최소 권한 원칙에 따라 정책을 설정해야 합니다.',
             severity: 'HIGH',
             enabled: true
           },
           {
             id: 'bucket-cors',
             name: 'CORS 설정',
+            shortDescription: '위험한 CORS 설정 및 와일드카드 검사',
             description: '위험한 CORS 설정 및 와일드카드 사용을 검사합니다',
             severity: 'MEDIUM',
             enabled: true
@@ -271,20 +296,15 @@ export const inspectionItems = {
           {
             id: 'bucket-versioning',
             name: '버전 관리',
+            shortDescription: '버킷의 버전 관리 활성화 여부 검사',
             description: '버킷의 버전 관리 활성화 여부를 검사합니다',
             severity: 'MEDIUM',
             enabled: true
           },
-          // {
-          //   id: 'bucket-mfa-delete',
-          //   name: 'MFA Delete',
-          //   description: '중요한 버킷의 MFA Delete 설정을 검사합니다 (버전 관리 검사에 통합됨)',
-          //   severity: 'MEDIUM',
-          //   enabled: false
-          // },
           {
             id: 'bucket-logging',
             name: '액세스 로깅',
+            shortDescription: '버킷의 액세스 로깅 활성화 여부 검사',
             description: '버킷의 액세스 로깅 활성화 여부를 검사합니다',
             severity: 'MEDIUM',
             enabled: true
@@ -299,6 +319,7 @@ export const inspectionItems = {
           {
             id: 'bucket-lifecycle',
             name: '라이프사이클 정책',
+            shortDescription: '스토리지 클래스 전환 및 객체 만료 정책 검사',
             description: '스토리지 클래스 전환 및 객체 만료 정책을 검사합니다',
             severity: 'MEDIUM',
             enabled: true

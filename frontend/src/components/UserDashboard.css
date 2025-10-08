@@ -1,59 +1,93 @@
 /* ==========================================================================
-   User Dashboard - Modern Card-Based Layout
+   Modern User Dashboard
    ========================================================================== */
 
 .user-dashboard {
   width: 100%;
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
-  padding: var(--space-6);
-  background-color: var(--color-background-secondary);
-  min-height: 100vh;
+  padding: 0;
+  background: transparent;
+  min-height: calc(100vh - 5rem);
 }
 
 /* ==========================================================================
-   Dashboard Header
+   Modern Dashboard Header
    ========================================================================== */
 
 .dashboard-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--space-8);
-  padding: var(--space-6);
-  background-color: var(--color-background);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-sm);
-  border: 1px solid var(--color-border-primary);
+  margin-bottom: var(--space-10);
+  padding: var(--space-8);
+  background: var(--color-background-elevated);
+  border-radius: var(--radius-3xl);
+  box-shadow: var(--shadow-card);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  position: relative;
+  overflow: hidden;
 }
 
-.dashboard-header h2 {
+.dashboard-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--color-primary-500), var(--color-accent-500));
+}
+
+.dashboard-header h1 {
   margin: 0;
   color: var(--color-text-primary);
-  font-size: var(--text-3xl);
+  font-size: var(--text-4xl);
   font-weight: var(--font-bold);
   line-height: var(--leading-tight);
+  background: linear-gradient(135deg, var(--color-primary-600), var(--color-accent-600));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .logout-button {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  background-color: var(--color-error-600);
+  background: linear-gradient(135deg, var(--color-error-500), var(--color-error-600));
   color: var(--color-text-inverse);
   border: none;
-  padding: var(--space-3) var(--space-5);
-  border-radius: var(--radius-lg);
+  padding: var(--space-3) var(--space-6);
+  border-radius: var(--radius-xl);
   cursor: pointer;
   font-size: var(--text-sm);
-  font-weight: var(--font-medium);
-  transition: var(--transition-colors);
+  font-weight: var(--font-semibold);
+  transition: var(--transition-all);
   box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
+}
+
+.logout-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
 }
 
 .logout-button:hover {
-  background-color: var(--color-error-700);
-  box-shadow: var(--shadow-md);
+  background: linear-gradient(135deg, var(--color-error-600), var(--color-error-700));
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+.logout-button:hover::before {
+  left: 100%;
 }
 
 .logout-button:focus-visible {
@@ -67,34 +101,35 @@
 }
 
 /* ==========================================================================
-   Dashboard Content Grid
+   Modern Dashboard Content Grid
    ========================================================================== */
 
 .dashboard-content {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-  gap: var(--space-6);
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: var(--space-8);
   align-items: start;
 }
 
 /* ==========================================================================
-   Dashboard Cards
+   Modern Dashboard Cards
    ========================================================================== */
 
 .dashboard-card {
-  background: var(--color-background);
-  border-radius: var(--radius-xl);
-  padding: var(--space-6);
-  box-shadow: var(--shadow-sm);
-  border: 1px solid var(--color-border-primary);
+  background: var(--color-background-elevated);
+  border-radius: var(--radius-3xl);
+  padding: var(--space-8);
+  box-shadow: var(--shadow-card);
+  border: 1px solid rgba(226, 232, 240, 0.8);
   transition: var(--transition-all);
   position: relative;
   overflow: hidden;
+  backdrop-filter: blur(10px);
 }
 
 .dashboard-card:hover {
-  box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-4px);
 }
 
 .dashboard-card::before {
@@ -104,27 +139,40 @@
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(90deg, var(--color-primary-500), var(--color-primary-600));
-  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  background: linear-gradient(90deg, var(--color-primary-500), var(--color-accent-500));
+  border-radius: var(--radius-3xl) var(--radius-3xl) 0 0;
 }
 
-.dashboard-card h3 {
-  margin: 0 0 var(--space-5) 0;
+.dashboard-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.02) 0%, rgba(20, 184, 166, 0.02) 100%);
+  pointer-events: none;
+}
+
+.dashboard-card h2 {
+  margin: 0 0 var(--space-6) 0;
   color: var(--color-text-primary);
-  font-size: var(--text-xl);
-  font-weight: var(--font-semibold);
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
   line-height: var(--leading-tight);
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-4);
+  position: relative;
 }
 
-.dashboard-card h3::before {
+.dashboard-card h2::before {
   content: '';
-  width: var(--space-1);
-  height: var(--text-xl);
-  background-color: var(--color-primary-500);
+  width: 6px;
+  height: var(--text-2xl);
+  background: linear-gradient(135deg, var(--color-primary-500), var(--color-accent-500));
   border-radius: var(--radius-full);
+  box-shadow: var(--shadow-sm);
 }
 
 /* ==========================================================================
@@ -484,20 +532,20 @@
    Responsive Design
    ========================================================================== */
 
-/* Tablet Styles */
+/* Modern Tablet Styles */
 @media (max-width: 1023px) {
   .user-dashboard {
-    padding: var(--space-4);
+    padding: 0;
   }
   
   .dashboard-content {
     grid-template-columns: 1fr;
-    gap: var(--space-5);
+    gap: var(--space-6);
   }
   
   .dashboard-header {
-    padding: var(--space-5);
-    margin-bottom: var(--space-6);
+    padding: var(--space-6);
+    margin-bottom: var(--space-8);
   }
   
   .user-info {
@@ -505,24 +553,24 @@
   }
 }
 
-/* Mobile Styles */
+/* Modern Mobile Styles */
 @media (max-width: 767px) {
   .user-dashboard {
-    padding: var(--space-3);
-    background-color: var(--color-background);
+    padding: 0;
+    background: transparent;
   }
   
   .dashboard-header {
     flex-direction: column;
-    gap: var(--space-4);
+    gap: var(--space-5);
     align-items: stretch;
     text-align: center;
-    padding: var(--space-4);
-    margin-bottom: var(--space-5);
+    padding: var(--space-6);
+    margin-bottom: var(--space-8);
   }
   
-  .dashboard-header h2 {
-    font-size: var(--text-2xl);
+  .dashboard-header h1 {
+    font-size: var(--text-3xl);
   }
   
   .logout-button {
@@ -531,32 +579,32 @@
   }
   
   .dashboard-content {
-    gap: var(--space-4);
+    gap: var(--space-6);
   }
   
   .dashboard-card {
-    padding: var(--space-4);
+    padding: var(--space-6);
   }
   
-  .dashboard-card h3 {
-    font-size: var(--text-lg);
+  .dashboard-card h2 {
+    font-size: var(--text-xl);
   }
   
   .info-item {
-    padding: var(--space-3);
+    padding: var(--space-4);
   }
   
   .status-display {
     flex-direction: column;
     text-align: center;
-    gap: var(--space-4);
-    padding: var(--space-4);
+    gap: var(--space-5);
+    padding: var(--space-5);
   }
   
   .status-icon {
     font-size: var(--text-4xl);
-    width: 70px;
-    height: 70px;
+    width: 80px;
+    height: 80px;
   }
   
   .status-text {
@@ -566,18 +614,18 @@
   .validation-status {
     flex-direction: column;
     text-align: center;
-    gap: var(--space-3);
-    padding: var(--space-4);
+    gap: var(--space-4);
+    padding: var(--space-5);
   }
   
   .validation-icon {
-    font-size: var(--text-2xl);
-    width: 50px;
-    height: 50px;
+    font-size: var(--text-3xl);
+    width: 60px;
+    height: 60px;
   }
   
   .validation-text {
-    font-size: var(--text-base);
+    font-size: var(--text-lg);
   }
 }
 

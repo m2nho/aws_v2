@@ -219,39 +219,46 @@ tr:hover {
 }
 
 /* ==========================================================================
-   Selection Styles
+   Modern Selection Styles
    ========================================================================== */
 
 ::selection {
-  background-color: var(--color-primary-100);
+  background: linear-gradient(135deg, var(--color-primary-100), var(--color-accent-100));
   color: var(--color-primary-900);
 }
 
 ::-moz-selection {
-  background-color: var(--color-primary-100);
+  background: linear-gradient(135deg, var(--color-primary-100), var(--color-accent-100));
   color: var(--color-primary-900);
 }
 
 /* ==========================================================================
-   Scrollbar Styles (Webkit browsers)
+   Modern Scrollbar Styles (Webkit browsers)
    ========================================================================== */
 
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 12px;
+  height: 12px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--color-gray-100);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--color-gray-300);
+  background: var(--color-background-secondary);
   border-radius: var(--radius-full);
 }
 
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, var(--color-primary-300), var(--color-accent-300));
+  border-radius: var(--radius-full);
+  border: 2px solid var(--color-background-secondary);
+  transition: var(--transition-colors);
+}
+
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-gray-400);
+  background: linear-gradient(135deg, var(--color-primary-400), var(--color-accent-400));
+}
+
+::-webkit-scrollbar-corner {
+  background: var(--color-background-secondary);
 }
 
 /* ==========================================================================
