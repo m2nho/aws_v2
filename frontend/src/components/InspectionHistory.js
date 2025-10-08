@@ -247,139 +247,86 @@ const InspectionHistory = () => {
 
   return (
     <div className="inspection-history">
-      {/* 헤더 */}
-      <div className="history-header">
-        <div className="header-content">
+      {/* 콤팩트 헤더 */}
+      <div className="header-compact">
+        <div className="header-left">
+          <span className="header-icon-compact">📊</span>
           <h1>검사 히스토리</h1>
-          <p>AWS 리소스 검사 항목별 결과를 확인할 수 있습니다</p>
+        </div>
+        <div className="header-right">
+          <span className="total-count">{historyData.length}개 기록</span>
         </div>
       </div>
 
-      {/* 필터 */}
-      <div className="history-filters">
-        <div className="filter-main-row">
-          <div className="filter-group">
-            <label>서비스</label>
-            <select
-              value={filters.serviceType}
-              onChange={(e) => handleFilterChange('serviceType', e.target.value)}
-              className="service-select"
-            >
-              <option value="all">전체 서비스</option>
-              <option value="EC2">🖥️ EC2</option>
-              <option value="RDS">🗄️ RDS</option>
-              <option value="S3">🪣 S3</option>
-              <option value="IAM">👤 IAM</option>
-              <option value="VPC">🌐 VPC</option>
-            </select>
-          </div>
+      {/* 콤팩트 필터 */}
+      <div className="filters-compact">
+        <select
+          value={filters.serviceType}
+          onChange={(e) => handleFilterChange('serviceType', e.target.value)}
+          className="filter-mini"
+        >
+          <option value="all">모든 서비스</option>
+          <option value="EC2">🖥️ EC2</option>
+          <option value="RDS">🗄️ RDS</option>
+          <option value="S3">🪣 S3</option>
+          <option value="IAM">👤 IAM</option>
+        </select>
 
-          <div className="filter-group">
-            <label>상태</label>
-            <select
-              value={filters.status}
-              onChange={(e) => handleFilterChange('status', e.target.value)}
-              className="status-select"
-            >
-              <option value="all">전체 상태</option>
-              <option value="PASS">✅ 정상</option>
-              <option value="FAIL">❌ 문제 발견</option>
-              <option value="PENDING">⏳ 진행중</option>
-              <option value="CANCELLED">⏹️ 취소됨</option>
-            </select>
-          </div>
+        <select
+          value={filters.status}
+          onChange={(e) => handleFilterChange('status', e.target.value)}
+          className="filter-mini"
+        >
+          <option value="all">모든 상태</option>
+          <option value="PASS">✅ 정상</option>
+          <option value="FAIL">❌ 문제</option>
+          <option value="PENDING">⏳ 진행중</option>
+        </select>
 
-          <div className="filter-group">
-            <label>보기 모드</label>
-            <select
-              value={filters.historyMode}
-              onChange={(e) => handleFilterChange('historyMode', e.target.value)}
-              className="history-mode-select"
-            >
-              <option value="history">📋 전체 히스토리</option>
-              <option value="latest">🔄 최신 상태만</option>
-            </select>
-          </div>
+        <input
+          type="date"
+          value={filters.startDate}
+          onChange={(e) => handleDateChange('startDate', e.target.value)}
+          className="date-mini"
+          max={new Date().toISOString().split('T')[0]}
+        />
 
-          <div className="date-range-picker">
-            <div className="date-input-group">
-              <label>📅 시작일</label>
-              <input
-                type="date"
-                value={filters.startDate}
-                onChange={(e) => handleDateChange('startDate', e.target.value)}
-                className="date-input"
-                max={new Date().toISOString().split('T')[0]}
-              />
-            </div>
-            <div className="date-separator">~</div>
-            <div className="date-input-group">
-              <label>📅 종료일</label>
-              <input
-                type="date"
-                value={filters.endDate}
-                onChange={(e) => handleDateChange('endDate', e.target.value)}
-                className="date-input"
-                max={new Date().toISOString().split('T')[0]}
-                min={filters.startDate}
-              />
-            </div>
-          </div>
+        <input
+          type="date"
+          value={filters.endDate}
+          onChange={(e) => handleDateChange('endDate', e.target.value)}
+          className="date-mini"
+          max={new Date().toISOString().split('T')[0]}
+          min={filters.startDate}
+        />
 
-          <div className="filter-actions">
-            <button
-              className="refresh-button"
-              onClick={() => loadInspectionHistory()}
-              disabled={loading}
-              title="검사 기록 새로고침"
-            >
-              {loading ? '⏳' : '🔄'}
-            </button>
+        <button
+          className="btn-mini"
+          onClick={() => loadInspectionHistory()}
+          disabled={loading}
+          title="새로고침"
+        >
+          {loading ? '⏳' : '🔄'}
+        </button>
 
-            <button
-              className="reset-filters-button"
-              onClick={() => {
-                const resetFilters = {
-                  serviceType: 'all',
-                  status: 'all',
-                  startDate: '',
-                  endDate: ''
-                };
-                setFilters(resetFilters);
-                setPagination({ hasMore: false, lastEvaluatedKey: null });
-              }}
-              disabled={loading}
-              title="모든 필터 초기화"
-            >
-              🗑️
-            </button>
-          </div>
-        </div>
-
-        {/* 결과 통계 */}
-        <div className="filter-stats-row">
-          <div className="filter-stats">
-            📊 총 <strong>{historyData.length}</strong>개 검사 항목
-            {filters.serviceType !== 'all' && (
-              <span className="active-filter">• {filters.serviceType}</span>
-            )}
-            {filters.status !== 'all' && (
-              <span className="active-filter">
-                • {filters.status === 'PASS' ? '정상' :
-                  filters.status === 'FAIL' ? '문제 발견' :
-                    filters.status === 'PENDING' ? '진행중' :
-                      filters.status}
-              </span>
-            )}
-            {(filters.startDate || filters.endDate) && (
-              <span className="active-filter">
-                • 날짜 필터 적용
-                {filters.startDate && ` (${filters.startDate}부터)`}
-                {filters.endDate && ` (${filters.endDate}까지)`}
-              </span>
-            )}
-          </div>
-        </div>
+        <button
+          className="btn-mini"
+          onClick={() => {
+            const resetFilters = {
+              serviceType: 'all',
+              status: 'all',
+              startDate: '',
+              endDate: '',
+              historyMode: 'history'
+            };
+            setFilters(resetFilters);
+            setPagination({ hasMore: false, lastEvaluatedKey: null });
+          }}
+          disabled={loading}
+          title="초기화"
+        >
+          🗑️
+        </button>
       </div>
 
       {/* 에러 표시 */}
@@ -391,271 +338,312 @@ const InspectionHistory = () => {
         </div>
       )}
 
-      {/* 히스토리 목록 */}
-      <div className={`history-list ${loading ? 'loading' : ''}`}>
+      {/* 콤팩트 히스토리 목록 */}
+      <div className="history-content-compact">
         {historyData.length === 0 && !loading ? (
-          <div className="no-history">
-            <p>검사 항목 히스토리가 없습니다.</p>
-            <p style={{ fontSize: '14px', opacity: 0.7 }}>
-              AWS 리소스 검사 결과를 확인할 수 있습니다.
-            </p>
+          <div className="empty-compact">
+            <span className="empty-icon-mini">📊</span>
+            <span>검사 기록이 없습니다</span>
+            <button 
+              className="start-btn-mini"
+              onClick={() => window.location.href = '/inspection'}
+            >
+              검사 시작
+            </button>
           </div>
         ) : (
-          // 항목별 보기
-          <>
+          <div className="history-list-compact">
             {historyData.map((item, index) => {
-            const riskLevel = item.riskLevel || 'LOW';
-            const riskColor = severityColors[riskLevel] || '#65a30d';
+              const riskLevel = item.riskLevel || 'LOW';
+              const riskColor = severityColors[riskLevel] || '#65a30d';
 
-            return (
-              <div key={`${item.itemId}-${index}`} className="history-item item-view" data-risk={riskLevel}>
-                <div className="history-item-header">
-                  <div className="item-info">
-                    <div className="service-badge">
-                      {item.serviceType}
-                    </div>
-                    <div className="resource-info">
-                      <div className="resource-type-row">
-                        <span className="resource-type-icon">
-                          {item.serviceType === 'EC2' ? '🖥️' :
-                            item.serviceType === 'S3' ? '🪣' :
-                              item.serviceType === 'RDS' ? '🗄️' :
-                                item.serviceType === 'IAM' ? '👤' : '🔧'}
-                        </span>
-                        <span className="resource-type">{item.inspectionTitle}</span>
-                      </div>
-                      <span className="resource-id">
-                        {item.status === 'FAIL' ? '❌ 문제 발견' :
-                          item.status === 'PASS' ? '✅ 정상' :
-                            item.status === 'PENDING' ? '⏳ 진행중' :
-                              item.status === 'NOT_CHECKED' ? '📋 검사 대상 없음' :
-                                '❓ 알 수 없음'}
-                      </span>
+              return (
+                <div key={`${item.itemId}-${index}`} className={`history-row-compact ${riskLevel.toLowerCase()}`}>
+                  {/* 서비스 + 검사명 */}
+                  <div className="row-service">
+                    <span className="service-icon-mini">
+                      {item.serviceType === 'EC2' ? '🖥️' :
+                        item.serviceType === 'S3' ? '🪣' :
+                          item.serviceType === 'RDS' ? '🗄️' :
+                            item.serviceType === 'IAM' ? '👤' : '🔧'}
+                    </span>
+                    <div className="service-info-mini">
+                      <span className="inspection-title-mini">{item.inspectionTitle}</span>
+                      <span className="service-name-mini">{item.serviceType}</span>
                     </div>
                   </div>
 
-                  <div className="item-meta">
-                    <div className="inspection-date">
-                      {formatDateTime(item.timestamp)}
-                    </div>
-                    <div
-                      className="risk-level-badge"
-                      style={{ backgroundColor: riskColor }}
-                    >
+                  {/* 상태 */}
+                  <div className="row-status">
+                    <span className="status-icon-mini">
+                      {item.status === 'FAIL' ? '❌' :
+                        item.status === 'PASS' ? '✅' :
+                          item.status === 'PENDING' ? '⏳' : '📋'}
+                    </span>
+                    <span className="status-text-mini">
+                      {item.status === 'FAIL' ? '문제' :
+                        item.status === 'PASS' ? '정상' :
+                          item.status === 'PENDING' ? '진행중' : '대상없음'}
+                    </span>
+                  </div>
+
+                  {/* 핵심 메트릭 */}
+                  <div className="row-metrics">
+                    <span className="metric-mini">
+                      <strong>{item.findingsCount}</strong> 문제
+                    </span>
+                    <span className="metric-mini">
+                      <strong>{item.resourcesAffected}</strong> 리소스
+                    </span>
+                  </div>
+
+                  {/* 위험도 + 시간 */}
+                  <div className="row-risk">
+                    <div className="risk-badge-mini" style={{ backgroundColor: riskColor }}>
                       {severityIcons[riskLevel]} {riskLevel}
                     </div>
-                  </div>
-                </div>
-
-                <div className="history-item-content">
-                  <div className="item-summary">
-                    {/* 검사 메타 태그 */}
-                    <div className="inspection-meta-tags">
-                      <span className="category-tag">
-                        {item.category || '보안 검사'}
-                      </span>
-                      <span className="check-name-tag">
-                        {item.checkName || `${item.serviceType}-CHECK`}
-                      </span>
-                    </div>
-
-                    {/* 위험도 및 메타 정보 */}
-                    <div className="item-meta-row">
-                      <span className="risk-score-inline">
-                        위험도 {item.riskScore || 50}/100
-                      </span>
-                      <span className="findings-count-inline">
-                        문제 {item.findingsCount}개
-                      </span>
-                      <span className="resources-affected-inline">
-                        리소스 {item.resourcesAffected}개
-                      </span>
-                    </div>
-
-
+                    <span className="time-mini">{formatDateTime(item.timestamp).split(' ')[0]}</span>
                   </div>
 
-                  <div className="history-item-actions">
+                  {/* 상세보기 */}
+                  <div className="row-action">
                     <button
-                      className="view-details-button"
+                      className="details-btn-mini"
                       onClick={() => handleViewItemDetails(item)}
+                      title="상세보기"
                     >
-                      항목 상세보기
+                      📋
                     </button>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-          </>
+              );
+            })}
+          </div>
         )}
 
         {/* 더 보기 버튼 */}
         {pagination.hasMore && (
-          <div className="load-more">
+          <div className="load-more-modern">
             <button
-              className="load-more-button"
+              className="load-more-btn-modern"
               onClick={loadMore}
               disabled={loading}
             >
-              {loading ? '로딩 중...' : '더 보기'}
+              {loading ? (
+                <>
+                  <span className="loading-spinner-modern"></span>
+                  로딩 중...
+                </>
+              ) : (
+                <>
+                  <span className="load-icon-modern">📄</span>
+                  더 많은 기록 보기
+                </>
+              )}
             </button>
           </div>
         )}
       </div>
 
-      {/* 상세 모달 */}
+      {/* 개선된 상세 모달 */}
       {selectedInspection && (
-
-        <div className="detail-modal-overlay" onClick={() => setSelectedInspection(null)}>
-          <div className="detail-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>검사 상세 정보</h2>
+        <div className="modal-overlay-modern" onClick={() => setSelectedInspection(null)}>
+          <div className="modal-container-modern" onClick={(e) => e.stopPropagation()}>
+            {/* 모달 헤더 */}
+            <div className="modal-header-modern">
+              <div className="modal-title-section">
+                <div className="modal-service-icon">
+                  {selectedInspection.serviceType === 'EC2' ? '🖥️' :
+                    selectedInspection.serviceType === 'S3' ? '🪣' :
+                      selectedInspection.serviceType === 'RDS' ? '🗄️' :
+                        selectedInspection.serviceType === 'IAM' ? '👤' : '🔧'}
+                </div>
+                <div className="modal-title-text">
+                  <h2>{selectedInspection.itemName || '검사 상세 정보'}</h2>
+                  <span className="modal-service-name">{selectedInspection.serviceType} 검사</span>
+                </div>
+              </div>
               <button
-                className="modal-close"
+                className="modal-close-modern"
                 onClick={() => setSelectedInspection(null)}
+                aria-label="모달 닫기"
               >
                 ✕
               </button>
             </div>
 
-            <div className="modal-content">
-              <div className="inspection-details">
-                <div className="detail-row">
-                  <strong>검사 ID:</strong> {selectedInspection.inspectionId}
+            {/* 모달 콘텐츠 */}
+            <div className="modal-content-modern">
+              {/* 검사 요약 카드 */}
+              <div className="inspection-summary-card">
+                <div className="summary-header">
+                  <h3>📊 검사 요약</h3>
+                  <div className="inspection-id">ID: {selectedInspection.inspectionId}</div>
                 </div>
-                <div className="detail-row">
-                  <strong>서비스:</strong> {selectedInspection.serviceType}
-                </div>
-                <div className="detail-row">
-                  <strong>시작 시간:</strong> {formatDateTime(selectedInspection.startTime)}
-                </div>
-                {selectedInspection.endTime && (
-                  <div className="detail-row">
-                    <strong>완료 시간:</strong> {formatDateTime(selectedInspection.endTime)}
+                
+                <div className="summary-stats">
+                  <div className="stat-item-large">
+                    <span className="stat-icon">🔍</span>
+                    <div className="stat-content">
+                      <span className="stat-value">{selectedInspection.results?.summary?.totalResources || 0}</span>
+                      <span className="stat-label">검사된 리소스</span>
+                    </div>
                   </div>
-                )}
-                {selectedInspection.duration && (
-                  <div className="detail-row">
-                    <strong>소요 시간:</strong> {Math.round(selectedInspection.duration / 1000)}초
+                  
+                  <div className="stat-item-large critical">
+                    <span className="stat-icon">🚨</span>
+                    <div className="stat-content">
+                      <span className="stat-value">{selectedInspection.results?.summary?.criticalIssues || 0}</span>
+                      <span className="stat-label">심각한 문제</span>
+                    </div>
                   </div>
-                )}
+                  
+                  <div className="stat-item-large high">
+                    <span className="stat-icon">⚠️</span>
+                    <div className="stat-content">
+                      <span className="stat-value">{selectedInspection.results?.summary?.highRiskIssues || 0}</span>
+                      <span className="stat-label">높은 위험</span>
+                    </div>
+                  </div>
+                  
+                  <div className="stat-item-large medium">
+                    <span className="stat-icon">⚡</span>
+                    <div className="stat-content">
+                      <span className="stat-value">{selectedInspection.results?.summary?.mediumRiskIssues || 0}</span>
+                      <span className="stat-label">중간 위험</span>
+                    </div>
+                  </div>
+                  
+                  <div className="stat-item-large low">
+                    <span className="stat-icon">ℹ️</span>
+                    <div className="stat-content">
+                      <span className="stat-value">{selectedInspection.results?.summary?.lowRiskIssues || 0}</span>
+                      <span className="stat-label">낮은 위험</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="inspection-metadata">
+                  <div className="metadata-item">
+                    <span className="metadata-label">🕐 검사 시간</span>
+                    <span className="metadata-value">{formatDateTime(selectedInspection.startTime)}</span>
+                  </div>
+                  {selectedInspection.duration && (
+                    <div className="metadata-item">
+                      <span className="metadata-label">⏱️ 소요 시간</span>
+                      <span className="metadata-value">{Math.round(selectedInspection.duration / 1000)}초</span>
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {selectedInspection.results && (
-                <div className="results-summary">
-                  <h3>검사 결과 요약</h3>
-                  <div className="summary-grid">
-                    <div className="summary-item">
-                      <span className="label">총 리소스:</span>
-                      <span className="value">{selectedInspection.results.summary?.totalResources || 0}</span>
-                    </div>
-                    <div className="summary-item critical">
-                      <span className="label">심각:</span>
-                      <span className="value">{selectedInspection.results.summary?.criticalIssues || 0}</span>
-                    </div>
-                    <div className="summary-item high">
-                      <span className="label">높음:</span>
-                      <span className="value">{selectedInspection.results.summary?.highRiskIssues || 0}</span>
-                    </div>
-                    <div className="summary-item medium">
-                      <span className="label">중간:</span>
-                      <span className="value">{selectedInspection.results.summary?.mediumRiskIssues || 0}</span>
-                    </div>
-                    <div className="summary-item low">
-                      <span className="label">낮음:</span>
-                      <span className="value">{selectedInspection.results.summary?.lowRiskIssues || 0}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
+              {/* 검사 결과 섹션 */}
               {selectedInspection.results?.findings && selectedInspection.results.findings.length > 0 ? (
-                <div className="findings-section">
-                  <h3>발견된 문제들</h3>
-                  <div className="findings-list">
+                <div className="findings-section-modern">
+                  <div className="section-header-modern">
+                    <h3>🔍 발견된 문제</h3>
+                    <span className="findings-count">{selectedInspection.results.findings.length}개 문제</span>
+                  </div>
+                  
+                  <div className="findings-grid-modern">
                     {selectedInspection.results.findings.map((finding, index) => (
-                      <div key={index} className="finding-item">
-                        <div className="finding-header">
-                          <span
-                            className="severity-badge"
-                            style={{ backgroundColor: severityColors[finding.riskLevel] }}
-                          >
-                            {severityIcons[finding.riskLevel]} {finding.riskLevel}
-                          </span>
-                          <span className="resource-info">
-                            {finding.resourceType}: {finding.resourceId}
-                          </span>
+                      <div key={index} className="finding-card-modern">
+                        <div className="finding-card-header">
+                          <div className="severity-indicator" style={{ backgroundColor: severityColors[finding.riskLevel] }}>
+                            <span className="severity-icon">{severityIcons[finding.riskLevel]}</span>
+                            <span className="severity-text">{finding.riskLevel}</span>
+                          </div>
                           {finding.riskScore && (
-                            <span className="risk-score">
-                              위험도: {finding.riskScore}/100
-                            </span>
+                            <div className="risk-score-badge">
+                              {finding.riskScore}/100
+                            </div>
                           )}
                         </div>
-                        <div className="finding-content">
-                          <div className="finding-issue">
-                            <strong>🚨 문제:</strong> {finding.issue}
+                        
+                        <div className="finding-card-content">
+                          <div className="resource-info-modern">
+                            <span className="resource-type">{finding.resourceType}</span>
+                            <span className="resource-id">{finding.resourceId}</span>
                           </div>
+                          
+                          <div className="issue-description">
+                            <div className="issue-title">
+                              <span className="issue-icon">🚨</span>
+                              <strong>문제</strong>
+                            </div>
+                            <p>{finding.issue}</p>
+                          </div>
+                          
                           {finding.recommendation && (
-                            <div className="finding-recommendation">
-                              <strong>💡 권장사항:</strong> {finding.recommendation}
+                            <div className="recommendation-description">
+                              <div className="recommendation-title">
+                                <span className="recommendation-icon">💡</span>
+                                <strong>권장사항</strong>
+                              </div>
+                              <p>{finding.recommendation}</p>
                             </div>
                           )}
-                          {finding.category && (
-                            <div className="finding-category">
-                              <strong>📂 카테고리:</strong> {finding.category}
-                            </div>
-                          )}
+                          
                           {finding.timestamp && (
-                            <div className="finding-timestamp">
-                              <strong>🕐 발견 시간:</strong> {formatDateTime(finding.timestamp)}
+                            <div className="finding-timestamp-modern">
+                              <span className="timestamp-icon">🕐</span>
+                              <span>{formatDateTime(finding.timestamp)}</span>
                             </div>
                           )}
                         </div>
                       </div>
                     ))}
-
                   </div>
                 </div>
               ) : (
-                <div className="no-findings-section">
-                  <h3>검사 결과</h3>
-                  <div className="no-findings-message">
+                <div className="no-findings-modern">
+                  <div className="no-findings-content">
                     {selectedInspection.itemName?.includes('키 페어') || selectedInspection.itemName?.includes('메타데이터') ? (
-                      <div className="info-message">
-                        <div className="info-icon">📋</div>
-                        <div className="info-content">
-                          <p><strong>검사 대상이 없습니다</strong></p>
-                          <p>현재 AWS 계정에 활성 상태의 EC2 인스턴스가 없어 이 항목을 검사할 수 없습니다.</p>
-                          <p>EC2 인스턴스를 생성한 후 다시 검사해보세요.</p>
-                        </div>
-                      </div>
+                      <>
+                        <div className="no-findings-icon">📋</div>
+                        <h3>검사 대상이 없습니다</h3>
+                        <p>현재 AWS 계정에 활성 상태의 리소스가 없어 이 항목을 검사할 수 없습니다.</p>
+                        <p>관련 리소스를 생성한 후 다시 검사해보세요.</p>
+                      </>
                     ) : (
-                      <div className="success-message">
-                        <div className="success-icon">✅</div>
-                        <div className="success-content">
-                          <p><strong>문제가 발견되지 않았습니다</strong></p>
-                          <p>이 검사 항목에서는 보안 문제나 개선이 필요한 사항이 발견되지 않았습니다.</p>
-                        </div>
-                      </div>
+                      <>
+                        <div className="no-findings-icon success">✅</div>
+                        <h3>문제가 발견되지 않았습니다</h3>
+                        <p>이 검사 항목에서는 보안 문제나 개선이 필요한 사항이 발견되지 않았습니다.</p>
+                        <p>현재 설정이 AWS 보안 모범 사례를 준수하고 있습니다.</p>
+                      </>
                     )}
                   </div>
                 </div>
               )}
 
+              {/* 권장사항 섹션 */}
               {selectedInspection.results?.recommendations && selectedInspection.results.recommendations.length > 0 && (
-                <div className="recommendations-section">
-                  <h3>🎯 주요 권장사항</h3>
-                  <div className="recommendations-list">
+                <div className="recommendations-section-modern">
+                  <div className="section-header-modern">
+                    <h3>🎯 추가 권장사항</h3>
+                  </div>
+                  
+                  <div className="recommendations-grid-modern">
                     {selectedInspection.results.recommendations.map((recommendation, index) => (
-                      <div key={index} className="recommendation-item">
-                        <div className="recommendation-icon">💡</div>
-                        <div className="recommendation-text">{recommendation}</div>
+                      <div key={index} className="recommendation-card-modern">
+                        <div className="recommendation-icon-modern">💡</div>
+                        <div className="recommendation-text-modern">{recommendation}</div>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* 모달 푸터 */}
+            <div className="modal-footer-modern">
+              <button
+                className="modal-close-btn-modern"
+                onClick={() => setSelectedInspection(null)}
+              >
+                닫기
+              </button>
             </div>
           </div>
         </div>
