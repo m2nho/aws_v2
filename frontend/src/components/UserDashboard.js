@@ -10,6 +10,15 @@ const UserDashboard = () => {
   const [error, setError] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [copySuccess, setCopySuccess] = useState('');
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
 
   const fetchProfile = useCallback(async () => {
@@ -49,6 +58,94 @@ const UserDashboard = () => {
       setCopySuccess('복사 실패');
       setTimeout(() => setCopySuccess(''), 2000);
     }
+  };
+
+  const handlePasswordChange = (e) => {
+    const { name, value } = e.target;
+    setPasswordForm(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    // 에러 메시지 초기화
+    if (passwordError) {
+      setPasswordError('');
+    }
+  };
+
+  const validatePasswordForm = () => {
+    const { currentPassword, newPassword, confirmPassword } = passwordForm;
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return '모든 필드를 입력해주세요.';
+    }
+
+    if (newPassword.length < 8) {
+      return '새 비밀번호는 최소 8자 이상이어야 합니다.';
+    }
+
+    if (newPassword !== confirmPassword) {
+      return '새 비밀번호와 확인 비밀번호가 일치하지 않습니다.';
+    }
+
+    if (currentPassword === newPassword) {
+      return '새 비밀번호는 현재 비밀번호와 달라야 합니다.';
+    }
+
+    return null;
+  };
+
+  const handlePasswordSubmit = async (e) => {
+    e.preventDefault();
+
+    const validationError = validatePasswordForm();
+    if (validationError) {
+      setPasswordError(validationError);
+      return;
+    }
+
+    setIsChangingPassword(true);
+    setPasswordError('');
+
+    try {
+      const response = await userService.changePassword(passwordForm);
+
+      if (response.success) {
+        setPasswordSuccess('비밀번호가 성공적으로 변경되었습니다.');
+        setPasswordForm({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        });
+        setTimeout(() => {
+          setShowPasswordModal(false);
+          setPasswordSuccess('');
+        }, 2000);
+      } else {
+        setPasswordError(response.error?.message || '비밀번호 변경에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('Password change error:', error);
+      if (error.response?.status === 401) {
+        setPasswordError('현재 비밀번호가 올바르지 않습니다.');
+      } else if (error.response?.data?.error?.message) {
+        setPasswordError(error.response.data.error.message);
+      } else {
+        setPasswordError('비밀번호 변경 중 오류가 발생했습니다.');
+      }
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
+  const handleClosePasswordModal = () => {
+    setShowPasswordModal(false);
+    setPasswordForm({
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: ''
+    });
+    setPasswordError('');
+    setPasswordSuccess('');
   };
 
   const getStatusInfo = (status) => {
@@ -223,6 +320,13 @@ const UserDashboard = () => {
         <div className="dashboard-card user-info-card slide-up">
           <div className="card-header">
             <h2>👤 사용자 정보</h2>
+            <button
+              onClick={() => setShowPasswordModal(true)}
+              className="change-password-button"
+              title="비밀번호 변경"
+            >
+              🔒 비밀번호 변경
+            </button>
           </div>
           <div className="user-info">
             <div className="info-item">
@@ -332,6 +436,96 @@ const UserDashboard = () => {
           </div>
         )}
       </div>
+
+      {/* Password Change Modal */}
+      {showPasswordModal && (
+        <div className="modal-overlay" onClick={handleClosePasswordModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>🔒 비밀번호 변경</h3>
+              <button
+                className="modal-close-button"
+                onClick={handleClosePasswordModal}
+                aria-label="모달 닫기"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handlePasswordSubmit} className="password-form">
+              <div className="form-group">
+                <label htmlFor="currentPassword">현재 비밀번호</label>
+                <input
+                  type="password"
+                  id="currentPassword"
+                  name="currentPassword"
+                  value={passwordForm.currentPassword}
+                  onChange={handlePasswordChange}
+                  placeholder="현재 비밀번호를 입력하세요"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="newPassword">새 비밀번호</label>
+                <input
+                  type="password"
+                  id="newPassword"
+                  name="newPassword"
+                  value={passwordForm.newPassword}
+                  onChange={handlePasswordChange}
+                  placeholder="새 비밀번호를 입력하세요 (최소 8자)"
+                  required
+                  minLength="8"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="confirmPassword">새 비밀번호 확인</label>
+                <input
+                  type="password"
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  value={passwordForm.confirmPassword}
+                  onChange={handlePasswordChange}
+                  placeholder="새 비밀번호를 다시 입력하세요"
+                  required
+                />
+              </div>
+
+              {passwordError && (
+                <div className="error-message">
+                  ⚠️ {passwordError}
+                </div>
+              )}
+
+              {passwordSuccess && (
+                <div className="success-message">
+                  ✅ {passwordSuccess}
+                </div>
+              )}
+
+              <div className="form-actions">
+                <button
+                  type="button"
+                  onClick={handleClosePasswordModal}
+                  className="cancel-button"
+                  disabled={isChangingPassword}
+                >
+                  취소
+                </button>
+                <button
+                  type="submit"
+                  className="submit-button"
+                  disabled={isChangingPassword}
+                >
+                  {isChangingPassword ? '변경 중...' : '비밀번호 변경'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Success Toast */}
       {copySuccess && (

@@ -66,19 +66,52 @@
 }
 
 /* ==========================================================================
-   Error Messages
+   Enhanced Error Messages
    ========================================================================== */
 
 .error-message {
-  background-color: #fef2f2;
-  color: #dc2626;
-  border: 1px solid #fecaca;
-  border-radius: 8px;
-  padding: 0.75rem;
+  background: linear-gradient(135deg, #fef2f2, #fee2e2);
+  border: 2px solid #fecaca;
+  border-radius: 12px;
+  padding: 1rem;
   margin-bottom: 1.5rem;
-  text-align: center;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  animation: errorSlideIn 0.3s ease-out;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.1);
+}
+
+.error-message.error-critical {
+  background: linear-gradient(135deg, #fef2f2, #fde8e8);
+  border-color: #f87171;
+  box-shadow: 0 4px 20px rgba(239, 68, 68, 0.2);
+}
+
+.error-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.error-content {
+  flex: 1;
+}
+
+.error-text {
+  color: #dc2626;
   font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.4;
+  margin-bottom: 0.25rem;
+}
+
+.error-help {
+  color: #b91c1c;
+  font-size: 0.8125rem;
   font-weight: 500;
+  line-height: 1.3;
+  opacity: 0.9;
 }
 
 .field-error {
@@ -87,6 +120,60 @@
   color: #dc2626;
   margin-top: 0.25rem;
   font-weight: 500;
+  animation: errorSlideIn 0.2s ease-out;
+}
+
+@keyframes errorSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ==========================================================================
+   Password Input Container
+   ========================================================================== */
+
+.password-input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-input-container input {
+  padding-right: 3rem;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 0.75rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  color: #6b7280;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+}
+
+.password-toggle:hover:not(:disabled) {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.password-toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* ==========================================================================

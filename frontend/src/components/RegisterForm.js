@@ -15,6 +15,8 @@ const RegisterForm = ({ onSuccess }) => {
   
   const [formErrors, setFormErrors] = useState({});
   const [successMessage, setSuccessMessage] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const validateForm = () => {
     const errors = {};
@@ -69,6 +71,33 @@ const RegisterForm = ({ onSuccess }) => {
     }
   };
 
+  // 사용자 친화적인 오류 메시지 변환
+  const getErrorMessage = (error) => {
+    if (!error) return '';
+    
+    if (error.includes('USER_EXISTS') || error.includes('already exists')) {
+      return '이미 존재하는 사용자명입니다. 다른 사용자명을 사용해주세요.';
+    }
+    
+    if (error.includes('COGNITO_ERROR') || error.includes('Failed to create user in Cognito')) {
+      return '계정 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+    }
+    
+    if (error.includes('DATABASE_ERROR') || error.includes('Failed to save user metadata')) {
+      return '사용자 정보 저장 중 오류가 발생했습니다. 다시 시도해주세요.';
+    }
+    
+    if (error.includes('INTERNAL_ERROR') || error.includes('Internal server error')) {
+      return '서버에 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해주세요.';
+    }
+    
+    if (error.includes('Network Error') || error.includes('ECONNABORTED')) {
+      return '네트워크 연결을 확인하고 다시 시도해주세요.';
+    }
+    
+    return error || '회원가입 중 오류가 발생했습니다.';
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -87,7 +116,7 @@ const RegisterForm = ({ onSuccess }) => {
       const result = await register(registrationData);
       
       if (result.success) {
-        setSuccessMessage('회원가입이 완료되었습니다! 관리자 승인 후 로그인이 가능합니다.');
+        setSuccessMessage('🎉 회원가입이 완료되었습니다! 관리자 승인 후 로그인이 가능합니다.');
         setFormData({
           username: '',
           password: '',
@@ -97,7 +126,7 @@ const RegisterForm = ({ onSuccess }) => {
         });
         
         if (onSuccess) {
-          setTimeout(() => onSuccess(result), 2000);
+          setTimeout(() => onSuccess(result), 3000);
         }
       }
     } catch (err) {
@@ -115,7 +144,10 @@ const RegisterForm = ({ onSuccess }) => {
       
       {error && (
         <div className="error-message">
-          {error}
+          <div className="error-icon">⚠️</div>
+          <div className="error-content">
+            <div className="error-text">{getErrorMessage(error)}</div>
+          </div>
         </div>
       )}
       
@@ -141,17 +173,28 @@ const RegisterForm = ({ onSuccess }) => {
       
       <div className="form-group">
         <label htmlFor="password">비밀번호</label>
-        <input
-          type="password"
-          id="password"
-          name="password"
-          value={formData.password}
-          onChange={handleInputChange}
-          className={formErrors.password ? 'error' : ''}
-          placeholder="비밀번호를 입력하세요 (최소 8자)"
-          disabled={loading}
-          autoComplete="new-password"
-        />
+        <div className="password-input-container">
+          <input
+            type={showPassword ? "text" : "password"}
+            id="password"
+            name="password"
+            value={formData.password}
+            onChange={handleInputChange}
+            className={formErrors.password ? 'error' : ''}
+            placeholder="비밀번호를 입력하세요 (최소 8자)"
+            disabled={loading}
+            autoComplete="new-password"
+          />
+          <button
+            type="button"
+            className="password-toggle"
+            onClick={() => setShowPassword(!showPassword)}
+            disabled={loading}
+            aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}
+          >
+            {showPassword ? '🙈' : '👁️'}
+          </button>
+        </div>
         {formErrors.password && (
           <span className="field-error">
             {formErrors.password}
@@ -161,17 +204,28 @@ const RegisterForm = ({ onSuccess }) => {
       
       <div className="form-group">
         <label htmlFor="confirmPassword">비밀번호 확인</label>
-        <input
-          type="password"
-          id="confirmPassword"
-          name="confirmPassword"
-          value={formData.confirmPassword}
-          onChange={handleInputChange}
-          className={formErrors.confirmPassword ? 'error' : ''}
-          placeholder="비밀번호를 다시 입력하세요"
-          disabled={loading}
-          autoComplete="new-password"
-        />
+        <div className="password-input-container">
+          <input
+            type={showConfirmPassword ? "text" : "password"}
+            id="confirmPassword"
+            name="confirmPassword"
+            value={formData.confirmPassword}
+            onChange={handleInputChange}
+            className={formErrors.confirmPassword ? 'error' : ''}
+            placeholder="비밀번호를 다시 입력하세요"
+            disabled={loading}
+            autoComplete="new-password"
+          />
+          <button
+            type="button"
+            className="password-toggle"
+            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+            disabled={loading}
+            aria-label={showConfirmPassword ? "비밀번호 숨기기" : "비밀번호 보기"}
+          >
+            {showConfirmPassword ? '🙈' : '👁️'}
+          </button>
+        </div>
         {formErrors.confirmPassword && (
           <span className="field-error">
             {formErrors.confirmPassword}

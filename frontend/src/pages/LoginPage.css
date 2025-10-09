@@ -44,6 +44,59 @@
 }
 
 /* ==========================================================================
+   Success Message
+   ========================================================================== */
+
+.success-message {
+    background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+    border: 2px solid #bbf7d0;
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    animation: successSlideIn 0.3s ease-out;
+    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.1);
+}
+
+.success-icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.success-content {
+    flex: 1;
+}
+
+.success-text {
+    color: #166534;
+    font-size: 0.875rem;
+    font-weight: 700;
+    line-height: 1.4;
+    margin-bottom: 0.25rem;
+}
+
+.success-detail {
+    color: #15803d;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1.3;
+    opacity: 0.9;
+}
+
+@keyframes successSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* ==========================================================================
    Footer Section
    ========================================================================== */
 
