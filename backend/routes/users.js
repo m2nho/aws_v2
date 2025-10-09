@@ -150,4 +150,128 @@ router.get('/dashboard', authenticateToken, requireApprovedUser, (req, res) => {
   }
 });
 
+/**
+ * PUT /api/users/password
+ * 사용자 비밀번호 변경
+ * 
+ * Headers:
+ * - Authorization: Bearer <token>
+ * 
+ * Body:
+ * - currentPassword: string (required)
+ * - newPassword: string (required, min 8 chars)
+ * - confirmPassword: string (required, must match newPassword)
+ */
+router.put('/password', authenticateToken, async (req, res) => {
+  try {
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+    const { username } = req.user;
+
+    // 입력 검증
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Missing required fields',
+          details: 'Current password, new password, and confirm password are required'
+        }
+      });
+    }
+
+    // 새 비밀번호 길이 검증
+    if (newPassword.length < 8) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Password too short',
+          details: 'New password must be at least 8 characters long'
+        }
+      });
+    }
+
+    // 새 비밀번호 확인
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Password confirmation mismatch',
+          details: 'New password and confirm password do not match'
+        }
+      });
+    }
+
+    // 현재 비밀번호와 새 비밀번호가 같은지 확인
+    if (currentPassword === newPassword) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Same password',
+          details: 'New password must be different from current password'
+        }
+      });
+    }
+
+    // Cognito에서 현재 비밀번호 검증을 위해 로그인 시도
+    const cognitoService = require('../services/cognitoService');
+    const loginResult = await cognitoService.authenticateUser(username, currentPassword);
+    
+    if (!loginResult.success) {
+      return res.status(401).json({
+        success: false,
+        error: {
+          code: 'INVALID_CURRENT_PASSWORD',
+          message: 'Current password is incorrect',
+          details: 'The provided current password does not match'
+        }
+      });
+    }
+
+    // 새 비밀번호로 변경
+    const changeResult = await cognitoService.changePassword(username, newPassword);
+    
+    if (!changeResult.success) {
+      return res.status(500).json({
+        success: false,
+        error: {
+          code: 'PASSWORD_CHANGE_FAILED',
+          message: 'Failed to change password',
+          details: changeResult.error || 'An error occurred while changing password'
+        }
+      });
+    }
+
+    // DynamoDB에서 사용자 정보 업데이트 (updatedAt 필드)
+    try {
+      await dynamoService.updateUserTimestamp(req.user.userId);
+    } catch (updateError) {
+      // 타임스탬프 업데이트 실패는 치명적이지 않으므로 로그만 남김
+      console.warn('Failed to update user timestamp:', updateError);
+    }
+
+    res.json({
+      success: true,
+      message: 'Password changed successfully',
+      data: {
+        message: 'Your password has been updated successfully'
+      }
+    });
+
+  } catch (error) {
+    console.error('Password change error:', error);
+    
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to change password',
+        details: 'An internal error occurred while changing password'
+      }
+    });
+  }
+});
+
 module.exports = router;

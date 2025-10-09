@@ -285,6 +285,35 @@ class DynamoService {
       throw new Error(`사용자 삭제 실패: ${error.message}`);
     }
   }
+
+  /**
+   * 사용자 타임스탬프 업데이트 (비밀번호 변경 등)
+   * @param {string} userId - 사용자 ID
+   * @returns {Promise<Object>} 업데이트 결과
+   */
+  async updateUserTimestamp(userId) {
+    try {
+      const timestamp = new Date().toISOString();
+      
+      const params = {
+        TableName: this.tableName,
+        Key: { userId },
+        UpdateExpression: 'SET updatedAt = :timestamp',
+        ExpressionAttributeValues: {
+          ':timestamp': timestamp
+        },
+        ConditionExpression: 'attribute_exists(userId)'
+      };
+
+      await this.client.send(new UpdateCommand(params));
+      return { success: true };
+    } catch (error) {
+      if (error.name === 'ConditionalCheckFailedException') {
+        throw new Error('사용자를 찾을 수 없습니다');
+      }
+      throw new Error(`사용자 타임스탬프 업데이트 실패: ${error.message}`);
+    }
+  }
 }
 
 module.exports = new DynamoService();

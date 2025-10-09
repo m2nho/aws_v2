@@ -209,6 +209,37 @@ class CognitoService {
     }
   }
 
+  /**
+   * 사용자 비밀번호 변경
+   * @param {string} username - 사용자명
+   * @param {string} newPassword - 새 비밀번호
+   * @returns {Promise<Object>} 변경 결과
+   */
+  async changePassword(username, newPassword) {
+    try {
+      const params = {
+        UserPoolId: this.userPoolId,
+        Username: username,
+        Password: newPassword,
+        Permanent: true
+      };
+
+      const command = new AdminSetUserPasswordCommand(params);
+      await this.client.send(command);
+
+      return {
+        success: true,
+        message: 'Password changed successfully'
+      };
+    } catch (error) {
+      console.error('Password change error:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
 
 }
 
