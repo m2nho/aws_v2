@@ -1,0 +1,107 @@
+/* ==========================================================================
+   Simple & Clean Register Page
+   ========================================================================== */
+
+.register-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+}
+
+.register-card {
+  width: 100%;
+  max-width: 480px;
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e2e8f0;
+}
+
+/* ==========================================================================
+   Header Section
+   ========================================================================== */
+
+.register-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.register-title {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 0.5rem 0;
+}
+
+.register-subtitle {
+  font-size: 0.875rem;
+  color: #64748b;
+  margin: 0;
+}
+
+/* ==========================================================================
+   Footer Section
+   ========================================================================== */
+
+.register-footer {
+  text-align: center;
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+.login-link {
+  font-size: 0.875rem;
+  color: #64748b;
+  margin: 0;
+}
+
+.link-button {
+  background: none;
+  border: none;
+  color: #3b82f6;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: 0.25rem;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.link-button:hover {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.link-button:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* ==========================================================================
+   Responsive Design
+   ========================================================================== */
+
+@media (max-width: 480px) {
+  .register-page {
+    padding: 0.5rem;
+  }
+
+  .register-card {
+    padding: 1.5rem;
+  }
+
+  .register-title {
+    font-size: 1.5rem;
+  }
+
+  .register-footer {
+    margin-top: 1rem;
+    padding-top: 1rem;
+  }
+}

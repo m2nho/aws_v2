@@ -1,7 +1,8 @@
-import React, { useEffect, useCallback } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context';
 import { LoginForm } from '../components';
+import './LoginPage.css';
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -9,16 +10,12 @@ const LoginPage = () => {
 
   const handleRedirectBasedOnStatus = useCallback((status) => {
     if (isAdmin()) {
-      // Admin users go to admin panel
       navigate('/admin');
     } else {
-      // Regular users go to dashboard regardless of status
-      // The dashboard will show appropriate messages based on status
       navigate('/dashboard');
     }
   }, [isAdmin, navigate]);
 
-  // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
       handleRedirectBasedOnStatus(userStatus);
@@ -26,38 +23,30 @@ const LoginPage = () => {
   }, [isAuthenticated, userStatus, handleRedirectBasedOnStatus]);
 
   const handleLoginSuccess = (result) => {
-    // Redirect based on user status after successful login
     handleRedirectBasedOnStatus(result.userStatus);
-  };
-
-  const handleCancel = () => {
-    // Redirect to register page if user cancels
-    navigate('/register');
   };
 
   return (
     <div className="login-page">
-      <LoginForm 
-        onSuccess={handleLoginSuccess}
-        onCancel={handleCancel}
-      />
-      
-      <div style={{ textAlign: 'center', marginTop: '1rem' }}>
-        <p>
-          계정이 없으시나요?{' '}
-          <button 
-            onClick={() => navigate('/register')}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#007bff',
-              textDecoration: 'underline',
-              cursor: 'pointer'
-            }}
-          >
-            회원가입
-          </button>
-        </p>
+      <div className="login-card">
+        <div className="login-header">
+          <h1 className="login-title">로그인</h1>
+          <p className="login-subtitle">AWS 사용자 관리 시스템</p>
+        </div>
+        
+        <LoginForm onSuccess={handleLoginSuccess} />
+        
+        <div className="login-footer">
+          <p className="signup-link">
+            계정이 없으시나요? 
+            <button 
+              onClick={() => navigate('/register')}
+              className="link-button"
+            >
+              회원가입
+            </button>
+          </p>
+        </div>
       </div>
     </div>
   );

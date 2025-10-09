@@ -1,26 +1,36 @@
-import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RegisterForm } from '../components';
+import './RegisterPage.css';
 
 const RegisterPage = () => {
   const navigate = useNavigate();
 
   const handleRegistrationSuccess = () => {
-    // Redirect to login page after successful registration
-    navigate('/login');
-  };
-
-  const handleCancel = () => {
-    // Redirect to login page if user cancels
     navigate('/login');
   };
 
   return (
     <div className="register-page">
-      <RegisterForm 
-        onSuccess={handleRegistrationSuccess}
-        onCancel={handleCancel}
-      />
+      <div className="register-card">
+        <div className="register-header">
+          <h1 className="register-title">회원가입</h1>
+          <p className="register-subtitle">AWS 사용자 관리 시스템</p>
+        </div>
+        
+        <RegisterForm onSuccess={handleRegistrationSuccess} />
+        
+        <div className="register-footer">
+          <p className="login-link">
+            이미 계정이 있으시나요? 
+            <button 
+              onClick={() => navigate('/login')}
+              className="link-button"
+            >
+              로그인
+            </button>
+          </p>
+        </div>
+      </div>
     </div>
   );
 };
