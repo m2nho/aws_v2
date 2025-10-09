@@ -44,18 +44,16 @@ const InspectionResultsView = ({ inspectionData, onBackToSelection }) => {
     <div className="inspection-results-view">
       {/* 헤더 */}
       <div className="results-header">
-        <div className="header-content">
-          <button onClick={onBackToSelection} className="back-button">
-            ← 새 검사
-          </button>
-          <div className="service-info">
-            <span className="service-icon" style={{ color: serviceInfo?.color }}>
-              {serviceInfo?.icon}
-            </span>
-            <div>
-              <h1>{serviceInfo?.name} 검사 결과</h1>
-              <p>검사 ID: {inspectionData.inspectionId}</p>
-            </div>
+        <button onClick={onBackToSelection} className="back-button">
+          ← 새 검사
+        </button>
+        <div className="service-info">
+          <span className="service-icon" style={{ color: serviceInfo?.color }}>
+            {serviceInfo?.icon}
+          </span>
+          <div>
+            <h1>{serviceInfo?.name} 검사 결과</h1>
+            <p>검사 ID: {inspectionData.inspectionId}</p>
           </div>
         </div>
       </div>

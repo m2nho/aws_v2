@@ -190,15 +190,13 @@ const InspectionDashboard = ({ inspectionId, onClose }) => {
     <div className="inspection-dashboard">
       {/* Header */}
       <div className="dashboard-header">
-        <div className="header-content">
-          <h2>검사 결과 대시보드</h2>
-          <div className="inspection-meta">
-            <span className="service-type">{serviceType} 검사</span>
-            <span className="inspection-time">
-              {formatTimestamp(startTime)} ~ {formatTimestamp(endTime)}
-            </span>
-            <span className="duration">소요시간: {formatDuration(duration)}</span>
-          </div>
+        <h2>검사 결과 대시보드</h2>
+        <div className="inspection-meta">
+          <span className="service-type">{serviceType} 검사</span>
+          <span className="inspection-time">
+            {formatTimestamp(startTime)} ~ {formatTimestamp(endTime)}
+          </span>
+          <span className="duration">소요시간: {formatDuration(duration)}</span>
         </div>
         {onClose && (
           <button className="close-dashboard-button" onClick={onClose} aria-label="대시보드 닫기">

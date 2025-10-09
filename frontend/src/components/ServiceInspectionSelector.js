@@ -187,18 +187,7 @@ const ServiceInspectionSelector = ({ onStartInspection, isLoading }) => {
 
   return (
     <div className="service-inspection-selector">
-      {/* 간소화된 헤더 */}
-      <div className="simple-header">
-        <div className="header-content">
-          <div className="header-icon">
-            <span className="advisor-icon">🛡️</span>
-          </div>
-          <div className="header-text">
-            <h1>AWS 보안 검사</h1>
-            <p>AWS 리소스의 보안 및 구성을 검사합니다</p>
-          </div>
-        </div>
-      </div>
+
 
       {/* 간소화된 서비스 선택 */}
       <div className="service-selection-compact">

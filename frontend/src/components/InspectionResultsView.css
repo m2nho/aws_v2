@@ -11,7 +11,7 @@
   border-bottom: 1px solid #e5e7eb;
 }
 
-.header-content {
+.results-header {
   display: flex;
   align-items: center;
   gap: 24px;
@@ -376,7 +376,7 @@
 
 /* 반응형 디자인 */
 @media (max-width: 768px) {
-  .header-content {
+  .results-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 16px;
