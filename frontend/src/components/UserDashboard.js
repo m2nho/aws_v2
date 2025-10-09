@@ -11,6 +11,7 @@ const UserDashboard = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [copySuccess, setCopySuccess] = useState('');
 
+
   const fetchProfile = useCallback(async () => {
     if (!isAuthenticated) {
       setLoading(false);
@@ -183,39 +184,45 @@ const UserDashboard = () => {
   const statusInfo = getStatusInfo(currentStatus);
   const welcomeName = profile?.username || user?.username || '사용자';
 
+
+
   return (
     <div className="dashboard fade-in">
+      {/* Simple Header */}
       <div className="dashboard-header slide-down">
         <div className="header-content">
           <h1>안녕하세요, {welcomeName}님! 👋</h1>
           <p className="header-subtitle">AWS 사용자 관리 대시보드</p>
         </div>
-        <button onClick={logout} className="logout-button" title="로그아웃">
-          <span>로그아웃</span>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-            <polyline points="16,17 21,12 16,7" />
-            <line x1="21" y1="12" x2="9" y2="12" />
-          </svg>
-        </button>
+        <div className="header-actions">
+          <button
+            onClick={fetchProfile}
+            className="refresh-button"
+            disabled={isRefreshing}
+            title="정보 새로고침"
+          >
+            <svg className={isRefreshing ? 'spinning' : ''} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="23,4 23,10 17,10" />
+              <polyline points="1,20 1,14 7,14" />
+              <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15" />
+            </svg>
+          </button>
+          <button onClick={logout} className="logout-button" title="로그아웃">
+            <span>로그아웃</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16,17 21,12 16,7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       <div className="dashboard-content">
+        {/* User Profile Card */}
         <div className="dashboard-card user-info-card slide-up">
           <div className="card-header">
-            <h2>📋 사용자 정보</h2>
-            <button
-              onClick={fetchProfile}
-              className="refresh-button"
-              disabled={isRefreshing}
-              title="정보 새로고침"
-            >
-              <svg className={isRefreshing ? 'spinning' : ''} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="23,4 23,10 17,10" />
-                <polyline points="1,20 1,14 7,14" />
-                <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15" />
-              </svg>
-            </button>
+            <h2>👤 사용자 정보</h2>
           </div>
           <div className="user-info">
             <div className="info-item">
@@ -245,9 +252,27 @@ const UserDashboard = () => {
               <label>📅 가입일</label>
               <span>{formatDate(profile?.createdAt)}</span>
             </div>
+            {profile?.updatedAt && (
+              <div className="info-item">
+                <label>🔄 마지막 업데이트</label>
+                <span>{formatDate(profile.updatedAt)}</span>
+              </div>
+            )}
+            {profile?.accessLevel && (
+              <div className="info-item">
+                <label>🎯 접근 레벨</label>
+                <span className={`access-level ${profile.accessLevel}`}>
+                  {profile.accessLevel === 'full' && '전체 접근'}
+                  {profile.accessLevel === 'limited' && '제한된 접근'}
+                  {profile.accessLevel === 'denied' && '접근 거부'}
+                  {profile.accessLevel === 'none' && '접근 없음'}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
+        {/* Account Status Card */}
         <div className={`dashboard-card status-card ${statusInfo.className} slide-up-delay`}>
           <div className="card-header">
             <h2>🎯 계정 상태</h2>
@@ -259,8 +284,12 @@ const UserDashboard = () => {
             </div>
             <div className="status-info">
               <div className="status-text">{statusInfo.text}</div>
-              <div className="status-message">{statusInfo.message}</div>
-              <div className="status-detail">{statusInfo.detailMessage}</div>
+              <div className="status-message">
+                {profile?.statusMessage || statusInfo.message}
+              </div>
+              {!profile?.statusMessage && (
+                <div className="status-detail">{statusInfo.detailMessage}</div>
+              )}
               {statusInfo.showAction && (
                 <button
                   onClick={() => handleStatusAction(currentStatus)}
@@ -273,9 +302,38 @@ const UserDashboard = () => {
             </div>
           </div>
         </div>
+
+        {/* ARN Validation Status - 검증 데이터가 실제로 있을 때만 표시 */}
+        {profile?.arnValidation && typeof profile.arnValidation.isValid === 'boolean' && (
+          <div className="dashboard-card validation-card slide-up-delay-2">
+            <div className="card-header">
+              <h2>🔍 ARN 검증 상태</h2>
+            </div>
+            <div className="validation-info">
+              <div className="validation-item">
+                <label>검증 상태</label>
+                <span className={`validation-status ${profile.arnValidation.isValid ? 'valid' : 'invalid'}`}>
+                  {profile.arnValidation.isValid ? '✅ 유효함' : '❌ 유효하지 않음'}
+                </span>
+              </div>
+              {profile.arnValidation.message && (
+                <div className="validation-item">
+                  <label>검증 메시지</label>
+                  <span>{profile.arnValidation.message}</span>
+                </div>
+              )}
+              {profile.arnValidation.lastChecked && (
+                <div className="validation-item">
+                  <label>마지막 검증</label>
+                  <span>{formatDate(profile.arnValidation.lastChecked)}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* 성공 메시지 토스트 */}
+      {/* Success Toast */}
       {copySuccess && (
         <div className="toast-message">
           {copySuccess}
