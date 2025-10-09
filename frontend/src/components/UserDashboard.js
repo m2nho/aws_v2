@@ -1,80 +1,143 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context';
 import { userService } from '../services';
 import './UserDashboard.css';
 
 const UserDashboard = () => {
-  const { user, userStatus, isAuthenticated, logout } = useAuth();
+  const { userStatus, isAuthenticated, logout, user } = useAuth();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [copySuccess, setCopySuccess] = useState('');
+
+  const fetchProfile = useCallback(async () => {
+    if (!isAuthenticated) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setIsRefreshing(true);
+      const response = await userService.getProfile();
+      if (response.success) {
+        setProfile(response.data);
+        setError(null);
+      } else {
+        setError(response.message || '프로필을 불러올 수 없습니다.');
+      }
+    } catch (err) {
+      console.error('Profile fetch error:', err);
+      setError('프로필을 불러오는 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+      setIsRefreshing(false);
+    }
+  }, [isAuthenticated]);
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      if (!isAuthenticated) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        const response = await userService.getProfile();
-        if (response.success) {
-          setProfile(response.data);
-        } else {
-          setError(response.message || '프로필을 불러올 수 없습니다.');
-        }
-      } catch (err) {
-        console.error('Profile fetch error:', err);
-        setError('프로필을 불러오는 중 오류가 발생했습니다.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchProfile();
-  }, [isAuthenticated]);
+  }, [fetchProfile]);
+
+  const handleCopyArn = async (arn) => {
+    try {
+      await navigator.clipboard.writeText(arn);
+      setCopySuccess('복사됨!');
+      setTimeout(() => setCopySuccess(''), 2000);
+    } catch (err) {
+      setCopySuccess('복사 실패');
+      setTimeout(() => setCopySuccess(''), 2000);
+    }
+  };
 
   const getStatusInfo = (status) => {
     switch (status) {
       case 'pending':
         return {
-          text: '승인 대기',
-          message: '관리자의 승인을 기다리고 있습니다. 승인이 완료되면 모든 기능을 사용할 수 있습니다.',
+          text: '승인 대기 중',
+          message: '관리자가 계정을 검토하고 있습니다.',
+          detailMessage: '승인 완료까지 잠시만 기다려주세요.',
           className: 'status-pending',
-          icon: '⏳'
+          icon: '⏳',
+          actionText: '상태 확인',
+          showAction: true
         };
       case 'approved':
-      case 'active':
         return {
-          text: '활성',
-          message: '계정이 승인되었습니다. 모든 기능을 사용할 수 있습니다.',
-          className: 'status-active',
-          icon: '✅'
+          text: '계정 활성화됨',
+          message: '모든 AWS 관리 기능을 사용할 수 있습니다.',
+          detailMessage: '안전하고 효율적인 AWS 리소스 관리를 시작하세요.',
+          className: 'status-approved',
+          icon: '✅',
+          actionText: null,
+          showAction: false
         };
       case 'rejected':
         return {
-          text: '거부됨',
-          message: '계정 승인이 거부되었습니다. 자세한 내용은 관리자에게 문의하세요.',
+          text: '승인 거부됨',
+          message: '계정 승인이 거부되었습니다.',
+          detailMessage: '관리자에게 직접 문의하시기 바랍니다.',
           className: 'status-rejected',
-          icon: '❌'
+          icon: '❌',
+          actionText: null,
+          showAction: false
         };
       default:
         return {
-          text: '알 수 없음',
-          message: '계정 상태를 확인할 수 없습니다.',
+          text: '상태 확인 중',
+          message: '계정 상태를 확인하고 있습니다.',
+          detailMessage: '잠시 후 다시 시도해주세요.',
           className: 'status-unknown',
-          icon: '❓'
+          icon: '❓',
+          actionText: '다시 확인',
+          showAction: true
         };
+    }
+  };
+
+  const handleStatusAction = (status) => {
+    if (status === 'pending' || status === 'unknown') {
+      fetchProfile();
+    }
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now - date);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 1) {
+      return '오늘';
+    } else if (diffDays === 2) {
+      return '어제';
+    } else if (diffDays <= 7) {
+      return `${diffDays - 1}일 전`;
+    } else {
+      return date.toLocaleDateString('ko-KR', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
     }
   };
 
   if (!isAuthenticated) {
     return (
-      <div className="user-dashboard">
-        <div className="dashboard-card">
-          <h2>로그인이 필요합니다</h2>
-          <p>대시보드에 접근하려면 먼저 로그인해주세요.</p>
+      <div className="dashboard">
+        <div className="dashboard-card welcome-card">
+          <div className="welcome-content">
+            <div className="welcome-icon">🔐</div>
+            <h2>로그인이 필요합니다</h2>
+            <p>AWS 사용자 관리 대시보드에 접근하려면 먼저 로그인해주세요.</p>
+            <button
+              onClick={() => (window.location.href = '/login')}
+              className="welcome-button"
+            >
+              로그인하기
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -82,9 +145,13 @@ const UserDashboard = () => {
 
   if (loading) {
     return (
-      <div className="user-dashboard">
-        <div className="dashboard-card">
-          <div className="loading">프로필을 불러오는 중...</div>
+      <div className="dashboard">
+        <div className="dashboard-card loading-card">
+          <div className="loading-content">
+            <div className="loading-spinner"></div>
+            <h3>대시보드 로딩 중</h3>
+            <p>사용자 정보를 불러오고 있습니다...</p>
+          </div>
         </div>
       </div>
     );
@@ -92,14 +159,20 @@ const UserDashboard = () => {
 
   if (error) {
     return (
-      <div className="user-dashboard">
-        <div className="dashboard-card">
-          <div className="error-message">
-            <h3>오류 발생</h3>
+      <div className="dashboard">
+        <div className="dashboard-card error-card">
+          <div className="error-content">
+            <div className="error-icon">⚠️</div>
+            <h3>문제가 발생했습니다</h3>
             <p>{error}</p>
-            <button onClick={() => window.location.reload()} className="retry-button">
-              다시 시도
-            </button>
+            <div className="error-actions">
+              <button onClick={fetchProfile} className="retry-button" disabled={isRefreshing}>
+                {isRefreshing ? '새로고침 중...' : '다시 시도'}
+              </button>
+              <button onClick={() => window.location.reload()} className="reload-button">
+                페이지 새로고침
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -108,136 +181,107 @@ const UserDashboard = () => {
 
   const currentStatus = profile?.status || userStatus;
   const statusInfo = getStatusInfo(currentStatus);
+  const welcomeName = profile?.username || user?.username || '사용자';
 
   return (
-    <main className="user-dashboard" role="main" aria-labelledby="dashboard-title">
-      <div className="dashboard-header">
-        <h1 id="dashboard-title" className="page-title">사용자 대시보드</h1>
-        <button 
-          onClick={logout} 
-          className="logout-button"
-          aria-label="로그아웃하기"
-          type="button"
-        >
-          로그아웃
+    <div className="dashboard fade-in">
+      <div className="dashboard-header slide-down">
+        <div className="header-content">
+          <h1>안녕하세요, {welcomeName}님! 👋</h1>
+          <p className="header-subtitle">AWS 사용자 관리 대시보드</p>
+        </div>
+        <button onClick={logout} className="logout-button" title="로그아웃">
+          <span>로그아웃</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16,17 21,12 16,7" />
+            <line x1="21" y1="12" x2="9" y2="12" />
+          </svg>
         </button>
       </div>
 
       <div className="dashboard-content">
-        {/* 사용자 정보 카드 */}
-        <section className="dashboard-card user-info-card" aria-labelledby="user-info-title">
-          <h2 id="user-info-title" className="section-title">사용자 정보</h2>
-          <dl className="user-info">
+        <div className="dashboard-card user-info-card slide-up">
+          <div className="card-header">
+            <h2>📋 사용자 정보</h2>
+            <button
+              onClick={fetchProfile}
+              className="refresh-button"
+              disabled={isRefreshing}
+              title="정보 새로고침"
+            >
+              <svg className={isRefreshing ? 'spinning' : ''} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="23,4 23,10 17,10" />
+                <polyline points="1,20 1,14 7,14" />
+                <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15" />
+              </svg>
+            </button>
+          </div>
+          <div className="user-info">
             <div className="info-item">
-              <dt>사용자명:</dt>
-              <dd>{profile?.username || user?.username || 'N/A'}</dd>
+              <label>👤 사용자명</label>
+              <span>{profile?.username || 'N/A'}</span>
             </div>
             <div className="info-item">
-              <dt>회사명:</dt>
-              <dd>{profile?.companyName || 'N/A'}</dd>
+              <label>🏢 회사명</label>
+              <span>{profile?.companyName || 'N/A'}</span>
             </div>
             <div className="info-item">
-              <dt>AWS Role ARN:</dt>
-              <dd className="role-arn">{profile?.roleArn || 'N/A'}</dd>
+              <label>🔑 AWS Role ARN</label>
+              <div className="arn-container">
+                <span className="role-arn">{profile?.roleArn || 'N/A'}</span>
+                {profile?.roleArn && (
+                  <button
+                    onClick={() => handleCopyArn(profile.roleArn)}
+                    className="copy-button"
+                    title="ARN 복사"
+                  >
+                    {copySuccess || '📋'}
+                  </button>
+                )}
+              </div>
             </div>
             <div className="info-item">
-              <dt>가입일:</dt>
-              <dd>
-                {profile?.createdAt 
-                  ? new Date(profile.createdAt).toLocaleDateString('ko-KR')
-                  : 'N/A'
-                }
-              </dd>
+              <label>📅 가입일</label>
+              <span>{formatDate(profile?.createdAt)}</span>
             </div>
-          </dl>
-        </section>
+          </div>
+        </div>
 
-        {/* 계정 상태 카드 */}
-        <section className={`dashboard-card status-card ${statusInfo.className}`} aria-labelledby="account-status-title">
-          <h2 id="account-status-title" className="section-title">계정 상태</h2>
-          <div className="status-display" role="status" aria-live="polite">
-            <div className="status-icon" aria-hidden="true">{statusInfo.icon}</div>
+        <div className={`dashboard-card status-card ${statusInfo.className} slide-up-delay`}>
+          <div className="card-header">
+            <h2>🎯 계정 상태</h2>
+          </div>
+          <div className="status-display">
+            <div className="status-icon-container">
+              <div className="status-icon">{statusInfo.icon}</div>
+              <div className="status-pulse"></div>
+            </div>
             <div className="status-info">
               <div className="status-text">{statusInfo.text}</div>
               <div className="status-message">{statusInfo.message}</div>
-            </div>
-          </div>
-        </section>
-
-        {/* ARN 검증 상태 카드 (활성 사용자만) */}
-        {currentStatus === 'approved' || currentStatus === 'active' ? (
-          <section className="dashboard-card arn-validation-card" aria-labelledby="arn-validation-title">
-            <h2 id="arn-validation-title" className="section-title">AWS Role ARN 검증 상태</h2>
-            <div className="arn-validation">
-              {profile?.arnValidation ? (
-                <div className={`validation-status ${profile.arnValidation.isValid ? 'valid' : 'invalid'}`}>
-                  <div className="validation-icon">
-                    {profile.arnValidation.isValid ? '✅' : '❌'}
-                  </div>
-                  <div className="validation-info">
-                    <div className="validation-text">
-                      {profile.arnValidation.isValid ? 'ARN 유효함' : 'ARN 무효함'}
-                    </div>
-                    <div className="validation-details">
-                      마지막 확인: {
-                        profile.arnValidation.lastChecked 
-                          ? new Date(profile.arnValidation.lastChecked).toLocaleString('ko-KR')
-                          : '확인되지 않음'
-                      }
-                    </div>
-                    {profile.arnValidation.error && (
-                      <div className="validation-error">
-                        오류: {profile.arnValidation.error}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="validation-status pending">
-                  <div className="validation-icon">⏳</div>
-                  <div className="validation-info">
-                    <div className="validation-text">ARN 검증 대기 중</div>
-                    <div className="validation-details">
-                      관리자가 ARN을 검증하면 결과가 여기에 표시됩니다.
-                    </div>
-                  </div>
-                </div>
+              <div className="status-detail">{statusInfo.detailMessage}</div>
+              {statusInfo.showAction && (
+                <button
+                  onClick={() => handleStatusAction(currentStatus)}
+                  className="status-action-button"
+                  disabled={isRefreshing}
+                >
+                  {isRefreshing ? '처리 중...' : statusInfo.actionText}
+                </button>
               )}
             </div>
-          </section>
-        ) : null}
-
-
-
-        {/* 추가 안내 메시지 */}
-        <section className="dashboard-card info-card" aria-labelledby="info-title">
-          <h2 id="info-title" className="section-title">안내사항</h2>
-          <div className="info-content">
-            {currentStatus === 'pending' && (
-              <ul>
-                <li>계정 승인은 관리자가 수동으로 처리합니다.</li>
-                <li>승인 과정에서 AWS Role ARN의 유효성이 검증됩니다.</li>
-                <li>승인이 완료되면 이메일로 알림을 받게 됩니다.</li>
-              </ul>
-            )}
-            {(currentStatus === 'approved' || currentStatus === 'active') && (
-              <ul>
-                <li>모든 시스템 기능을 사용할 수 있습니다.</li>
-                <li>AWS Role ARN이 주기적으로 검증됩니다.</li>
-                <li>문제가 발생하면 관리자에게 문의하세요.</li>
-              </ul>
-            )}
-            {currentStatus === 'rejected' && (
-              <ul>
-                <li>계정 승인이 거부된 이유를 확인하려면 관리자에게 문의하세요.</li>
-                <li>필요한 경우 새로운 계정으로 다시 가입할 수 있습니다.</li>
-                <li>AWS Role ARN 정보가 올바른지 확인해주세요.</li>
-              </ul>
-            )}
           </div>
-        </section>
+        </div>
       </div>
-    </main>
+
+      {/* 성공 메시지 토스트 */}
+      {copySuccess && (
+        <div className="toast-message">
+          {copySuccess}
+        </div>
+      )}
+    </div>
   );
 };
 
