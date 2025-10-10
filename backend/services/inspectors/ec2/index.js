@@ -8,7 +8,6 @@ const BaseInspector = require('../baseInspector');
 const { EC2Client } = require('@aws-sdk/client-ec2');
 
 // 검사 항목별 모듈 import
-const SecurityGroupChecker = require('./checks/securityGroupChecker');
 const DangerousPortsChecker = require('./checks/dangerousPortsChecker');
 const EBSEncryptionChecker = require('./checks/ebsEncryptionChecker');
 const PublicIpChecker = require('./checks/publicIpChecker');
@@ -30,7 +29,6 @@ class EC2Inspector extends BaseInspector {
 
     // 검사 모듈들 초기화
     this.checkers = {
-      securityGroup: new SecurityGroupChecker(this),
       dangerousPorts: new DangerousPortsChecker(this),
       ebsEncryption: new EBSEncryptionChecker(this),
       publicIp: new PublicIpChecker(this),

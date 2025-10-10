@@ -5,7 +5,7 @@
  */
 
 const { inspectors } = require('../../services');
-const EC2Inspector = require('../../services/inspectors/ec2Inspector');
+const EC2Inspector = require('../../services/inspectors/ec2/index');
 
 describe('Inspector Integration', () => {
   let mockCredentials;

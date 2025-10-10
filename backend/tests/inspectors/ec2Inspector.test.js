@@ -3,7 +3,7 @@
  * Requirements: 2.1, 2.2, 2.3, 2.4
  */
 
-const EC2Inspector = require('../../services/inspectors/ec2Inspector');
+const EC2Inspector = require('../../services/inspectors/ec2/index');
 const InspectionFinding = require('../../models/InspectionFinding');
 
 // Mock AWS SDK

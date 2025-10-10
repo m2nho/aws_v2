@@ -1,139 +1,307 @@
 const BaseInspector = require('../baseInspector');
 const InspectionFinding = require('../../../models/InspectionFinding');
-const { S3Client, ListBucketsCommand, GetBucketLocationCommand } = require('@aws-sdk/client-s3');
-const bucketPolicyChecker = require('./checks/bucketPolicyChecker');
-const bucketEncryptionChecker = require('./checks/bucketEncryptionChecker');
-const bucketVersioningChecker = require('./checks/bucketVersioningChecker');
-const bucketLoggingChecker = require('./checks/bucketLoggingChecker');
-const bucketPublicAccessChecker = require('./checks/bucketPublicAccessChecker');
-// const bucketMfaDeleteChecker = require('./checks/bucketMfaDeleteChecker'); // 중복 검사로 비활성화
-const bucketLifecycleChecker = require('./checks/bucketLifecycleChecker');
-const bucketCorsChecker = require('./checks/bucketCorsChecker');
+const { S3Client } = require('@aws-sdk/client-s3');
+
+// 검사 항목별 모듈 import
+const BucketPolicyChecker = require('./checks/bucketPolicyChecker');
+const BucketEncryptionChecker = require('./checks/bucketEncryptionChecker');
+const BucketVersioningChecker = require('./checks/bucketVersioningChecker');
+const BucketLoggingChecker = require('./checks/bucketLoggingChecker');
+const BucketPublicAccessChecker = require('./checks/bucketPublicAccessChecker');
+const BucketLifecycleChecker = require('./checks/bucketLifecycleChecker');
+const BucketCorsChecker = require('./checks/bucketCorsChecker');
+
+// 데이터 수집 모듈
+const S3DataCollector = require('./collectors/s3DataCollector');
 
 class S3Inspector extends BaseInspector {
   constructor(options = {}) {
     super('S3', options);
     this.s3Client = null;
+    this.dataCollector = null;
     this.region = options.region || 'us-east-1';
+
+    // 검사 모듈들 초기화
+    this.checkers = {
+      bucketPolicy: new BucketPolicyChecker(this),
+      bucketEncryption: new BucketEncryptionChecker(this),
+      bucketVersioning: new BucketVersioningChecker(this),
+      bucketLogging: new BucketLoggingChecker(this),
+      bucketPublicAccess: new BucketPublicAccessChecker(this),
+      bucketLifecycle: new BucketLifecycleChecker(this),
+      bucketCors: new BucketCorsChecker(this)
+    };
   }
 
-  async performInspection(awsCredentials, inspectionConfig = {}) {
+  /**
+   * Inspector 버전 반환
+   */
+  getVersion() {
+    return 's3-inspector-v2.0';
+  }
+
+  /**
+   * 지원하는 검사 유형 목록 반환
+   */
+  getSupportedInspectionTypes() {
+    return [
+      'bucket-policy',
+      'bucket-encryption',
+      'bucket-versioning',
+      'bucket-logging',
+      'bucket-public-access',
+      'bucket-lifecycle',
+      'bucket-cors'
+    ];
+  }
+
+  /**
+   * 사전 검증
+   */
+  async preInspectionValidation(awsCredentials, inspectionConfig) {
+    await super.preInspectionValidation(awsCredentials, inspectionConfig);
+
     // S3 클라이언트 초기화
     this.s3Client = new S3Client({
+      region: awsCredentials.region || this.region,
       credentials: {
         accessKeyId: awsCredentials.accessKeyId,
         secretAccessKey: awsCredentials.secretAccessKey,
         sessionToken: awsCredentials.sessionToken
-      },
-      region: this.region
+      }
     });
 
-    this.updateProgress('S3 버킷 목록 수집 중', 10);
+    // 데이터 수집기 초기화
+    this.dataCollector = new S3DataCollector(this.s3Client, this);
+
+    this.logger.debug('S3 client and data collector initialized successfully');
+  }
+
+  /**
+   * 개별 항목 검사 수행
+   */
+  async performItemInspection(awsCredentials, inspectionConfig) {
+    const targetItem = inspectionConfig.targetItem;
+    const results = {
+      buckets: [],
+      findings: []
+    };
 
     try {
-      // S3 버킷 목록 수집
-      const buckets = await this.collectBucketData();
-      this.incrementResourceCount(buckets.length);
-      
-      if (buckets.length === 0) {
-        const finding = new InspectionFinding({
-          resourceId: 'N/A',
-          resourceType: 'S3',
-          riskLevel: 'INFO',
-          issue: 'S3 버킷 없음',
-          description: '현재 계정에 S3 버킷이 없습니다.',
-          recommendation: 'S3 버킷이 필요한 경우 생성을 고려하세요.',
-          region: this.region
-        });
-        this.addFinding(finding);
-        return { buckets: [], totalChecks: 0 };
+      switch (targetItem) {
+        case 'bucket-policy':
+          await this._inspectBucketPolicy(results);
+          break;
+
+        case 'bucket-encryption':
+          await this._inspectBucketEncryption(results);
+          break;
+
+        case 'bucket-versioning':
+          await this._inspectBucketVersioning(results);
+          break;
+
+        case 'bucket-logging':
+          await this._inspectBucketLogging(results);
+          break;
+
+        case 'bucket-public-access':
+          await this._inspectBucketPublicAccess(results);
+          break;
+
+        case 'bucket-lifecycle':
+          await this._inspectBucketLifecycle(results);
+          break;
+
+        case 'bucket-cors':
+          await this._inspectBucketCors(results);
+          break;
+
+        default:
+          // 알 수 없는 항목인 경우 전체 검사로 폴백
+          return this.performInspection(awsCredentials, inspectionConfig);
       }
 
-      this.updateProgress('S3 보안 검사 실행 중', 30);
-
-      // 각 검사 실행 - 매번 새로운 인스턴스 생성
-      const checks = [
-        { CheckerClass: bucketPolicyChecker, name: '버킷 정책 검사' },
-        { CheckerClass: bucketEncryptionChecker, name: '암호화 검사' },
-        { CheckerClass: bucketVersioningChecker, name: '버전 관리 검사' },
-        { CheckerClass: bucketLoggingChecker, name: '로깅 검사' },
-        { CheckerClass: bucketPublicAccessChecker, name: '퍼블릭 액세스 검사' },
-        // { CheckerClass: bucketMfaDeleteChecker, name: 'MFA Delete 검사' }, // 중복 검사로 비활성화
-        { CheckerClass: bucketLifecycleChecker, name: '라이프사이클 검사' },
-        { CheckerClass: bucketCorsChecker, name: 'CORS 검사' }
-      ];
-
-      let completedChecks = 0;
-      const totalChecks = checks.length;
-
-      for (const { CheckerClass, name } of checks) {
-        try {
-          this.updateProgress(`${name} 실행 중`, 30 + (completedChecks / totalChecks) * 60);
-          
-          // 매번 새로운 검사 인스턴스 생성하여 결과 누적 방지
-          const checker = new CheckerClass();
-          const checkResults = await checker.check(this.s3Client, buckets);
-          
-          // 검사 결과를 InspectionFinding 객체로 변환
-          for (const finding of checkResults.findings) {
-            const inspectionFinding = new InspectionFinding({
-              resourceId: finding.resource,
-              resourceType: 'S3',
-              riskLevel: this.mapSeverityToRiskLevel(finding.severity),
-              issue: finding.title,
-              description: finding.description,
-              recommendation: finding.recommendation,
-              region: this.region,
-              metadata: {
-                checkId: finding.id,
-                bucketName: finding.resource
-              }
-            });
-            this.addFinding(inspectionFinding);
-          }
-          
-        } catch (error) {
-          this.recordError(error, { checker: name });
-          
-          const errorFinding = new InspectionFinding({
-            resourceId: 'S3 Service',
-            resourceType: 'S3',
-            riskLevel: 'MEDIUM',
-            issue: 'S3 검사 오류',
-            description: `${name} 중 오류가 발생했습니다: ${error.message}`,
-            recommendation: 'AWS 권한을 확인하고 다시 시도하세요.',
-            region: this.region
-          });
-          this.addFinding(errorFinding);
-        }
-        
-        completedChecks++;
-      }
-
-      this.updateProgress('S3 검사 완료', 100);
-
-      return {
-        buckets,
-        totalChecks: completedChecks,
-        bucketsScanned: buckets.length
-      };
+      this.updateProgress('분석 완료 중', 95);
+      results.findings = this.findings;
+      return results;
 
     } catch (error) {
-      this.recordError(error, { phase: 'S3 inspection' });
-      
-      const errorFinding = new InspectionFinding({
-        resourceId: 'S3 Service',
-        resourceType: 'S3',
-        riskLevel: 'HIGH',
-        issue: 'S3 Inspector 실행 오류',
-        description: `S3 검사 중 오류가 발생했습니다: ${error.message}`,
-        recommendation: 'AWS 자격 증명과 권한을 확인하세요.',
-        region: this.region
-      });
-      this.addFinding(errorFinding);
-      
+      this.recordError(error, { targetItem });
       throw error;
     }
+  }
+
+  /**
+   * 전체 검사 수행
+   */
+  async performInspection(awsCredentials, inspectionConfig) {
+    const results = {
+      buckets: [],
+      findings: []
+    };
+
+    try {
+      // 1. 데이터 수집
+      this.updateProgress('S3 버킷 정보 수집 중', 10);
+      const data = await this.dataCollector.collectAllData();
+
+      results.buckets = data.buckets;
+      this.incrementResourceCount(data.buckets.length);
+
+      if (data.buckets.length === 0) {
+        const finding = new InspectionFinding({
+          resourceId: 'no-s3-buckets',
+          resourceType: 'S3Bucket',
+          riskLevel: 'PASS',
+          issue: 'S3 검사 - 통과 (버킷 없음)',
+          recommendation: 'S3 버킷이 필요한 경우 보안 모범 사례를 적용하여 생성하세요.',
+          details: {
+            totalBuckets: 0,
+            status: '현재 S3 관련 보안 위험이 없습니다'
+          },
+          category: 'COMPLIANCE'
+        });
+        this.addFinding(finding);
+        return results;
+      }
+
+      // 2. 버킷 정책 검사
+      this.updateProgress('버킷 정책 분석 중', 20);
+      await this.checkers.bucketPolicy.runAllChecks(data.buckets);
+
+      // 3. 암호화 검사
+      this.updateProgress('버킷 암호화 분석 중', 35);
+      await this.checkers.bucketEncryption.runAllChecks(data.buckets);
+
+      // 4. 퍼블릭 액세스 검사
+      this.updateProgress('퍼블릭 액세스 분석 중', 50);
+      await this.checkers.bucketPublicAccess.runAllChecks(data.buckets);
+
+      // 5. 버전 관리 검사
+      this.updateProgress('버전 관리 분석 중', 65);
+      await this.checkers.bucketVersioning.runAllChecks(data.buckets);
+
+      // 6. 로깅 검사
+      this.updateProgress('액세스 로깅 분석 중', 80);
+      await this.checkers.bucketLogging.runAllChecks(data.buckets);
+
+      // 7. 라이프사이클 검사
+      this.updateProgress('라이프사이클 정책 분석 중', 90);
+      await this.checkers.bucketLifecycle.runAllChecks(data.buckets);
+
+      // 8. CORS 검사
+      this.updateProgress('CORS 설정 분석 중', 95);
+      await this.checkers.bucketCors.runAllChecks(data.buckets);
+
+      this.updateProgress('검사 완료', 100);
+      results.findings = this.findings;
+
+      return results;
+
+    } catch (error) {
+      this.recordError(error, { phase: 'performInspection' });
+      throw error;
+    }
+  }
+
+  // 개별 검사 메서드들
+  async _inspectBucketPolicy(results) {
+    this.findings = [];
+
+    this.updateProgress('S3 버킷 조회 중', 20);
+    const buckets = await this.dataCollector.collectAllData();
+    results.buckets = buckets.buckets;
+    this.incrementResourceCount(buckets.buckets.length);
+
+    this.updateProgress('버킷 정책 분석 중', 70);
+    await this.checkers.bucketPolicy.runAllChecks(buckets.buckets);
+
+    results.findings = this.findings;
+  }
+
+  async _inspectBucketEncryption(results) {
+    this.findings = [];
+
+    this.updateProgress('S3 버킷 조회 중', 20);
+    const buckets = await this.dataCollector.collectAllData();
+    results.buckets = buckets.buckets;
+    this.incrementResourceCount(buckets.buckets.length);
+
+    this.updateProgress('버킷 암호화 분석 중', 70);
+    await this.checkers.bucketEncryption.runAllChecks(buckets.buckets);
+
+    results.findings = this.findings;
+  }
+
+  async _inspectBucketVersioning(results) {
+    this.findings = [];
+
+    this.updateProgress('S3 버킷 조회 중', 20);
+    const buckets = await this.dataCollector.collectAllData();
+    results.buckets = buckets.buckets;
+    this.incrementResourceCount(buckets.buckets.length);
+
+    this.updateProgress('버전 관리 분석 중', 70);
+    await this.checkers.bucketVersioning.runAllChecks(buckets.buckets);
+
+    results.findings = this.findings;
+  }
+
+  async _inspectBucketLogging(results) {
+    this.findings = [];
+
+    this.updateProgress('S3 버킷 조회 중', 20);
+    const buckets = await this.dataCollector.collectAllData();
+    results.buckets = buckets.buckets;
+    this.incrementResourceCount(buckets.buckets.length);
+
+    this.updateProgress('액세스 로깅 분석 중', 70);
+    await this.checkers.bucketLogging.runAllChecks(buckets.buckets);
+
+    results.findings = this.findings;
+  }
+
+  async _inspectBucketPublicAccess(results) {
+    this.findings = [];
+
+    this.updateProgress('S3 버킷 조회 중', 20);
+    const buckets = await this.dataCollector.collectAllData();
+    results.buckets = buckets.buckets;
+    this.incrementResourceCount(buckets.buckets.length);
+
+    this.updateProgress('퍼블릭 액세스 분석 중', 70);
+    await this.checkers.bucketPublicAccess.runAllChecks(buckets.buckets);
+
+    results.findings = this.findings;
+  }
+
+  async _inspectBucketLifecycle(results) {
+    this.findings = [];
+
+    this.updateProgress('S3 버킷 조회 중', 20);
+    const buckets = await this.dataCollector.collectAllData();
+    results.buckets = buckets.buckets;
+    this.incrementResourceCount(buckets.buckets.length);
+
+    this.updateProgress('라이프사이클 정책 분석 중', 70);
+    await this.checkers.bucketLifecycle.runAllChecks(buckets.buckets);
+
+    results.findings = this.findings;
+  }
+
+  async _inspectBucketCors(results) {
+    this.findings = [];
+
+    this.updateProgress('S3 버킷 조회 중', 20);
+    const buckets = await this.dataCollector.collectAllData();
+    results.buckets = buckets.buckets;
+    this.incrementResourceCount(buckets.buckets.length);
+
+    this.updateProgress('CORS 설정 분석 중', 70);
+    await this.checkers.bucketCors.runAllChecks(buckets.buckets);
+
+    results.findings = this.findings;
   }
 
   async collectBucketData() {
@@ -153,13 +321,13 @@ class S3Inspector extends BaseInspector {
               `GetBucketLocation-${bucket.Name}`
             );
             const region = locationResponse.LocationConstraint || 'us-east-1';
-            
+
             // 각 버킷에 대해 리전별 S3 클라이언트 생성
             const bucketS3Client = new S3Client({
               credentials: this.s3Client.config.credentials,
               region: region
             });
-            
+
             return {
               ...bucket,
               Region: region,
@@ -185,153 +353,78 @@ class S3Inspector extends BaseInspector {
     }
   }
 
-  async performItemInspection(awsCredentials, inspectionConfig = {}) {
-    // S3 클라이언트 초기화
-    this.s3Client = new S3Client({
-      credentials: {
-        accessKeyId: awsCredentials.accessKeyId,
-        secretAccessKey: awsCredentials.secretAccessKey,
-        sessionToken: awsCredentials.sessionToken
-      },
-      region: this.region
+  /**
+   * 서비스별 특화 권장사항
+   */
+  getServiceSpecificRecommendations() {
+    const recommendations = [];
+
+    // 각 검사 모듈에서 권장사항 수집
+    Object.values(this.checkers).forEach(checker => {
+      if (checker.getRecommendations) {
+        recommendations.push(...checker.getRecommendations(this.findings));
+      }
     });
 
-    const targetItem = inspectionConfig.targetItem;
+    return recommendations;
+  }
 
-    this.updateProgress('S3 버킷 목록 수집 중', 10);
-
-    try {
-      // S3 버킷 목록 수집
-      const buckets = await this.collectBucketData();
-      this.incrementResourceCount(buckets.length);
-      
-      if (buckets.length === 0) {
-        const finding = new InspectionFinding({
-          resourceId: 'N/A',
-          resourceType: 'S3',
-          riskLevel: 'LOW',
-          issue: 'S3 버킷 없음',
-          description: '현재 계정에 S3 버킷이 없습니다.',
-          recommendation: 'S3 버킷이 필요한 경우 생성을 고려하세요.',
-          region: this.region
-        });
-        this.addFinding(finding);
-        return { buckets: [], totalChecks: 0 };
-      }
-
-      this.updateProgress(`${targetItem} 검사 실행 중`, 50);
-
-      // 특정 검사만 실행
-      let CheckerClass = null;
-      let checkerName = '';
-
-      switch (targetItem) {
-        case 'bucket-policy':
-          CheckerClass = bucketPolicyChecker;
-          checkerName = '버킷 정책 검사';
-          break;
-        case 'bucket-encryption':
-          CheckerClass = bucketEncryptionChecker;
-          checkerName = '암호화 검사';
-          break;
-        case 'bucket-versioning':
-          CheckerClass = bucketVersioningChecker;
-          checkerName = '버전 관리 검사';
-          break;
-        case 'bucket-logging':
-          CheckerClass = bucketLoggingChecker;
-          checkerName = '로깅 검사';
-          break;
-        case 'bucket-public-access':
-          CheckerClass = bucketPublicAccessChecker;
-          checkerName = '퍼블릭 액세스 검사';
-          break;
-        // case 'bucket-mfa-delete': // 중복 검사로 비활성화
-        //   CheckerClass = bucketMfaDeleteChecker;
-        //   checkerName = 'MFA Delete 검사';
-        //   break;
-        case 'bucket-lifecycle':
-          CheckerClass = bucketLifecycleChecker;
-          checkerName = '라이프사이클 검사';
-          break;
-        case 'bucket-cors':
-          CheckerClass = bucketCorsChecker;
-          checkerName = 'CORS 검사';
-          break;
-        default:
-          throw new Error(`Unknown S3 inspection item: ${targetItem}`);
-      }
-
-      try {
-        // 특정 검사만 실행
-        const checker = new CheckerClass();
-        const checkResults = await checker.check(this.s3Client, buckets);
-        
-        // 검사 결과를 InspectionFinding 객체로 변환
-        for (const finding of checkResults.findings) {
-          const inspectionFinding = new InspectionFinding({
-            resourceId: finding.resource,
-            resourceType: 'S3',
-            riskLevel: this.mapSeverityToRiskLevel(finding.severity),
-            issue: finding.title,
-            description: finding.description,
-            recommendation: finding.recommendation,
-            region: this.region,
-            metadata: {
-              checkId: finding.id,
-              bucketName: finding.resource
-            }
-          });
-          this.addFinding(inspectionFinding);
-        }
-        
-      } catch (error) {
-        this.recordError(error, { checker: checkerName });
-        
-        const errorFinding = new InspectionFinding({
-          resourceId: 'S3 Service',
-          resourceType: 'S3',
-          riskLevel: 'MEDIUM',
-          issue: 'S3 검사 오류',
-          description: `${checkerName} 중 오류가 발생했습니다: ${error.message}`,
-          recommendation: 'AWS 권한을 확인하고 다시 시도하세요.',
-          region: this.region
-        });
-        this.addFinding(errorFinding);
-      }
-
-      this.updateProgress('S3 검사 완료', 100);
-
-      return {
-        buckets,
-        totalChecks: 1,
-        bucketsScanned: buckets.length,
-        targetItem: targetItem
-      };
-
-    } catch (error) {
-      this.recordError(error, { phase: 'S3 item inspection', targetItem });
-      
-      const errorFinding = new InspectionFinding({
-        resourceId: 'S3 Service',
-        resourceType: 'S3',
-        riskLevel: 'HIGH',
-        issue: 'S3 Inspector 실행 오류',
-        description: `S3 ${targetItem} 검사 중 오류가 발생했습니다: ${error.message}`,
-        recommendation: 'AWS 자격 증명과 권한을 확인하세요.',
-        region: this.region
-      });
-      this.addFinding(errorFinding);
-      
-      throw error;
+  /**
+   * 부분적 결과 반환
+   */
+  getPartialResults() {
+    if (this.findings.length === 0) {
+      return null;
     }
+
+    const summary = {
+      totalResources: this.resourceCount,
+      criticalIssues: this.findings.filter(f => f.riskLevel === 'CRITICAL').length,
+      highRiskIssues: this.findings.filter(f => f.riskLevel === 'HIGH').length,
+      mediumRiskIssues: this.findings.filter(f => f.riskLevel === 'MEDIUM').length,
+      lowRiskIssues: this.findings.filter(f => f.riskLevel === 'LOW').length,
+      overallScore: this.calculateOverallScore(),
+      partial: true,
+      completedChecks: this.getCompletedChecks()
+    };
+
+    return {
+      summary,
+      findings: this.findings.map(f => f.toApiResponse ? f.toApiResponse() : f),
+      recommendations: this.getServiceSpecificRecommendations(),
+      metadata: {
+        partial: true,
+        completedAt: Date.now(),
+        resourcesScanned: this.resourceCount,
+        checksCompleted: this.getCompletedChecks().length
+      }
+    };
+  }
+
+  /**
+   * 완료된 검사 항목들 반환
+   */
+  getCompletedChecks() {
+    const completedChecks = [];
+
+    if (this.metadata && this.metadata.bucketsAnalyzed) {
+      completedChecks.push('S3 Buckets Analysis');
+    }
+    if (this.metadata && this.metadata.encryptionAnalyzed) {
+      completedChecks.push('Encryption Analysis');
+    }
+    if (this.metadata && this.metadata.publicAccessAnalyzed) {
+      completedChecks.push('Public Access Analysis');
+    }
+
+    return completedChecks;
   }
 
   mapSeverityToRiskLevel(severity) {
     const mapping = {
       'pass': 'PASS',
       'high': 'HIGH',
-      'medium': 'MEDIUM', 
+      'medium': 'MEDIUM',
       'low': 'LOW',
       'info': 'LOW'  // INFO를 LOW로 매핑
     };
@@ -371,6 +464,28 @@ class S3Inspector extends BaseInspector {
 
     return recommendations;
   }
+
+  /**
+   * 기존 메서드들 (하위 호환성 유지)
+   */
+  async collectBucketData() {
+    return this.dataCollector ?
+      (await this.dataCollector.collectAllData()).buckets :
+      await this.dataCollector.getBuckets();
+  }
+
+  mapSeverityToRiskLevel(severity) {
+    const mapping = {
+      'pass': 'PASS',
+      'high': 'HIGH',
+      'medium': 'MEDIUM',
+      'low': 'LOW',
+      'info': 'LOW'
+    };
+    return mapping[severity] || 'MEDIUM';
+  }
 }
+
+module.exports = S3Inspector;
 
 module.exports = S3Inspector;
